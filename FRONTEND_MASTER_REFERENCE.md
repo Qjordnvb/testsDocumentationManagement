@@ -834,40 +834,63 @@ src/
 
 ## ✅ 11. CHECKLIST DE IMPLEMENTACIÓN
 
-### Fase 1: Setup
-- [ ] Crear proyecto Vite + React + TypeScript
-- [ ] Configurar Tailwind CSS
-- [ ] Crear archivo `types/api.ts` con todas las interfaces
-- [ ] Crear `services/api.ts` con Axios client
-- [ ] Configurar proxy en vite.config.ts
+### Fase 1: Setup ✅ COMPLETADO
+- [x] Crear proyecto Vite + React + TypeScript
+- [x] Configurar Tailwind CSS
+- [x] Crear archivo `types/api.ts` con todas las interfaces (en entities/*/model/types.ts)
+- [x] Crear `services/api.ts` con Axios client (en entities/*/api/)
+- [x] Configurar proxy en vite.config.ts
 
-### Fase 2: Layout
-- [ ] Crear componente `Layout.tsx`
-- [ ] Crear componente `Sidebar.tsx`
-- [ ] Crear componente `Header.tsx`
-- [ ] Configurar React Router
+### Fase 2: Layout ✅ COMPLETADO
+- [x] Crear componente `Layout.tsx` (en widgets/header/Layout.tsx)
+- [x] Crear componente `Sidebar.tsx` (en widgets/sidebar/)
+- [x] Crear componente `Header.tsx` (en widgets/header/)
+- [x] Configurar React Router (en app/App.tsx)
 
-### Fase 3: Dashboard
-- [ ] Crear componente `MetricCard.tsx`
-- [ ] Crear componente `Dashboard.tsx`
-- [ ] Conectar con `/api/v1/stats`
-- [ ] Mostrar métricas en tiempo real
+### Fase 3: Dashboard ✅ COMPLETADO
+- [x] Crear componente `MetricCard.tsx` (en widgets/dashboard-stats/)
+- [x] Crear componente `Dashboard.tsx` (en pages/DashboardPage/)
+- [x] Conectar con `/api/v1/stats`
+- [x] Mostrar métricas en tiempo real
 
-### Fase 4: User Stories
-- [ ] Crear `StoriesTable.tsx` con TanStack Table
-- [ ] Crear `StoryDetail.tsx` (modal)
-- [ ] Crear botón "Upload Excel"
-- [ ] Crear botón "Generate Tests"
+### Fase 4: User Stories ✅ COMPLETADO
+- [x] Crear `StoriesTable.tsx` con TanStack Table (widgets/story-table/)
+- [x] Crear `StoryDetail.tsx` (modal) - Integrado en GenerateModal
+- [x] Crear botón "Upload Excel" - Feature completa: features/upload-excel/
+- [x] Crear botón "Generate Tests" - Feature completa: features/generate-tests/
 
-### Fase 5: Test Cases
+### Fase 5: Test Cases ⏳ PENDIENTE
 - [ ] Crear `TestCasesTable.tsx`
 - [ ] Crear `GherkinViewer.tsx` con syntax highlighting
 - [ ] Botón "Mark Pass/Fail"
 
-### Fase 6: Bug Reports
+### Fase 6: Bug Reports ⏳ PENDIENTE
 - [ ] Crear `BugForm.tsx` con React Hook Form
 - [ ] Crear `BugsTable.tsx`
 - [ ] Vincular con Stories y Tests
+
+---
+
+## 🎯 PROGRESO ACTUAL (Actualizado 2025-11-14)
+
+**Backend:** ████████████████████ 100% ✅
+**Frontend:** ████████████████░░░░  80% 🚧
+
+### Implementado:
+- ✅ Arquitectura FSD completa
+- ✅ Design System (Button, Modal, Input, Badge, Card)
+- ✅ Entities (user-story, test-case, bug-report)
+- ✅ Features (upload-excel, generate-tests)
+- ✅ StoriesPage con tabla interactiva
+- ✅ DashboardPage con estadísticas
+- ✅ Build TypeScript sin errores
+
+### Pendiente:
+- ⏳ TestCasesPage (ver y ejecutar tests)
+- ⏳ BugReportsPage (gestionar bugs)
+- ⏳ ReportsPage (exportar documentación)
+
+**Ver detalles completos en:** `PROJECT_STATUS.md`
 
 ---
 
