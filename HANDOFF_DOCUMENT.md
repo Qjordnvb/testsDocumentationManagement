@@ -126,7 +126,7 @@ Opciones recomendadas:
 ### 1. `src/config.py`
 Configuración con Pydantic Settings. Variables de entorno desde `.env`:
 ```python
-GEMINI_API_KEY=AIzaSyASEXfrbnPp2oXxTmUCsDAMgts53NCgb60
+GEMINI_API_KEY=
 AZURE_DEVOPS_ORG_URL=...
 AZURE_DEVOPS_PAT=...
 ```
@@ -315,7 +315,7 @@ http://localhost:8000/docs
 
 ```bash
 # IA
-GEMINI_API_KEY=AIzaSyASEXfrbnPp2oXxTmUCsDAMgts53NCgb60
+GEMINI_API_KEY=
 
 # Azure DevOps (opcional)
 AZURE_DEVOPS_ORG_URL=
