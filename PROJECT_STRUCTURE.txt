@@ -1,0 +1,53 @@
+# Estructura Actual del Proyecto (2025-11-14)
+
+testDocumentationAutomation/
+├── .env                          # Variables de entorno (API keys)
+├── requirements.txt              # Dependencias Python
+├── README.md                     # Documentación general
+├── HANDOFF_DOCUMENT.md          # ⭐ GUÍA PARA CONTINUAR
+├── PROYECTO_REDEFINICION.md     # ⭐ NUEVA VISIÓN
+│
+├── src/
+│   ├── config.py                # ✅ MANTENER - Configuración
+│   ├── main.py                  # ⚠️  REFACTORIZAR - API FastAPI
+│   ├── cli.py                   # ✅ MANTENER - CLI funcional
+│   │
+│   ├── models/                  # ✅ MANTENER - Modelos de datos
+│   │   ├── user_story.py
+│   │   ├── test_case.py
+│   │   └── bug_report.py
+│   │
+│   ├── parsers/                 # ✅ MANTENER - Parser Excel
+│   │   └── file_parser.py
+│   │
+│   ├── generators/              # ✅ MANTENER - Generadores
+│   │   ├── gherkin_generator.py
+│   │   ├── test_plan_generator.py
+│   │   └── bug_template_generator.py
+│   │
+│   ├── integrations/            # ✅ MANTENER (parcial)
+│   │   ├── gemini_client.py         # ✅ MANTENER - IA
+│   │   ├── azure_devops_client.py   # ✅ MANTENER
+│   │   ├── notion_client.py         # ❌ ELIMINAR
+│   │   └── mcp_notion_client.py     # ❌ ELIMINAR
+│   │
+│   ├── database/                # ✅ MANTENER - SQLAlchemy
+│   │   ├── db.py
+│   │   └── models.py
+│   │
+│   ├── cli_notion_setup.py      # ❌ ELIMINAR
+│   ├── notion_ai_orchestrator.py    # ❌ ELIMINAR
+│   └── gemini_mcp_orchestrator.py   # ❌ ELIMINAR
+│
+├── data/
+│   └── qa_automation.db         # ✅ Base de datos SQLite
+│
+├── output/                      # ✅ Archivos generados
+│   ├── *.feature               # Archivos Gherkin
+│   ├── *.pdf                   # Test plans
+│   └── *.docx                  # Bug templates
+│
+└── venv/                        # Entorno virtual Python
+
+# ESTADO: Backend funcional, integración Notion abandonada
+# PRÓXIMO: Crear interfaz web (frontend/) y refactorizar API
