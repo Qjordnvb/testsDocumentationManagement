@@ -1,0 +1,165 @@
+/**
+ * API Service for QA Flow
+ * Centralized Axios client with typed endpoints
+ */
+
+import axios, { AxiosError } from 'axios';
+import type {
+  AppInfoResponse,
+  HealthCheckResponse,
+  UploadResponse,
+  UserStoryListItem,
+  UserStoryDetail,
+  GenerateTestCasesResponse,
+  TestCaseListItem,
+  TestPlanResponse,
+  BugTemplateResponse,
+  CreateBugResponse,
+  DashboardStats,
+  ApiError,
+  BugReport,
+} from '../types/api';
+
+// Create Axios instance with base configuration
+const api = axios.create({
+  baseURL: '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 60000, // 60 seconds for AI operations
+});
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<ApiError>) => {
+    if (error.response?.data?.detail) {
+      throw new Error(error.response.data.detail);
+    }
+    throw error;
+  }
+);
+
+// ==================== Health & Info ====================
+
+export const apiService = {
+  // Get app info
+  getAppInfo: async (): Promise<AppInfoResponse> => {
+    const { data } = await api.get<AppInfoResponse>('/');
+    return data;
+  },
+
+  // Health check
+  healthCheck: async (): Promise<HealthCheckResponse> => {
+    const { data } = await api.get<HealthCheckResponse>('/health');
+    return data;
+  },
+
+  // ==================== User Stories ====================
+
+  // Upload Excel/CSV file with user stories
+  uploadFile: async (file: File): Promise<UploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const { data } = await api.post<UploadResponse>('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return data;
+  },
+
+  // Get all user stories
+  getUserStories: async (): Promise<UserStoryListItem[]> => {
+    const { data } = await api.get<UserStoryListItem[]>('/user-stories');
+    return data;
+  },
+
+  // Get specific user story
+  getUserStory: async (storyId: string): Promise<UserStoryDetail> => {
+    const { data } = await api.get<UserStoryDetail>(`/user-stories/${storyId}`);
+    return data;
+  },
+
+  // ==================== Test Cases ====================
+
+  // Generate test cases for a user story
+  generateTestCases: async (
+    storyId: string,
+    useAi: boolean = true,
+    numScenarios: number = 3
+  ): Promise<GenerateTestCasesResponse> => {
+    const { data } = await api.post<GenerateTestCasesResponse>(
+      `/generate-test-cases/${storyId}`,
+      null,
+      {
+        params: {
+          use_ai: useAi,
+          num_scenarios: numScenarios,
+        },
+      }
+    );
+    return data;
+  },
+
+  // Get all test cases
+  getTestCases: async (): Promise<TestCaseListItem[]> => {
+    const { data } = await api.get<TestCaseListItem[]>('/test-cases');
+    return data;
+  },
+
+  // ==================== Test Plans ====================
+
+  // Generate test plan
+  generateTestPlan: async (
+    projectName: string,
+    format: 'markdown' | 'pdf' | 'both' = 'both'
+  ): Promise<TestPlanResponse> => {
+    const { data } = await api.post<TestPlanResponse>(
+      '/generate-test-plan',
+      null,
+      {
+        params: {
+          project_name: projectName,
+          format: format,
+        },
+      }
+    );
+    return data;
+  },
+
+  // ==================== Bug Reports ====================
+
+  // Generate bug report template
+  generateBugTemplate: async (): Promise<BugTemplateResponse> => {
+    const { data } = await api.post<BugTemplateResponse>('/generate-bug-template');
+    return data;
+  },
+
+  // Create bug report
+  createBugReport: async (bug: BugReport): Promise<CreateBugResponse> => {
+    const { data } = await api.post<CreateBugResponse>('/create-bug-report', bug);
+    return data;
+  },
+
+  // ==================== Statistics ====================
+
+  // Get dashboard statistics
+  getStats: async (): Promise<DashboardStats> => {
+    const { data } = await api.get<DashboardStats>('/stats');
+    return data;
+  },
+
+  // ==================== File Downloads ====================
+
+  // Download generated file
+  downloadFile: async (filename: string): Promise<Blob> => {
+    const { data } = await api.get(`/download/${filename}`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+};
+
+export default apiService;
