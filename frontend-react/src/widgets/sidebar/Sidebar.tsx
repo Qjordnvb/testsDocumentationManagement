@@ -3,7 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/app/providers/appStore';
 
 interface NavItem {
   path: string;

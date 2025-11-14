@@ -4,9 +4,9 @@
  */
 
 import { useEffect } from 'react';
-import { MetricCard } from '../components/dashboard/MetricCard';
-import { useAppStore } from '../stores/appStore';
-import apiService from '../services/api';
+import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
+import { useAppStore } from '@/app/providers/appStore';
+import apiService from '@/shared/api/apiClient';
 
 export const Dashboard = () => {
   const { stats, isLoadingStats, statsError, setStats, setIsLoadingStats, setStatsError } =

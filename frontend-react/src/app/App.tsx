@@ -4,8 +4,8 @@
  */
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Layout } from './components/layout/Layout';
-import { Dashboard } from './pages/Dashboard';
+import { Layout } from '@/widgets/header/Layout';
+import { Dashboard } from '@/pages/DashboardPage';
 
 // Placeholder pages (to be created)
 const StoriesPage = () => (

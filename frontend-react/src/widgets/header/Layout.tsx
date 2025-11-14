@@ -3,10 +3,10 @@
  * Wraps all pages with Sidebar and Header
  */
 
-import { ReactNode } from 'react';
-import { Sidebar } from './Sidebar';
+import type { ReactNode } from 'react';
+import { Sidebar } from '@/widgets/sidebar/Sidebar';
 import { Header } from './Header';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/app/providers/appStore';
 
 interface LayoutProps {
   children: ReactNode;

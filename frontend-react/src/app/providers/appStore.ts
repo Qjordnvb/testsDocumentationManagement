@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { DashboardStats } from '../types/api';
+import type { DashboardStats } from '@/shared/types';
 
 interface AppState {
   // Dashboard stats

@@ -2,7 +2,7 @@
  * Header Component
  */
 
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/app/providers/appStore';
 
 export const Header = () => {
   const { currentProject } = useAppStore();
