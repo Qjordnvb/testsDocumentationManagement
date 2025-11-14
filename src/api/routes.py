@@ -98,21 +98,30 @@ async def upload_file(
     }
 
 
-@router.get("/user-stories", response_model=List[dict])
+@router.get("/user-stories")
 async def get_user_stories(db: Session = Depends(get_db)):
     """Get all user stories from database"""
     stories = db.query(UserStoryDB).all()
-    return [
+    user_stories_list = [
         {
             "id": s.id,
             "title": s.title,
             "description": s.description,
             "priority": s.priority.value if s.priority else None,
             "status": s.status.value if s.status else None,
-            "completion_percentage": s.completion_percentage
+            "epic": s.epic,
+            "sprint": s.sprint,
+            "story_points": s.story_points,
+            "assigned_to": s.assigned_to,
+            "acceptance_criteria": [],  # TODO: Fetch from relationship
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            "completion_percentage": s.completion_percentage,
+            "test_case_ids": []  # TODO: Fetch from relationship
         }
         for s in stories
     ]
+    return {"user_stories": user_stories_list}
 
 
 @router.get("/user-stories/{story_id}")
