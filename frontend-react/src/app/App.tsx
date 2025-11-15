@@ -7,15 +7,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from '@/widgets/header/Layout';
 import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
+import { TestCasesPage } from '@/pages/TestCasesPage';
 
 // Placeholder pages (to be created)
-
-const TestsPage = () => (
-  <div className="card">
-    <h1 className="text-2xl font-bold">✅ Test Cases</h1>
-    <p className="text-gray-600 mt-2">Coming soon...</p>
-  </div>
-);
 
 const BugsPage = () => (
   <div className="card">
@@ -45,7 +39,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/stories" element={<StoriesPage />} />
-          <Route path="/tests" element={<TestsPage />} />
+          <Route path="/tests" element={<TestCasesPage />} />
           <Route path="/bugs" element={<BugsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
