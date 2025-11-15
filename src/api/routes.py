@@ -280,13 +280,30 @@ async def generate_test_cases(
         action = "created"
 
     db.commit()
+    db.refresh(existing_test_case if existing_test_case else db_test_case)
 
+    # Get the saved/updated test case for response
+    test_case = existing_test_case if existing_test_case else db_test_case
+
+    # Return in format expected by frontend
     return {
         "message": f"Test cases {action} successfully",
-        "test_case_id": test_case_id,
-        "gherkin_file": gherkin_file,
-        "user_story_id": story_id,
-        "action": action
+        "test_cases": [{
+            "id": test_case.id,
+            "title": test_case.title,
+            "description": test_case.description,
+            "user_story_id": test_case.user_story_id,
+            "test_type": test_case.test_type.value if test_case.test_type else None,
+            "priority": test_case.priority.value if test_case.priority else None,
+            "status": test_case.status.value if test_case.status else None,
+            "estimated_time_minutes": test_case.estimated_time_minutes,
+            "actual_time_minutes": test_case.actual_time_minutes,
+            "automated": test_case.automated,
+            "created_date": test_case.created_date.isoformat() if test_case.created_date else None,
+            "gherkin_file_path": test_case.gherkin_file_path,
+        }],
+        "action": action,
+        "gherkin_file": gherkin_file
     }
 
 
