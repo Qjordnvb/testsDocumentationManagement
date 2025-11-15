@@ -58,4 +58,13 @@ export const testCaseApi = {
     );
     return data.test_cases;
   },
+
+  getGherkinContent: async (id: string): Promise<string> => {
+    const { data } = await api.get<{ gherkin_content: string }>(`/test-cases/${id}/gherkin`);
+    return data.gherkin_content;
+  },
+
+  updateGherkinContent: async (id: string, content: string): Promise<void> => {
+    await api.put(`/test-cases/${id}/gherkin`, { gherkin_content: content });
+  },
 };
