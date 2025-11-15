@@ -133,7 +133,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
             <input
               type="file"
               id="file-upload"
-              accept=".xlsx,.csv"
+              accept=".xlsx,.xls,.csv"
               onChange={handleFileChange}
               className="hidden"
               disabled={isUploading}
@@ -146,7 +146,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
               </label>
             </p>
             <p className="text-xs text-gray-500">
-              Formatos aceptados: .xlsx, .csv (máx. 10MB)
+              Formatos aceptados: .xlsx, .xls, .csv (máx. 10MB)
             </p>
           </div>
         )}
