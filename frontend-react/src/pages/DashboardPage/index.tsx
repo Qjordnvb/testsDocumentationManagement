@@ -3,14 +3,18 @@
  * Shows project metrics and quick actions
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
+import { UploadModal } from '@/features/upload-excel';
 import { useAppStore } from '@/app/providers/appStore';
 import apiService from '@/shared/api/apiClient';
 
 export const Dashboard = () => {
+  const navigate = useNavigate();
   const { stats, isLoadingStats, statsError, setStats, setIsLoadingStats, setStatsError } =
     useAppStore();
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   // Load stats on mount
   useEffect(() => {
@@ -30,6 +34,22 @@ export const Dashboard = () => {
     const interval = setInterval(loadStats, 30000);
     return () => clearInterval(interval);
   }, [setStats, setIsLoadingStats, setStatsError]);
+
+  // Handle upload success
+  const handleUploadSuccess = () => {
+    // Refresh stats after upload
+    const loadStats = async () => {
+      try {
+        const data = await apiService.getStats();
+        setStats(data);
+      } catch (error) {
+        console.error('Error refreshing stats:', error);
+      }
+    };
+    loadStats();
+    // Navigate to stories page to see uploaded stories
+    navigate('/stories');
+  };
 
   // Calculate coverage
   const coverage = stats
@@ -126,24 +146,43 @@ export const Dashboard = () => {
           🎯 Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="btn btn-primary flex items-center justify-center gap-2">
+          <button
+            onClick={() => setUploadModalOpen(true)}
+            className="btn btn-primary flex items-center justify-center gap-2"
+          >
             <span>📤</span>
             <span>Upload Excel</span>
           </button>
-          <button className="btn btn-secondary flex items-center justify-center gap-2">
+          <button
+            onClick={() => navigate('/stories')}
+            className="btn btn-secondary flex items-center justify-center gap-2"
+          >
             <span>✨</span>
             <span>Generate Tests</span>
           </button>
-          <button className="btn btn-secondary flex items-center justify-center gap-2">
+          <button
+            onClick={() => navigate('/reports')}
+            className="btn btn-secondary flex items-center justify-center gap-2"
+          >
             <span>📄</span>
             <span>Export PDF</span>
           </button>
-          <button className="btn btn-secondary flex items-center justify-center gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="btn btn-secondary flex items-center justify-center gap-2"
+          >
             <span>📊</span>
-            <span>View Metrics</span>
+            <span>Refresh Metrics</span>
           </button>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onSuccess={handleUploadSuccess}
+      />
 
       {/* Last update timestamp */}
       {stats?.timestamp && (
