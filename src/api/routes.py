@@ -230,31 +230,63 @@ async def generate_test_cases(
     gherkin_gen = GherkinGenerator(gemini_client if use_ai else None)
 
     settings.ensure_directories()
-    gherkin_file = gherkin_gen.generate_from_user_story(
-        user_story=user_story,
-        output_dir=settings.output_dir,
-        use_ai=use_ai,
-        num_scenarios=num_scenarios
-    )
 
-    # Create test case record in database
+    try:
+        gherkin_file = gherkin_gen.generate_from_user_story(
+            user_story=user_story,
+            output_dir=settings.output_dir,
+            use_ai=use_ai,
+            num_scenarios=num_scenarios
+        )
+    except Exception as e:
+        # Handle API errors (e.g., API key issues)
+        error_msg = str(e)
+        if "403" in error_msg or "API key" in error_msg:
+            raise HTTPException(
+                status_code=403,
+                detail="Gemini API error: Invalid or leaked API key. Please update your GEMINI_API_KEY in .env file. Get a new key at https://aistudio.google.com/app/apikey"
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error generating test scenarios: {error_msg}"
+            )
+
+    # UPSERT: Create or update test case record in database
     test_case_id = f"TC-{story_id}-001"
-    db_test_case = TestCaseDB(
-        id=test_case_id,
-        title=f"Test for {user_story.title}",
-        description=f"Automated test scenarios for {user_story.id}",
-        user_story_id=story_id,
-        gherkin_file_path=gherkin_file,
-        created_date=datetime.now()
-    )
-    db.add(db_test_case)
+
+    # Check if test case already exists
+    existing_test_case = db.query(TestCaseDB).filter(TestCaseDB.id == test_case_id).first()
+
+    if existing_test_case:
+        # Update existing test case
+        print(f"  Updating test case: {test_case_id}")
+        existing_test_case.title = f"Test for {user_story.title}"
+        existing_test_case.description = f"Automated test scenarios for {user_story.id}"
+        existing_test_case.gherkin_file_path = gherkin_file
+        action = "updated"
+    else:
+        # Create new test case
+        print(f"  Creating new test case: {test_case_id}")
+        db_test_case = TestCaseDB(
+            id=test_case_id,
+            title=f"Test for {user_story.title}",
+            description=f"Automated test scenarios for {user_story.id}",
+            user_story_id=story_id,
+            gherkin_file_path=gherkin_file,
+            created_date=datetime.now()
+        )
+        db.add(db_test_case)
+        action = "created"
+
     db.commit()
 
     return {
-        "message": "Test cases generated successfully",
+        "message": f"Test cases {action} successfully",
         "test_case_id": test_case_id,
         "gherkin_file": gherkin_file,
-        "user_story_id": story_id
+        "user_story_id": story_id,
+        "action": action
     }
 
 
