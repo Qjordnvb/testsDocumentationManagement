@@ -8,6 +8,7 @@ import { testCaseApi } from '@/entities/test-case';
 import type { TestCase } from '@/entities/test-case';
 import { Modal } from '@/shared/ui/Modal';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor';
+import { TestCaseFormModal } from '@/features/test-case-management/ui';
 
 export const TestCasesPage = () => {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -16,6 +17,8 @@ export const TestCasesPage = () => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
   const [gherkinTestCase, setGherkinTestCase] = useState<TestCase | null>(null);
   const [gherkinContent, setGherkinContent] = useState<string>('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
 
   // Load test cases
   useEffect(() => {
@@ -98,7 +101,10 @@ export const TestCasesPage = () => {
             {testCases.length} test case{testCases.length !== 1 ? 's' : ''} total
           </p>
         </div>
-        <button className="btn btn-primary">
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowCreateModal(true)}
+        >
           + Crear Test Case Manual
         </button>
       </div>
@@ -265,7 +271,13 @@ export const TestCasesPage = () => {
               >
                 Cerrar
               </button>
-              <button className="btn btn-primary">
+              <button
+                onClick={() => {
+                  setEditingTestCase(selectedTestCase);
+                  setSelectedTestCase(null);
+                }}
+                className="btn btn-primary"
+              >
                 Editar
               </button>
             </div>
@@ -289,6 +301,27 @@ export const TestCasesPage = () => {
           />
         </Modal>
       )}
+
+      {/* Create Test Case Modal */}
+      <TestCaseFormModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          setShowCreateModal(false);
+          loadTestCases();
+        }}
+      />
+
+      {/* Edit Test Case Modal */}
+      <TestCaseFormModal
+        isOpen={!!editingTestCase}
+        onClose={() => setEditingTestCase(null)}
+        onSuccess={() => {
+          setEditingTestCase(null);
+          loadTestCases();
+        }}
+        testCase={editingTestCase || undefined}
+      />
     </div>
   );
 };
