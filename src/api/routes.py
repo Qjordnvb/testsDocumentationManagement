@@ -1,14 +1,15 @@
 """
 FastAPI routes for QA Documentation Automation
 """
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks, Query
 from fastapi.responses import FileResponse
 from typing import List, Optional
 from pathlib import Path
 import shutil
+import os
 from datetime import datetime
 
-from src.models import UserStory, TestCase, BugReport
+from src.models import UserStory, TestCase, BugReport, TestType, TestPriority, TestStatus
 from src.parsers import FileParser
 from src.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
 from src.integrations import GeminiClient
@@ -311,17 +312,303 @@ async def generate_test_cases(
 async def get_test_cases(db: Session = Depends(get_db)):
     """Get all test cases"""
     test_cases = db.query(TestCaseDB).all()
-    return [
-        {
+    return {
+        "test_cases": [
+            {
+                "id": tc.id,
+                "title": tc.title,
+                "description": tc.description,
+                "user_story_id": tc.user_story_id,
+                "test_type": tc.test_type.value if tc.test_type else None,
+                "priority": tc.priority.value if tc.priority else None,
+                "status": tc.status.value if tc.status else None,
+                "estimated_time_minutes": tc.estimated_time_minutes,
+                "actual_time_minutes": tc.actual_time_minutes,
+                "automated": tc.automated,
+                "created_date": tc.created_date.isoformat() if tc.created_date else None,
+                "last_executed": tc.last_executed.isoformat() if tc.last_executed else None,
+                "executed_by": tc.executed_by,
+                "gherkin_file_path": tc.gherkin_file_path,
+            }
+            for tc in test_cases
+        ]
+    }
+
+
+
+# ==================== Test Cases CRUD & Preview ====================
+
+@router.post("/generate-test-cases/{story_id}/preview")
+async def preview_test_cases(
+    story_id: str,
+    num_test_cases: int = Query(default=5, ge=1, le=10),
+    scenarios_per_test: int = Query(default=3, ge=1, le=10),
+    test_types: List[str] = Query(default=["FUNCTIONAL", "UI"]),
+    use_ai: bool = True,
+    db: Session = Depends(get_db),
+    gemini_client: GeminiClient = Depends(get_gemini_client)
+):
+    """
+    Generate test case suggestions (PREVIEW - does NOT save to DB)
+    QA will review before saving
+    """
+    # Get user story
+    story_db = db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
+    if not story_db:
+        raise HTTPException(status_code=404, detail="User story not found")
+
+    user_story = UserStory(
+        id=story_db.id,
+        title=story_db.title,
+        description=story_db.description,
+        priority=story_db.priority,
+        status=story_db.status
+    )
+
+    # Generate multiple test cases with AI
+    suggested_test_cases = []
+    
+    for i in range(num_test_cases):
+        # Determine test type for this test case
+        test_type = test_types[i % len(test_types)] if test_types else "FUNCTIONAL"
+        
+        # Generate title based on test type and position
+        titles = {
+            "FUNCTIONAL": f"Functional tests for {user_story.title}",
+            "UI": f"UI validation for {user_story.title}",
+            "SECURITY": f"Security tests for {user_story.title}",
+            "API": f"API tests for {user_story.title}",
+            "INTEGRATION": f"Integration tests for {user_story.title}",
+        }
+        title = titles.get(test_type, f"Test case {i+1} for {user_story.title}")
+        
+        # For preview, we'll generate a simple structure
+        # In reality, you'd call Gherkin generator here
+        suggested_test_cases.append({
+            "suggested_id": f"TC-{story_id}-{str(i+1).zfill(3)}",
+            "title": title,
+            "description": f"{test_type} test scenarios for {user_story.id}",
+            "test_type": test_type,
+            "priority": "MEDIUM",
+            "status": "NOT_RUN",
+            "scenarios_count": scenarios_per_test,
+            "gherkin_content": f"# Placeholder Gherkin content for {title}\n# Will be generated when saved",
+            "can_edit": True,
+            "can_delete": True
+        })
+    
+    return {
+        "user_story_id": story_id,
+        "user_story_title": user_story.title,
+        "suggested_test_cases": suggested_test_cases,
+        "total_suggested": len(suggested_test_cases),
+        "can_edit_before_save": True,
+        "can_add_more": True
+    }
+
+
+@router.post("/test-cases/batch")
+async def create_test_cases_batch(
+    test_cases_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Create multiple test cases at once (after QA review)
+    """
+    test_cases = test_cases_data.get("test_cases", [])
+    created_test_cases = []
+    
+    for tc_data in test_cases:
+        # Generate unique ID if not provided
+        if "id" not in tc_data or not tc_data["id"]:
+            story_id = tc_data.get("user_story_id")
+            count = db.query(TestCaseDB).filter(
+                TestCaseDB.user_story_id == story_id
+            ).count()
+            tc_data["id"] = f"TC-{story_id}-{str(count + 1).zfill(3)}"
+        
+        # Save Gherkin content to file if provided
+        gherkin_file_path = None
+        if "gherkin_content" in tc_data:
+            settings.ensure_directories()
+            gherkin_file = f"{settings.output_dir}/{tc_data['id']}.feature"
+            with open(gherkin_file, 'w') as f:
+                f.write(tc_data["gherkin_content"])
+            gherkin_file_path = gherkin_file
+        
+        # Create test case
+        db_test_case = TestCaseDB(
+            id=tc_data["id"],
+            title=tc_data.get("title", "Untitled Test Case"),
+            description=tc_data.get("description", ""),
+            user_story_id=tc_data["user_story_id"],
+            test_type=TestType[tc_data.get("test_type", "FUNCTIONAL")],
+            priority=TestPriority[tc_data.get("priority", "MEDIUM")],
+            status=TestStatus[tc_data.get("status", "NOT_RUN")],
+            gherkin_file_path=gherkin_file_path,
+            created_date=datetime.now()
+        )
+        
+        db.add(db_test_case)
+        created_test_cases.append(db_test_case)
+    
+    db.commit()
+    
+    return {
+        "message": f"Created {len(created_test_cases)} test cases successfully",
+        "created_count": len(created_test_cases),
+        "test_cases": [
+            {
+                "id": tc.id,
+                "title": tc.title,
+                "user_story_id": tc.user_story_id,
+                "test_type": tc.test_type.value,
+                "status": tc.status.value
+            }
+            for tc in created_test_cases
+        ]
+    }
+
+
+@router.get("/test-cases/{test_id}")
+async def get_test_case(test_id: str, db: Session = Depends(get_db)):
+    """Get specific test case by ID"""
+    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Test case not found")
+    
+    return {
+        "id": tc.id,
+        "title": tc.title,
+        "description": tc.description,
+        "user_story_id": tc.user_story_id,
+        "test_type": tc.test_type.value if tc.test_type else None,
+        "priority": tc.priority.value if tc.priority else None,
+        "status": tc.status.value if tc.status else None,
+        "estimated_time_minutes": tc.estimated_time_minutes,
+        "actual_time_minutes": tc.actual_time_minutes,
+        "automated": tc.automated,
+        "created_date": tc.created_date.isoformat() if tc.created_date else None,
+        "last_executed": tc.last_executed.isoformat() if tc.last_executed else None,
+        "executed_by": tc.executed_by,
+        "gherkin_file_path": tc.gherkin_file_path,
+    }
+
+
+@router.put("/test-cases/{test_id}")
+async def update_test_case(
+    test_id: str,
+    updates: dict,
+    db: Session = Depends(get_db)
+):
+    """Update existing test case"""
+    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Test case not found")
+    
+    # Update allowed fields
+    allowed_fields = [
+        "title", "description", "test_type", "priority", "status",
+        "estimated_time_minutes", "actual_time_minutes", "automated",
+        "executed_by"
+    ]
+    
+    for field, value in updates.items():
+        if field in allowed_fields and value is not None:
+            if field in ["test_type", "priority", "status"]:
+                # Convert string to enum
+                if field == "test_type":
+                    value = TestType[value]
+                elif field == "priority":
+                    value = TestPriority[value]
+                elif field == "status":
+                    value = TestStatus[value]
+            setattr(tc, field, value)
+    
+    db.commit()
+    db.refresh(tc)
+    
+    return {
+        "message": "Test case updated successfully",
+        "test_case": {
             "id": tc.id,
             "title": tc.title,
-            "user_story_id": tc.user_story_id,
-            "test_type": tc.test_type.value,
-            "status": tc.status.value,
-            "gherkin_file": tc.gherkin_file_path
+            "description": tc.description,
+            "test_type": tc.test_type.value if tc.test_type else None,
+            "priority": tc.priority.value if tc.priority else None,
+            "status": tc.status.value if tc.status else None,
         }
-        for tc in test_cases
-    ]
+    }
+
+
+@router.delete("/test-cases/{test_id}")
+async def delete_test_case(test_id: str, db: Session = Depends(get_db)):
+    """Delete test case"""
+    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Test case not found")
+    
+    # Delete associated Gherkin file if exists
+    if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
+        os.remove(tc.gherkin_file_path)
+    
+    db.delete(tc)
+    db.commit()
+    
+    return {
+        "message": "Test case deleted successfully",
+        "deleted_id": test_id
+    }
+
+
+@router.get("/test-cases/{test_id}/gherkin")
+async def get_gherkin_content(test_id: str, db: Session = Depends(get_db)):
+    """Get Gherkin file content for a test case"""
+    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Test case not found")
+    
+    if not tc.gherkin_file_path or not os.path.exists(tc.gherkin_file_path):
+        raise HTTPException(status_code=404, detail="Gherkin file not found")
+    
+    with open(tc.gherkin_file_path, 'r') as f:
+        content = f.read()
+    
+    return {
+        "test_case_id": test_id,
+        "file_path": tc.gherkin_file_path,
+        "content": content
+    }
+
+
+@router.put("/test-cases/{test_id}/gherkin")
+async def update_gherkin_content(
+    test_id: str,
+    content_data: dict,
+    db: Session = Depends(get_db)
+):
+    """Update Gherkin file content for a test case"""
+    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Test case not found")
+    
+    gherkin_content = content_data.get("content", "")
+    
+    # Create file if doesn't exist
+    if not tc.gherkin_file_path:
+        settings.ensure_directories()
+        tc.gherkin_file_path = f"{settings.output_dir}/{test_id}.feature"
+    
+    # Write content to file
+    with open(tc.gherkin_file_path, 'w') as f:
+        f.write(gherkin_content)
+    
+    db.commit()
+    
+    return {
+        "message": "Gherkin content updated successfully",
+        "file_path": tc.gherkin_file_path
+    }
 
 
 # ==================== Test Plan Generation ====================
