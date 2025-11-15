@@ -6,12 +6,16 @@
 import { useState, useEffect } from 'react';
 import { testCaseApi } from '@/entities/test-case';
 import type { TestCase } from '@/entities/test-case';
+import { Modal } from '@/shared/ui/Modal';
+import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 
 export const TestCasesPage = () => {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
+  const [gherkinTestCase, setGherkinTestCase] = useState<TestCase | null>(null);
+  const [gherkinContent, setGherkinContent] = useState<string>('');
 
   // Load test cases
   useEffect(() => {
@@ -41,6 +45,30 @@ export const TestCasesPage = () => {
     } catch (err: any) {
       console.error('Error deleting test case:', err);
       alert('Error al eliminar test case');
+    }
+  };
+
+  const handleOpenGherkin = async (testCase: TestCase) => {
+    try {
+      const content = await testCaseApi.getGherkinContent(testCase.id);
+      setGherkinContent(content);
+      setGherkinTestCase(testCase);
+    } catch (err: any) {
+      console.error('Error loading Gherkin content:', err);
+      alert('Error al cargar el contenido Gherkin');
+    }
+  };
+
+  const handleSaveGherkin = async (content: string) => {
+    if (!gherkinTestCase) return;
+
+    try {
+      await testCaseApi.updateGherkinContent(gherkinTestCase.id, content);
+      setGherkinContent(content);
+      alert('Contenido Gherkin guardado exitosamente');
+    } catch (err: any) {
+      console.error('Error saving Gherkin content:', err);
+      throw err; // Re-throw to let GherkinEditor handle the error
     }
   };
 
@@ -148,6 +176,14 @@ export const TestCasesPage = () => {
                       >
                         Ver
                       </button>
+                      {tc.gherkin_file_path && (
+                        <button
+                          onClick={() => handleOpenGherkin(tc)}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Gherkin
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(tc.id)}
                         className="text-red-600 hover:text-red-900"
@@ -209,9 +245,15 @@ export const TestCasesPage = () => {
                 <div>
                   <label className="text-sm font-medium text-gray-700">Gherkin File</label>
                   <p className="text-sm text-blue-600 font-mono">{selectedTestCase.gherkin_file_path}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    (Gherkin viewer coming soon...)
-                  </p>
+                  <button
+                    onClick={() => {
+                      setSelectedTestCase(null);
+                      handleOpenGherkin(selectedTestCase);
+                    }}
+                    className="mt-2 text-sm text-green-600 hover:text-green-800 underline"
+                  >
+                    Ver/Editar Gherkin →
+                  </button>
                 </div>
               )}
             </div>
@@ -229,6 +271,23 @@ export const TestCasesPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Gherkin Editor Modal */}
+      {gherkinTestCase && (
+        <Modal
+          isOpen={!!gherkinTestCase}
+          onClose={() => setGherkinTestCase(null)}
+          title={`Gherkin: ${gherkinTestCase.title}`}
+          size="xl"
+        >
+          <GherkinEditor
+            testCaseId={gherkinTestCase.id}
+            initialContent={gherkinContent}
+            onSave={handleSaveGherkin}
+            onCancel={() => setGherkinTestCase(null)}
+          />
+        </Modal>
       )}
     </div>
   );
