@@ -170,8 +170,8 @@ async def get_user_stories(db: Session = Depends(get_db)):
             "story_points": s.story_points,
             "assigned_to": s.assigned_to,
             "acceptance_criteria": [],  # TODO: Fetch from relationship
-            "created_at": s.created_at.isoformat() if s.created_at else None,
-            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            "created_at": s.created_date.isoformat() if s.created_date else None,
+            "updated_at": s.updated_date.isoformat() if s.updated_date else None,
             "completion_percentage": s.completion_percentage,
             "test_case_ids": []  # TODO: Fetch from relationship
         }
