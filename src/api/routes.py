@@ -46,56 +46,112 @@ async def upload_file(
     """
     Upload and parse XLSX/CSV file with user stories
     """
-    # Validate file extension
-    file_extension = Path(file.filename).suffix.lower()
-    if file_extension not in [".xlsx", ".xls", ".csv"]:
+    try:
+        print(f"\n=== UPLOAD DEBUG ===")
+        print(f"Received file: {file.filename}")
+        print(f"Content type: {file.content_type}")
+
+        # Validate file extension
+        file_extension = Path(file.filename).suffix.lower()
+        print(f"File extension: {file_extension}")
+
+        if file_extension not in [".xlsx", ".xls", ".csv"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: {file_extension}. Please upload .xlsx or .csv file"
+            )
+
+        # Save uploaded file
+        settings.ensure_directories()
+        file_path = Path(settings.upload_dir) / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+        print(f"Saving to: {file_path}")
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        print(f"File saved successfully. Size: {file_path.stat().st_size} bytes")
+
+        # Parse file
+        print("Starting file parsing...")
+        parser = FileParser()
+        result = parser.parse(str(file_path))
+
+        print(f"Parse result: success={result.success}, stories={len(result.user_stories)}, errors={result.errors}")
+
+        if not result.success:
+            raise HTTPException(status_code=400, detail=f"Parse errors: {result.errors}")
+
+        # Save to database (UPSERT: update if exists, insert if new)
+        print(f"Saving {len(result.user_stories)} stories to database...")
+        saved_stories = []
+        updated_stories = []
+
+        for user_story in result.user_stories:
+            # Check if story already exists
+            existing_story = db.query(UserStoryDB).filter(UserStoryDB.id == user_story.id).first()
+
+            if existing_story:
+                # Update existing story
+                print(f"  Updating story: {user_story.id} - {user_story.title}")
+                existing_story.title = user_story.title
+                existing_story.description = user_story.description
+                existing_story.priority = user_story.priority
+                existing_story.status = user_story.status
+                existing_story.epic = user_story.epic
+                existing_story.sprint = user_story.sprint
+                existing_story.story_points = user_story.story_points
+                existing_story.assigned_to = user_story.assigned_to
+                existing_story.total_criteria = len(user_story.acceptance_criteria)
+                existing_story.completed_criteria = sum(1 for ac in user_story.acceptance_criteria if ac.completed)
+                existing_story.completion_percentage = user_story.get_completion_percentage()
+                existing_story.updated_date = datetime.now()
+                updated_stories.append(user_story.id)
+            else:
+                # Insert new story
+                print(f"  Inserting new story: {user_story.id} - {user_story.title}")
+                db_story = UserStoryDB(
+                    id=user_story.id,
+                    title=user_story.title,
+                    description=user_story.description,
+                    priority=user_story.priority,
+                    status=user_story.status,
+                    epic=user_story.epic,
+                    sprint=user_story.sprint,
+                    story_points=user_story.story_points,
+                    assigned_to=user_story.assigned_to,
+                    total_criteria=len(user_story.acceptance_criteria),
+                    completed_criteria=sum(1 for ac in user_story.acceptance_criteria if ac.completed),
+                    completion_percentage=user_story.get_completion_percentage()
+                )
+                db.add(db_story)
+                saved_stories.append(user_story.id)
+
+        db.commit()
+        print(f"Database commit successful! Inserted: {len(saved_stories)}, Updated: {len(updated_stories)}")
+        print("=== UPLOAD COMPLETE ===\n")
+
+        return {
+            "message": f"Successfully processed {len(result.user_stories)} user stories ({len(saved_stories)} new, {len(updated_stories)} updated)",
+            "inserted": saved_stories,
+            "updated": updated_stories,
+            "total": len(result.user_stories),
+            "file_path": str(file_path),
+            "detected_columns": parser.get_detected_columns_info()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"\n!!! UPLOAD ERROR !!!")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        import traceback
+        print(f"Traceback:\n{traceback.format_exc()}")
+        print("===================\n")
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file_extension}. Please upload .xlsx or .csv file"
+            status_code=500,
+            detail=f"Error processing file: {str(e)}"
         )
-
-    # Save uploaded file
-    settings.ensure_directories()
-    file_path = Path(settings.upload_dir) / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Parse file
-    parser = FileParser()
-    result = parser.parse(str(file_path))
-
-    if not result.success:
-        raise HTTPException(status_code=400, detail=f"Parse errors: {result.errors}")
-
-    # Save to database
-    saved_stories = []
-    for user_story in result.user_stories:
-        db_story = UserStoryDB(
-            id=user_story.id,
-            title=user_story.title,
-            description=user_story.description,
-            priority=user_story.priority,
-            status=user_story.status,
-            epic=user_story.epic,
-            sprint=user_story.sprint,
-            story_points=user_story.story_points,
-            assigned_to=user_story.assigned_to,
-            total_criteria=len(user_story.acceptance_criteria),
-            completed_criteria=sum(1 for ac in user_story.acceptance_criteria if ac.completed),
-            completion_percentage=user_story.get_completion_percentage()
-        )
-        db.add(db_story)
-        saved_stories.append(user_story.id)
-
-    db.commit()
-
-    return {
-        "message": f"Successfully parsed {len(result.user_stories)} user stories",
-        "user_stories": saved_stories,
-        "file_path": str(file_path),
-        "detected_columns": parser.get_detected_columns_info()
-    }
 
 
 @router.get("/user-stories")
