@@ -62,15 +62,25 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
   // Handle file
   const handleFile = (file: File) => {
+    console.log('=== handleFile called ===');
+    console.log('File object:', file);
+    console.log('File name:', file.name);
+    console.log('File size:', file.size);
+    console.log('File type:', file.type);
+
     setUploadError(null);
 
     // Validate file
     const validation = validateFile(file);
+    console.log('Validation result:', validation);
+
     if (!validation.isValid) {
+      console.error('Validation failed:', validation.error);
       setUploadError(validation.error || 'Archivo inválido');
       return;
     }
 
+    console.log('File validated successfully!');
     setUploadedFile(file);
   };
 
