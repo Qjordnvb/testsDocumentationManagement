@@ -64,6 +64,7 @@ export const ReviewTestCasesModal = ({
           suggested_id: tc.suggested_id,
           title: tc.title,
           description: tc.description,
+          user_story_id: userStoryId,  // CRITICAL: Backend expects this in each test case
           test_type: tc.test_type,
           priority: tc.priority,
           status: tc.status,

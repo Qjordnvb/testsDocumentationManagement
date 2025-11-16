@@ -2,18 +2,24 @@
  * Header Component
  */
 
+import { useProject } from '@/app/providers/ProjectContext';
 import { useAppStore } from '@/app/providers/appStore';
 
 export const Header = () => {
-  const { currentProject } = useAppStore();
+  const { currentProject } = useProject();
+  const { sidebarCollapsed } = useAppStore();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Project name */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">{currentProject}</h2>
-          <p className="text-sm text-gray-600">QA Documentation Management</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {currentProject ? currentProject.name : 'Selecciona un Proyecto'}
+          </h2>
+          <p className="text-sm text-gray-600">
+            {currentProject ? `${currentProject.id} • QA Documentation Management` : 'QA Documentation Management'}
+          </p>
         </div>
 
         {/* User menu */}
