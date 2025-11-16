@@ -415,7 +415,7 @@ curl "http://localhost:8000/api/v1/projects/PROJ-001/stats"
 
 #### 2.1 - Project Entity
 ```typescript
-// frontend-react/src/entities/project/model/types.ts
+// frontend/src/entities/project/model/types.ts
 export type ProjectStatus = 'active' | 'archived' | 'completed';
 
 export interface Project {
@@ -457,7 +457,7 @@ export interface UpdateProjectDTO {
   end_date?: string;
 }
 
-// frontend-react/src/entities/project/api/projectApi.ts
+// frontend/src/entities/project/api/projectApi.ts
 import axios from 'axios';
 import type { Project, CreateProjectDTO, UpdateProjectDTO } from '../model/types';
 
@@ -498,7 +498,7 @@ export const projectApi = {
   },
 };
 
-// frontend-react/src/entities/project/index.ts
+// frontend/src/entities/project/index.ts
 export * from './model/types';
 export * from './api/projectApi';
 ```
@@ -506,7 +506,7 @@ export * from './api/projectApi';
 **Testing**:
 ```bash
 # Iniciar frontend
-cd frontend-react && npm run dev
+cd frontend && npm run dev
 # Abrir consola del navegador
 import { projectApi } from '@/entities/project';
 await projectApi.getAll(); // Debe retornar lista de proyectos
@@ -516,7 +516,7 @@ await projectApi.getAll(); // Debe retornar lista de proyectos
 
 #### 2.2 - ProjectContext Provider
 ```typescript
-// frontend-react/src/app/providers/ProjectContext.tsx
+// frontend/src/app/providers/ProjectContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { Project } from '@/entities/project';
 
@@ -594,7 +594,7 @@ console.log(currentProject); // null o proyecto
 
 #### 2.3 - ProjectsListPage (Landing)
 ```typescript
-// frontend-react/src/pages/ProjectsListPage/index.tsx
+// frontend/src/pages/ProjectsListPage/index.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectApi } from '@/entities/project';
@@ -774,7 +774,7 @@ export const ProjectsListPage = () => {
 
 #### 3.1 - Actualizar App.tsx
 ```typescript
-// frontend-react/src/app/App.tsx
+// frontend/src/app/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { Layout } from '@/widgets/header/Layout';
@@ -828,7 +828,7 @@ http://localhost:5173/projects/PROJ-001/tests
 
 #### 4.1 - StoriesPage
 ```typescript
-// frontend-react/src/pages/StoriesPage/index.tsx
+// frontend/src/pages/StoriesPage/index.tsx
 import { useParams } from 'react-router-dom';
 import { useProject } from '@/app/providers/ProjectContext';
 
@@ -864,7 +864,7 @@ export const StoriesPage = () => {
 
 #### 4.2 - UploadModal
 ```typescript
-// frontend-react/src/features/upload-excel/ui/UploadModal.tsx
+// frontend/src/features/upload-excel/ui/UploadModal.tsx
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -892,7 +892,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess, projectId }: UploadMod
 
 #### 4.3 - TestCasesPage
 ```typescript
-// frontend-react/src/pages/TestCasesPage/index.tsx
+// frontend/src/pages/TestCasesPage/index.tsx
 import { useParams } from 'react-router-dom';
 
 export const TestCasesPage = () => {
@@ -911,7 +911,7 @@ export const TestCasesPage = () => {
 };
 
 // Actualizar testCaseApi
-// frontend-react/src/entities/test-case/api/testCaseApi.ts
+// frontend/src/entities/test-case/api/testCaseApi.ts
 export const testCaseApi = {
   getAll: async (projectId: string): Promise<TestCase[]> => {
     const { data } = await api.get<{ test_cases: TestCase[] }>(
@@ -925,7 +925,7 @@ export const testCaseApi = {
 
 #### 4.4 - DashboardPage
 ```typescript
-// frontend-react/src/pages/ProjectDashboard/index.tsx
+// frontend/src/pages/ProjectDashboard/index.tsx
 import { useParams } from 'react-router-dom';
 import { projectApi } from '@/entities/project';
 
@@ -997,20 +997,20 @@ export const ProjectDashboard = () => {
 
 #### 5.1 - CreateProjectModal
 ```typescript
-// frontend-react/src/features/project-management/ui/CreateProjectModal.tsx
+// frontend/src/features/project-management/ui/CreateProjectModal.tsx
 // Similar a TestCaseFormModal pero para proyectos
 // Form con: name, description, client, team_members, default_test_types
 ```
 
 #### 5.2 - EditProjectModal
 ```typescript
-// frontend-react/src/features/project-management/ui/EditProjectModal.tsx
+// frontend/src/features/project-management/ui/EditProjectModal.tsx
 // Mismo form pero en modo edit
 ```
 
 #### 5.3 - ProjectSettingsPage
 ```typescript
-// frontend-react/src/pages/ProjectSettingsPage/index.tsx
+// frontend/src/pages/ProjectSettingsPage/index.tsx
 // Configuración del proyecto: rename, archive, delete
 ```
 

@@ -936,7 +936,7 @@ class Settings(BaseSettings):
 ### Paso 1: Crear Entity Project
 
 ```typescript
-// frontend-react/src/entities/project/model/types.ts
+// frontend/src/entities/project/model/types.ts
 
 export type ProjectStatus = 'active' | 'archived' | 'completed';
 
@@ -985,7 +985,7 @@ export interface UpdateProjectDTO {
 ### Paso 2: Crear Project API
 
 ```typescript
-// frontend-react/src/entities/project/api/projectApi.ts
+// frontend/src/entities/project/api/projectApi.ts
 
 import axios from 'axios';
 import type { Project, CreateProjectDTO, UpdateProjectDTO } from '../model/types';
@@ -1041,7 +1041,7 @@ interface ProjectStats {
 ### Paso 3: Crear Project Context
 
 ```typescript
-// frontend-react/src/app/providers/ProjectContext.tsx
+// frontend/src/app/providers/ProjectContext.tsx
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { Project } from '@/entities/project';
@@ -1099,7 +1099,7 @@ export const useProject = () => {
 ### Paso 4: Actualizar Rutas
 
 ```typescript
-// frontend-react/src/app/App.tsx
+// frontend/src/app/App.tsx
 
 import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { ProjectsListPage } from '@/pages/ProjectsListPage';
@@ -1133,7 +1133,7 @@ function App() {
 ### Paso 5: Crear ProjectsListPage
 
 ```typescript
-// frontend-react/src/pages/ProjectsListPage/index.tsx
+// frontend/src/pages/ProjectsListPage/index.tsx
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';

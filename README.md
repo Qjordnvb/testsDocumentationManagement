@@ -56,7 +56,7 @@ testsDocumentationManagement/
 │   ├── parsers/               # Excel/CSV parser
 │   └── main.py               # FastAPI app
 │
-├── frontend-react/            # React 18 + TypeScript + Vite
+├── frontend/                  # React 18 + TypeScript + Vite
 │   └── src/
 │       ├── app/              # App config, routes, store
 │       ├── pages/            # Page components
@@ -107,7 +107,7 @@ python backend/main.py
 ### 2. Setup Frontend
 
 ```bash
-cd frontend-react
+cd frontend
 
 # Instalar dependencias
 npm install
