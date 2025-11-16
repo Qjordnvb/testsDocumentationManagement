@@ -19,10 +19,13 @@ interface GetStoriesResponse {
 
 export const storyApi = {
   /**
-   * Get all user stories
+   * Get all user stories for a project
+   * @param projectId - Project ID to filter stories
    */
-  getAll: async (): Promise<UserStory[]> => {
-    const { data } = await api.get<GetStoriesResponse>('/user-stories');
+  getAll: async (projectId: string): Promise<UserStory[]> => {
+    const { data } = await api.get<GetStoriesResponse>('/user-stories', {
+      params: { project_id: projectId }
+    });
     return data.user_stories;
   },
 

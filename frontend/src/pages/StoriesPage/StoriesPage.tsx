@@ -1,19 +1,24 @@
 /**
  * Stories Page
- * Main page for viewing and managing user stories
+ * Main page for viewing and managing user stories (project-scoped)
  */
 
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
 import { StoryTable } from '@/widgets/story-table';
 import { UploadModal } from '@/features/upload-excel';
 import { GenerateModal } from '@/features/generate-tests';
 import { Button } from '@/shared/ui/Button';
 import { storyApi } from '@/entities/user-story';
+import { useProject } from '@/app/providers/ProjectContext';
 import type { UserStory } from '@/entities/user-story';
 import { Upload, RefreshCw, AlertCircle } from 'lucide-react';
 
 export const StoriesPage = () => {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { currentProject } = useProject();
+  const navigate = useNavigate();
   const [stories, setStories] = useState<UserStory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +26,23 @@ export const StoriesPage = () => {
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
 
+  // Validate project
+  useEffect(() => {
+    if (!projectId || !currentProject) {
+      navigate('/');
+      return;
+    }
+  }, [projectId, currentProject, navigate]);
+
   // Load stories
   const loadStories = async () => {
+    if (!projectId) return;
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await storyApi.getAll();
+      const data = await storyApi.getAll(projectId);
       setStories(data);
     } catch (err: any) {
       console.error('Error loading stories:', err);
@@ -40,7 +55,7 @@ export const StoriesPage = () => {
   // Initial load
   useEffect(() => {
     loadStories();
-  }, []);
+  }, [projectId]); // Reload when projectId changes
 
   // Handle generate tests for a story
   const handleGenerateTests = (story: UserStory) => {
@@ -61,7 +76,7 @@ export const StoriesPage = () => {
   return (
     <PageLayout
       title="User Stories"
-      description="Gestiona las historias de usuario y genera test cases con IA"
+      description={`Gestiona las historias de usuario de ${currentProject?.name || 'tu proyecto'}`}
     >
       {/* Actions bar */}
       <div className="flex items-center justify-between mb-6">
@@ -102,44 +117,22 @@ export const StoriesPage = () => {
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoading && stories.length === 0 && (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!isLoading && stories.length === 0 && !error && (
-        <div className="flex flex-col items-center justify-center py-12 px-4">
-          <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-            <Upload className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">
-            No hay user stories
-          </h3>
-          <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
-            Comienza subiendo un archivo Excel o CSV con tus historias de usuario
-          </p>
-          <Button onClick={() => setUploadModalOpen(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Subir archivo
-          </Button>
-        </div>
-      )}
-
       {/* Stories table */}
-      {!isLoading && stories.length > 0 && (
-        <StoryTable stories={stories} onGenerateTests={handleGenerateTests} />
-      )}
+      <StoryTable
+        stories={stories}
+        isLoading={isLoading}
+        onGenerateTests={handleGenerateTests}
+        onRefresh={loadStories}
+      />
 
-      {/* Modals */}
+      {/* Upload Modal */}
       <UploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
       />
 
+      {/* Generate Tests Modal */}
       {selectedStory && (
         <GenerateModal
           isOpen={generateModalOpen}
@@ -147,7 +140,7 @@ export const StoriesPage = () => {
             setGenerateModalOpen(false);
             setSelectedStory(null);
           }}
-          story={selectedStory}
+          userStory={selectedStory}
           onSuccess={handleGenerateSuccess}
         />
       )}

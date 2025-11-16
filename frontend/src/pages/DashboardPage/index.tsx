@@ -1,54 +1,81 @@
 /**
  * Dashboard Page
- * Shows project metrics and quick actions
+ * Shows project-specific metrics and quick actions
  */
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
 import { UploadModal } from '@/features/upload-excel';
-import { useAppStore } from '@/app/providers/appStore';
-import apiService from '@/shared/api/apiClient';
+import { useProject } from '@/app/providers/ProjectContext';
+import { projectApi, type ProjectStats } from '@/entities/project';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { stats, isLoadingStats, statsError, setStats, setIsLoadingStats, setStatsError } =
-    useAppStore();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { currentProject } = useProject();
+  const [stats, setStats] = useState<ProjectStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  // Load stats on mount
+  // Validate project
   useEffect(() => {
+    if (!projectId || !currentProject) {
+      navigate('/');
+      return;
+    }
+  }, [projectId, currentProject, navigate]);
+
+  // Load stats on mount (NO POLLING)
+  useEffect(() => {
+    if (!projectId) return;
+
     const loadStats = async () => {
       setIsLoadingStats(true);
+      setStatsError(null);
       try {
-        const data = await apiService.getStats();
+        const data = await projectApi.getStats(projectId);
         setStats(data);
       } catch (error) {
         setStatsError(error instanceof Error ? error.message : 'Failed to load stats');
+      } finally {
+        setIsLoadingStats(false);
       }
     };
 
     loadStats();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(loadStats, 30000);
-    return () => clearInterval(interval);
-  }, [setStats, setIsLoadingStats, setStatsError]);
+    // No interval - user can manually refresh
+  }, [projectId]);
 
   // Handle upload success
-  const handleUploadSuccess = () => {
+  const handleUploadSuccess = async () => {
     // Refresh stats after upload
-    const loadStats = async () => {
+    if (projectId) {
       try {
-        const data = await apiService.getStats();
+        const data = await projectApi.getStats(projectId);
         setStats(data);
       } catch (error) {
         console.error('Error refreshing stats:', error);
       }
-    };
-    loadStats();
+    }
     // Navigate to stories page to see uploaded stories
-    navigate('/stories');
+    navigate(`/projects/${projectId}/stories`);
+  };
+
+  // Manual refresh
+  const handleRefresh = async () => {
+    if (!projectId) return;
+    setIsLoadingStats(true);
+    setStatsError(null);
+    try {
+      const data = await projectApi.getStats(projectId);
+      setStats(data);
+    } catch (error) {
+      setStatsError(error instanceof Error ? error.message : 'Failed to load stats');
+    } finally {
+      setIsLoadingStats(false);
+    }
   };
 
   // Calculate coverage
@@ -77,7 +104,7 @@ export const Dashboard = () => {
           <h2 className="text-xl font-bold text-gray-900 mb-2">Error Loading Dashboard</h2>
           <p className="text-gray-600 mb-4">{statsError}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRefresh}
             className="btn btn-primary"
           >
             Retry
@@ -90,9 +117,20 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Overview of your QA project metrics</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {currentProject?.name || 'Dashboard'}
+          </h1>
+          <p className="text-gray-600 mt-2">Overview of your project metrics</p>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="btn btn-secondary flex items-center gap-2"
+        >
+          <span>🏠</span>
+          <span>All Projects</span>
+        </button>
       </div>
 
       {/* Metric cards grid */}
@@ -124,7 +162,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Stories by status */}
-      {stats?.stories_by_status && (
+      {stats?.stories_by_status && Object.keys(stats.stories_by_status).length > 0 && (
         <div className="card">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Stories by Status
@@ -154,24 +192,24 @@ export const Dashboard = () => {
             <span>Upload Excel</span>
           </button>
           <button
-            onClick={() => navigate('/stories')}
+            onClick={() => navigate(`/projects/${projectId}/stories`)}
             className="btn btn-secondary flex items-center justify-center gap-2"
           >
             <span>✨</span>
             <span>Generate Tests</span>
           </button>
           <button
-            onClick={() => navigate('/reports')}
+            onClick={() => navigate(`/projects/${projectId}/reports`)}
             className="btn btn-secondary flex items-center justify-center gap-2"
           >
             <span>📄</span>
             <span>Export PDF</span>
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRefresh}
             className="btn btn-secondary flex items-center justify-center gap-2"
           >
-            <span>📊</span>
+            <span>🔄</span>
             <span>Refresh Metrics</span>
           </button>
         </div>
