@@ -4,6 +4,7 @@
 
 import { useProject } from '@/app/providers/ProjectContext';
 import { useAppStore } from '@/app/providers/appStore';
+import { Link } from 'react-router-dom';
 
 export const Header = () => {
   const { currentProject } = useProject();
@@ -12,14 +13,37 @@ export const Header = () => {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
-        {/* Project name */}
+        {/* Project name with breadcrumb */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {currentProject ? currentProject.name : 'Selecciona un Proyecto'}
-          </h2>
-          <p className="text-sm text-gray-600">
-            {currentProject ? `${currentProject.id} • QA Documentation Management` : 'QA Documentation Management'}
-          </p>
+          {currentProject ? (
+            // When inside a project - show breadcrumb
+            <>
+              <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                <Link to="/" className="hover:text-primary-blue transition-colors">
+                  📁 Todos los Proyectos
+                </Link>
+                <span>›</span>
+                <span className="text-gray-900 font-medium">{currentProject.name}</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {currentProject.name}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {currentProject.id} • QA Documentation Management
+              </p>
+            </>
+          ) : (
+            // When in projects list - clear title
+            <>
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <span>📁</span>
+                <span>Mis Proyectos QA</span>
+              </h2>
+              <p className="text-sm text-gray-600">
+                Gestiona todos tus proyectos de testing
+              </p>
+            </>
+          )}
         </div>
 
         {/* User menu */}
