@@ -254,13 +254,23 @@ async def get_project_stats(project_id: str, db: Session = Depends(get_db)):
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
+    project_id: str = Query(..., description="Project ID to associate user stories with"),
     db: Session = Depends(get_db)
 ):
     """
     Upload and parse XLSX/CSV file with user stories
     """
     try:
+        # Validate that project exists
+        project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Project {project_id} not found. Please create the project first."
+            )
+
         print(f"\n=== UPLOAD DEBUG ===")
+        print(f"Project: {project_id} - {project.name}")
         print(f"Received file: {file.filename}")
         print(f"Content type: {file.content_type}")
 
@@ -324,6 +334,7 @@ async def upload_file(
                 print(f"  Inserting new story: {user_story.id} - {user_story.title}")
                 db_story = UserStoryDB(
                     id=user_story.id,
+                    project_id=project_id,  # Associate with project
                     title=user_story.title,
                     description=user_story.description,
                     priority=user_story.priority,
@@ -368,9 +379,18 @@ async def upload_file(
 
 
 @router.get("/user-stories")
-async def get_user_stories(db: Session = Depends(get_db)):
-    """Get all user stories from database"""
-    stories = db.query(UserStoryDB).all()
+async def get_user_stories(
+    project_id: str = Query(..., description="Filter user stories by project ID"),
+    db: Session = Depends(get_db)
+):
+    """Get all user stories for a specific project"""
+    # Validate project exists
+    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Filter stories by project
+    stories = db.query(UserStoryDB).filter(UserStoryDB.project_id == project_id).all()
     user_stories_list = [
         {
             "id": s.id,
@@ -430,6 +450,13 @@ async def generate_test_cases(
     if not story_db:
         raise HTTPException(status_code=404, detail="User story not found")
 
+    # Validate user story has project_id
+    if not story_db.project_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User story {story_id} is not associated with a project. Please re-import user stories with project_id."
+        )
+
     # Convert to UserStory model (simplified, you may want to fetch full data)
     user_story = UserStory(
         id=story_db.id,
@@ -483,6 +510,7 @@ async def generate_test_cases(
         print(f"  Creating new test case: {test_case_id}")
         db_test_case = TestCaseDB(
             id=test_case_id,
+            project_id=story_db.project_id,  # Inherit from user story
             title=f"Test for {user_story.title}",
             description=f"Automated test scenarios for {user_story.id}",
             user_story_id=story_id,
@@ -521,9 +549,18 @@ async def generate_test_cases(
 
 
 @router.get("/test-cases")
-async def get_test_cases(db: Session = Depends(get_db)):
-    """Get all test cases"""
-    test_cases = db.query(TestCaseDB).all()
+async def get_test_cases(
+    project_id: str = Query(..., description="Filter test cases by project ID"),
+    db: Session = Depends(get_db)
+):
+    """Get all test cases for a specific project"""
+    # Validate project exists
+    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Filter test cases by project
+    test_cases = db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
     return {
         "test_cases": [
             {
@@ -569,6 +606,13 @@ async def preview_test_cases(
     if not story_db:
         raise HTTPException(status_code=404, detail="User story not found")
 
+    # Validate user story has project_id
+    if not story_db.project_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User story {story_id} is not associated with a project. Please re-import user stories with project_id."
+        )
+
     user_story = UserStory(
         id=story_db.id,
         title=story_db.title,
@@ -610,6 +654,7 @@ async def preview_test_cases(
         })
     
     return {
+        "project_id": story_db.project_id,  # Include project_id for frontend
         "user_story_id": story_id,
         "user_story_title": user_story.title,
         "suggested_test_cases": suggested_test_cases,
@@ -628,8 +673,24 @@ async def create_test_cases_batch(
     Create multiple test cases at once (after QA review)
     """
     test_cases = test_cases_data.get("test_cases", [])
+    user_story_id = test_cases_data.get("user_story_id")
+
+    if not user_story_id:
+        raise HTTPException(status_code=400, detail="user_story_id is required")
+
+    # Get user story to inherit project_id
+    user_story = db.query(UserStoryDB).filter(UserStoryDB.id == user_story_id).first()
+    if not user_story:
+        raise HTTPException(status_code=404, detail=f"User story {user_story_id} not found")
+
+    if not user_story.project_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User story {user_story_id} is not associated with a project"
+        )
+
     created_test_cases = []
-    
+
     for tc_data in test_cases:
         # Generate unique ID if not provided
         if "id" not in tc_data or not tc_data["id"]:
@@ -651,6 +712,7 @@ async def create_test_cases_batch(
         # Create test case
         db_test_case = TestCaseDB(
             id=tc_data["id"],
+            project_id=user_story.project_id,  # Inherit from user story
             title=tc_data.get("title", "Untitled Test Case"),
             description=tc_data.get("description", ""),
             user_story_id=tc_data["user_story_id"],
@@ -826,16 +888,21 @@ async def update_gherkin_content(
 # ==================== Test Plan Generation ====================
 @router.post("/generate-test-plan")
 async def generate_test_plan(
-    project_name: str,
-    format: str = "both",
+    project_id: str = Query(..., description="Project ID to generate test plan for"),
+    format: str = Query(default="both", description="Format: pdf, docx, or both"),
     db: Session = Depends(get_db)
 ):
     """
-    Generate test plan document
+    Generate test plan document for a specific project
     """
-    # Get all user stories and test cases
-    user_stories_db = db.query(UserStoryDB).all()
-    test_cases_db = db.query(TestCaseDB).all()
+    # Validate project exists
+    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Get user stories and test cases for this project only
+    user_stories_db = db.query(UserStoryDB).filter(UserStoryDB.project_id == project_id).all()
+    test_cases_db = db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
 
     # Convert to models (simplified)
     user_stories = [
@@ -869,7 +936,7 @@ async def generate_test_plan(
         user_stories=user_stories,
         test_cases=test_cases,
         output_dir=settings.output_dir,
-        project_name=project_name,
+        project_name=project.name,  # Use project name from database
         format=format
     )
 
@@ -899,6 +966,29 @@ async def create_bug_report(
     db: Session = Depends(get_db)
 ):
     """Create and save a bug report"""
+    # Validate and inherit project_id from user_story or test_case
+    project_id = None
+
+    if bug.user_story_id:
+        user_story = db.query(UserStoryDB).filter(UserStoryDB.id == bug.user_story_id).first()
+        if user_story:
+            project_id = user_story.project_id
+        else:
+            raise HTTPException(status_code=404, detail=f"User story {bug.user_story_id} not found")
+
+    if bug.test_case_id and not project_id:
+        test_case = db.query(TestCaseDB).filter(TestCaseDB.id == bug.test_case_id).first()
+        if test_case:
+            project_id = test_case.project_id
+        else:
+            raise HTTPException(status_code=404, detail=f"Test case {bug.test_case_id} not found")
+
+    if not project_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Bug must be associated with a user_story_id or test_case_id that belongs to a project"
+        )
+
     # Generate bug ID if not provided
     if not bug.id:
         bug.id = f"BUG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -911,6 +1001,7 @@ async def create_bug_report(
     # Save to database
     db_bug = BugReportDB(
         id=bug.id,
+        project_id=project_id,  # Inherit from user_story or test_case
         title=bug.title,
         description=bug.description,
         severity=bug.severity,
