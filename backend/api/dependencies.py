@@ -1,8 +1,8 @@
 """
 FastAPI dependencies for dependency injection
 """
-from src.integrations import GeminiClient
-from src.config import settings
+from backend.integrations import GeminiClient
+from backend.config import settings
 
 
 def get_gemini_client() -> GeminiClient:

@@ -3,7 +3,7 @@
 Script para debuggear qué API key está cargando el servidor
 """
 import os
-from src.config import settings
+from backend.config import settings
 
 print("=" * 60)
 print("DEBUG: API Key Configuration")

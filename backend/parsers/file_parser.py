@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 from datetime import datetime
 
-from src.models import UserStory, AcceptanceCriteria, Priority, Status
+from backend.models import UserStory, AcceptanceCriteria, Priority, Status
 
 
 class ParseResult:

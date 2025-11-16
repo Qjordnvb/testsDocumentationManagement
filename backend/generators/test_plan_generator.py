@@ -12,7 +12,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-from src.models import UserStory, TestCase, TestType, TestPriority
+from backend.models import UserStory, TestCase, TestType, TestPriority
 
 
 class TestPlanGenerator:

@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from src.config import settings
-from src.api.routes import router
-from src.database import init_db
+from backend.config import settings
+from backend.api.routes import router
+from backend.database import init_db
 
 
 @asynccontextmanager
