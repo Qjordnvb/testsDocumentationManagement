@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from backend.database.db import Base, engine
 from backend.database.models import ProjectDB, UserStoryDB, TestCaseDB, BugReportDB, TestExecutionDB
+from backend.config import settings
 
 
 def migrate_database():
@@ -31,6 +32,15 @@ def migrate_database():
     if confirm.lower() != 'yes':
         print("❌ Migration cancelled.")
         return
+
+    print()
+    print("📁 Ensuring required directories exist...")
+    try:
+        settings.ensure_directories()
+        print("✅ Directories created/verified")
+    except Exception as e:
+        print(f"❌ Error creating directories: {e}")
+        sys.exit(1)
 
     print()
     print("🗑️  Dropping existing tables...")
