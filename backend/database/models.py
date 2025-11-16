@@ -7,7 +7,7 @@ from datetime import datetime
 import enum
 
 from .db import Base
-from src.models import Priority, Status, TestType, TestPriority, TestStatus, BugSeverity, BugPriority, BugStatus, BugType
+from backend.models import Priority, Status, TestType, TestPriority, TestStatus, BugSeverity, BugPriority, BugStatus, BugType
 
 
 class ProjectStatus(str, enum.Enum):

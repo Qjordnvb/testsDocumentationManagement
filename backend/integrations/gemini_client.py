@@ -5,7 +5,7 @@ import google.generativeai as genai
 from typing import List, Optional, Dict
 import json
 
-from src.models import UserStory, GherkinScenario, TestType
+from backend.models import UserStory, GherkinScenario, TestType
 
 
 class GeminiClient:

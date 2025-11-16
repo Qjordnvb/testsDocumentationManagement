@@ -6,12 +6,12 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from pathlib import Path
 
-from src.config import settings
-from src.parsers import FileParser
-from src.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
-from src.integrations import GeminiClient
-from src.database import SessionLocal, UserStoryDB, TestCaseDB
-from src.models import UserStory, TestCase
+from backend.config import settings
+from backend.parsers import FileParser
+from backend.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
+from backend.integrations import GeminiClient
+from backend.database import SessionLocal, UserStoryDB, TestCaseDB
+from backend.models import UserStory, TestCase
 
 console = Console()
 

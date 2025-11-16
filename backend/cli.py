@@ -9,12 +9,12 @@ from rich import print as rprint
 from pathlib import Path
 from typing import Optional
 
-from src.config import settings
-from src.parsers import FileParser
-from src.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
-from src.integrations import GeminiClient
-from src.database import init_db, SessionLocal, UserStoryDB, TestCaseDB
-from src.models import UserStory
+from backend.config import settings
+from backend.parsers import FileParser
+from backend.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
+from backend.integrations import GeminiClient
+from backend.database import init_db, SessionLocal, UserStoryDB, TestCaseDB
+from backend.models import UserStory
 
 app = typer.Typer(
     name="qa-auto",
@@ -189,7 +189,7 @@ def generate_plan(
             for s in user_stories_db
         ]
 
-        from src.models import TestCase
+        from backend.models import TestCase
         test_cases = [
             TestCase(
                 id=tc.id,
@@ -315,7 +315,7 @@ def generate_all(
     - Crea test plan (MD + PDF)
     - Crea plantilla de bugs
     """
-    from src.cli_full_workflow import full_workflow
+    from backend.cli_full_workflow import full_workflow
 
     full_workflow(
         excel_file=file_path,

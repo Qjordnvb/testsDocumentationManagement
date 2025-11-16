@@ -5,8 +5,8 @@ from typing import List, Optional
 from pathlib import Path
 from datetime import datetime
 
-from src.models import UserStory, TestCase, GherkinScenario
-from src.integrations import GeminiClient
+from backend.models import UserStory, TestCase, GherkinScenario
+from backend.integrations import GeminiClient
 
 
 class GherkinGenerator:

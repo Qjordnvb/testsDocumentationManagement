@@ -10,8 +10,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.database.db import Base, engine
-from src.database.models import ProjectDB, UserStoryDB, TestCaseDB, BugReportDB, TestExecutionDB
+from backend.database.db import Base, engine
+from backend.database.models import ProjectDB, UserStoryDB, TestCaseDB, BugReportDB, TestExecutionDB
 
 
 def migrate_database():
@@ -62,7 +62,7 @@ def migrate_database():
     print("=" * 60)
     print()
     print("Next steps:")
-    print("1. Start the backend server: python src/main.py")
+    print("1. Start the backend server: python backend/main.py")
     print("2. Create your first project via API: POST /api/v1/projects")
     print("3. Upload user stories to the project")
     print()

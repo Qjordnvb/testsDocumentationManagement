@@ -8,7 +8,7 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-from src.models import BugReport, BugSeverity, BugPriority, BugType, BugStatus
+from backend.models import BugReport, BugSeverity, BugPriority, BugType, BugStatus
 
 
 class BugReportGenerator:

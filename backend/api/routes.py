@@ -9,15 +9,15 @@ import shutil
 import os
 from datetime import datetime
 
-from src.models import (
+from backend.models import (
     Project, CreateProjectDTO, UpdateProjectDTO, ProjectStatus,
     UserStory, TestCase, BugReport, TestType, TestPriority, TestStatus
 )
-from src.parsers import FileParser
-from src.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
-from src.integrations import GeminiClient
-from src.database import get_db, init_db, ProjectDB, UserStoryDB, TestCaseDB, BugReportDB
-from src.config import settings
+from backend.parsers import FileParser
+from backend.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
+from backend.integrations import GeminiClient
+from backend.database import get_db, init_db, ProjectDB, UserStoryDB, TestCaseDB, BugReportDB
+from backend.config import settings
 from .dependencies import get_gemini_client
 from sqlalchemy.orm import Session
 import json
