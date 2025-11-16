@@ -10,11 +10,54 @@ from .db import Base
 from src.models import Priority, Status, TestType, TestPriority, TestStatus, BugSeverity, BugPriority, BugStatus, BugType
 
 
+class ProjectStatus(str, enum.Enum):
+    """Project status enum"""
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    COMPLETED = "completed"
+
+
+class ProjectDB(Base):
+    """Project database model - Multi-project support"""
+    __tablename__ = "projects"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Client/Team info
+    client = Column(String, nullable=True)
+    team_members = Column(Text, nullable=True)  # JSON array of emails/names
+
+    # Project metadata
+    status = Column(SQLEnum(ProjectStatus), default=ProjectStatus.ACTIVE)
+
+    # Configuration
+    default_test_types = Column(Text, nullable=True)  # JSON array of test types
+
+    # Dates
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    created_date = Column(DateTime, default=datetime.now)
+    updated_date = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Integration IDs
+    notion_database_id = Column(String, nullable=True)
+    azure_project_id = Column(String, nullable=True)
+
+    # Relationships
+    user_stories = relationship("UserStoryDB", back_populates="project", cascade="all, delete-orphan")
+    test_cases = relationship("TestCaseDB", back_populates="project", cascade="all, delete-orphan")
+    bug_reports = relationship("BugReportDB", back_populates="project", cascade="all, delete-orphan")
+
+
 class UserStoryDB(Base):
     """User Story database model"""
     __tablename__ = "user_stories"
 
     id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
 
@@ -40,6 +83,7 @@ class UserStoryDB(Base):
     azure_work_item_id = Column(String, nullable=True)
 
     # Relationships
+    project = relationship("ProjectDB", back_populates="user_stories")
     test_cases = relationship("TestCaseDB", back_populates="user_story")
     bug_reports = relationship("BugReportDB", back_populates="user_story")
 
@@ -49,6 +93,8 @@ class TestCaseDB(Base):
     __tablename__ = "test_cases"
 
     id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
 
@@ -78,6 +124,7 @@ class TestCaseDB(Base):
     azure_test_case_id = Column(String, nullable=True)
 
     # Relationships
+    project = relationship("ProjectDB", back_populates="test_cases")
     user_story = relationship("UserStoryDB", back_populates="test_cases")
     executions = relationship("TestExecutionDB", back_populates="test_case")
 
@@ -87,6 +134,8 @@ class BugReportDB(Base):
     __tablename__ = "bug_reports"
 
     id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
 
@@ -126,6 +175,7 @@ class BugReportDB(Base):
     azure_bug_id = Column(String, nullable=True)
 
     # Relationships
+    project = relationship("ProjectDB", back_populates="bug_reports")
     user_story = relationship("UserStoryDB", back_populates="bug_reports")
 
 
