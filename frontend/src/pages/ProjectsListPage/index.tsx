@@ -78,14 +78,8 @@ export const ProjectsListPage = () => {
 
   return (
     <div className="space-y-6">
-        {/* Page header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Mis Proyectos QA</h1>
-            <p className="text-gray-600 mt-2">
-              Selecciona un proyecto o crea uno nuevo
-            </p>
-          </div>
+        {/* Actions bar */}
+        <div className="flex justify-end items-center">
           <button
             onClick={handleCreateProject}
             className="btn btn-primary flex items-center gap-2"

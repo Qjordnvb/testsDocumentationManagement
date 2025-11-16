@@ -37,14 +37,18 @@ export const Sidebar = () => {
         sidebarCollapsed ? 'w-20' : 'w-64'
       }`}
     >
-      {/* Logo */}
+      {/* Logo / Header */}
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         {!sidebarCollapsed && (
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">🎯 QA Flow</h1>
-            {currentProject && (
+            {projectId && currentProject ? (
               <p className="text-xs text-white/70 mt-1 truncate">
                 {currentProject.name}
+              </p>
+            ) : (
+              <p className="text-xs text-white/70 mt-1">
+                Todos los Proyectos
               </p>
             )}
           </div>
@@ -59,48 +63,66 @@ export const Sidebar = () => {
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="p-4 space-y-2">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`sidebar-link ${
-              isActive(item.path) ? 'sidebar-link-active' : ''
-            } ${sidebarCollapsed ? 'justify-center' : ''}`}
-            title={sidebarCollapsed ? item.label : undefined}
-          >
-            <span className="text-xl">{item.icon}</span>
-            {!sidebarCollapsed && (
-              <span className="font-medium">{item.label}</span>
-            )}
-          </Link>
-        ))}
-      </nav>
+      {/* Navigation - Only show when inside a project */}
+      {projectId ? (
+        <>
+          <nav className="p-4 space-y-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`sidebar-link ${
+                  isActive(item.path) ? 'sidebar-link-active' : ''
+                } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title={sidebarCollapsed ? item.label : undefined}
+              >
+                <span className="text-xl">{item.icon}</span>
+                {!sidebarCollapsed && (
+                  <span className="font-medium">{item.label}</span>
+                )}
+              </Link>
+            ))}
+          </nav>
 
-      {/* Settings and Home at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 space-y-2">
-        {projectId && (
-          <Link
-            to={`/projects/${projectId}/settings`}
-            className={`sidebar-link ${
-              isActive(`/projects/${projectId}/settings`) ? 'sidebar-link-active' : ''
-            } ${sidebarCollapsed ? 'justify-center' : ''}`}
-            title={sidebarCollapsed ? 'Settings' : undefined}
-          >
-            <span className="text-xl">⚙️</span>
-            {!sidebarCollapsed && <span className="font-medium">Settings</span>}
-          </Link>
-        )}
-        <Link
-          to="/"
-          className={`sidebar-link ${sidebarCollapsed ? 'justify-center' : ''}`}
-          title={sidebarCollapsed ? 'All Projects' : undefined}
-        >
-          <span className="text-xl">🏠</span>
-          {!sidebarCollapsed && <span className="font-medium">All Projects</span>}
-        </Link>
-      </div>
+          {/* Settings and Back to Projects at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 space-y-2">
+            <Link
+              to={`/projects/${projectId}/settings`}
+              className={`sidebar-link ${
+                isActive(`/projects/${projectId}/settings`) ? 'sidebar-link-active' : ''
+              } ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Settings' : undefined}
+            >
+              <span className="text-xl">⚙️</span>
+              {!sidebarCollapsed && <span className="font-medium">Settings</span>}
+            </Link>
+            <Link
+              to="/"
+              className={`sidebar-link ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Volver a Proyectos' : undefined}
+            >
+              <span className="text-xl">←</span>
+              {!sidebarCollapsed && <span className="font-medium">Volver a Proyectos</span>}
+            </Link>
+          </div>
+        </>
+      ) : (
+        // When viewing all projects - show welcome message
+        <div className="flex flex-col items-center justify-center h-full px-6 text-center pb-24">
+          {!sidebarCollapsed && (
+            <>
+              <div className="text-6xl mb-4">📁</div>
+              <h2 className="text-lg font-bold mb-2">Todos los Proyectos</h2>
+              <p className="text-sm text-white/70">
+                Selecciona un proyecto para comenzar
+              </p>
+            </>
+          )}
+          {sidebarCollapsed && (
+            <div className="text-4xl">📁</div>
+          )}
+        </div>
+      )}
     </aside>
   );
 };
