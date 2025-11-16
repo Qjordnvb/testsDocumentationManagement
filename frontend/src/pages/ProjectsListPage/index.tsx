@@ -8,12 +8,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectApi } from '@/entities/project';
 import { useProject } from '@/app/providers/ProjectContext';
+import { CreateProjectModal } from '@/features/project-management';
 import type { Project } from '@/entities/project';
 
 export const ProjectsListPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { setCurrentProject } = useProject();
   const navigate = useNavigate();
 
@@ -41,8 +43,7 @@ export const ProjectsListPage = () => {
   };
 
   const handleCreateProject = () => {
-    // TODO: Open CreateProjectModal
-    alert('Create project modal - Coming soon!');
+    setShowCreateModal(true);
   };
 
   if (loading) {
@@ -188,6 +189,13 @@ export const ProjectsListPage = () => {
           </div>
         )}
       </div>
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={loadProjects}
+      />
     </div>
   );
 };

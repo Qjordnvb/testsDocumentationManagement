@@ -24,15 +24,22 @@ export interface UploadResponse {
 
 /**
  * Uploads Excel/CSV file to backend
+ * @param file - File to upload
+ * @param projectId - Project ID to associate user stories with
+ * @param onProgress - Progress callback
  */
 export const uploadFile = async (
   file: File,
+  projectId: string,
   onProgress?: (progress: number) => void
 ): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
 
   const { data } = await api.post<UploadResponse>('/upload', formData, {
+    params: {
+      project_id: projectId
+    },
     headers: {
       'Content-Type': 'multipart/form-data',
     },

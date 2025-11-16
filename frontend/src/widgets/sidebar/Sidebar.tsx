@@ -1,8 +1,9 @@
 /**
- * Sidebar Navigation Component
+ * Sidebar Navigation Component (project-scoped)
  */
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { useProject } from '@/app/providers/ProjectContext';
 import { useAppStore } from '@/app/providers/appStore';
 
 interface NavItem {
@@ -11,23 +12,23 @@ interface NavItem {
   icon: string;
 }
 
-const navItems: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/stories', label: 'User Stories', icon: '📝' },
-  { path: '/tests', label: 'Test Cases', icon: '✅' },
-  { path: '/bugs', label: 'Bug Reports', icon: '🐛' },
-  { path: '/reports', label: 'Reports', icon: '📄' },
-];
-
 export const Sidebar = () => {
   const location = useLocation();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { currentProject } = useProject();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
 
+  // Build nav items with dynamic projectId
+  const navItems: NavItem[] = projectId ? [
+    { path: `/projects/${projectId}/dashboard`, label: 'Dashboard', icon: '📊' },
+    { path: `/projects/${projectId}/stories`, label: 'User Stories', icon: '📝' },
+    { path: `/projects/${projectId}/tests`, label: 'Test Cases', icon: '✅' },
+    { path: `/projects/${projectId}/bugs`, label: 'Bug Reports', icon: '🐛' },
+    { path: `/projects/${projectId}/reports`, label: 'Reports', icon: '📄' },
+  ] : [];
+
   const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   return (
@@ -39,7 +40,14 @@ export const Sidebar = () => {
       {/* Logo */}
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         {!sidebarCollapsed && (
-          <h1 className="text-2xl font-bold">🎯 QA Flow</h1>
+          <div>
+            <h1 className="text-2xl font-bold">🎯 QA Flow</h1>
+            {currentProject && (
+              <p className="text-xs text-white/70 mt-1 truncate">
+                {currentProject.name}
+              </p>
+            )}
+          </div>
         )}
         {sidebarCollapsed && <span className="text-2xl">🎯</span>}
         <button
@@ -70,17 +78,27 @@ export const Sidebar = () => {
         ))}
       </nav>
 
-      {/* Settings at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+      {/* Settings and Home at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 space-y-2">
+        {projectId && (
+          <Link
+            to={`/projects/${projectId}/settings`}
+            className={`sidebar-link ${
+              isActive(`/projects/${projectId}/settings`) ? 'sidebar-link-active' : ''
+            } ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title={sidebarCollapsed ? 'Settings' : undefined}
+          >
+            <span className="text-xl">⚙️</span>
+            {!sidebarCollapsed && <span className="font-medium">Settings</span>}
+          </Link>
+        )}
         <Link
-          to="/settings"
-          className={`sidebar-link ${
-            isActive('/settings') ? 'sidebar-link-active' : ''
-          } ${sidebarCollapsed ? 'justify-center' : ''}`}
-          title={sidebarCollapsed ? 'Settings' : undefined}
+          to="/"
+          className={`sidebar-link ${sidebarCollapsed ? 'justify-center' : ''}`}
+          title={sidebarCollapsed ? 'All Projects' : undefined}
         >
-          <span className="text-xl">⚙️</span>
-          {!sidebarCollapsed && <span className="font-medium">Settings</span>}
+          <span className="text-xl">🏠</span>
+          {!sidebarCollapsed && <span className="font-medium">All Projects</span>}
         </Link>
       </div>
     </aside>

@@ -1,16 +1,21 @@
 /**
  * Test Cases Page
- * View, edit, and manage test cases
+ * View, edit, and manage test cases (project-scoped)
  */
 
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { testCaseApi } from '@/entities/test-case';
+import { useProject } from '@/app/providers/ProjectContext';
 import type { TestCase } from '@/entities/test-case';
 import { Modal } from '@/shared/ui/Modal';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 import { TestCaseFormModal } from '@/features/test-case-management/ui';
 
 export const TestCasesPage = () => {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { currentProject } = useProject();
+  const navigate = useNavigate();
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,15 +25,25 @@ export const TestCasesPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
 
+  // Validate project
+  useEffect(() => {
+    if (!projectId || !currentProject) {
+      navigate('/');
+      return;
+    }
+  }, [projectId, currentProject, navigate]);
+
   // Load test cases
   useEffect(() => {
     loadTestCases();
-  }, []);
+  }, [projectId]); // Reload when projectId changes
 
   const loadTestCases = async () => {
+    if (!projectId) return;
+
     try {
       setLoading(true);
-      const data = await testCaseApi.getAll();
+      const data = await testCaseApi.getAll(projectId);
       setTestCases(data);
       setError(null);
     } catch (err: any) {
@@ -98,7 +113,7 @@ export const TestCasesPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Test Cases</h1>
           <p className="text-gray-600 mt-1">
-            {testCases.length} test case{testCases.length !== 1 ? 's' : ''} total
+            {currentProject?.name || 'Proyecto'} - {testCases.length} test case{testCases.length !== 1 ? 's' : ''} total
           </p>
         </div>
         <button

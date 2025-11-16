@@ -13,8 +13,14 @@ const api = axios.create({
 });
 
 export const testCaseApi = {
-  getAll: async (): Promise<TestCase[]> => {
-    const { data } = await api.get<{ test_cases: TestCase[] }>('/test-cases');
+  /**
+   * Get all test cases for a project
+   * @param projectId - Project ID to filter test cases
+   */
+  getAll: async (projectId: string): Promise<TestCase[]> => {
+    const { data } = await api.get<{ test_cases: TestCase[] }>('/test-cases', {
+      params: { project_id: projectId }
+    });
     return data.test_cases;
   },
 
