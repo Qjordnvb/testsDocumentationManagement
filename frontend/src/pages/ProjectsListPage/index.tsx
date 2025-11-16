@@ -48,7 +48,7 @@ export const ProjectsListPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center animate-fade-in-up">
           <div className="animate-spin text-6xl mb-4">⚙️</div>
           <p className="text-gray-600 text-lg">Cargando proyectos...</p>
@@ -59,7 +59,7 @@ export const ProjectsListPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="flex items-center justify-center h-full">
         <div className="card max-w-md text-center animate-fade-in-up">
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Error al cargar proyectos</h2>
@@ -77,9 +77,7 @@ export const ProjectsListPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Container with max width */}
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
         {/* Page header */}
         <div className="flex justify-between items-center">
           <div>
@@ -188,7 +186,6 @@ export const ProjectsListPage = () => {
             ))}
           </div>
         )}
-        </div>
       </div>
 
       {/* Create Project Modal */}

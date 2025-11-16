@@ -39,31 +39,28 @@ function App() {
   return (
     <BrowserRouter>
       <ProjectProvider>
-        <Routes>
-          {/* Landing: Project Selection */}
-          <Route path="/" element={<ProjectsListPage />} />
+        <Layout>
+          <Routes>
+            {/* Landing: Project Selection (now with Layout) */}
+            <Route path="/" element={<ProjectsListPage />} />
 
-          {/* Project-scoped routes */}
-          <Route
-            path="/projects/:projectId/*"
-            element={
-              <Layout>
-                <Routes>
-                  {/* Redirect /projects/:id to /projects/:id/dashboard */}
-                  <Route index element={<Navigate to="dashboard" replace />} />
+            {/* Project-scoped routes */}
+            <Route path="/projects/:projectId/*" element={
+              <Routes>
+                {/* Redirect /projects/:id to /projects/:id/dashboard */}
+                <Route index element={<Navigate to="dashboard" replace />} />
 
-                  {/* Project pages */}
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="stories" element={<StoriesPage />} />
-                  <Route path="tests" element={<TestCasesPage />} />
-                  <Route path="bugs" element={<BugsPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                </Routes>
-              </Layout>
-            }
-          />
-        </Routes>
+                {/* Project pages */}
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="stories" element={<StoriesPage />} />
+                <Route path="tests" element={<TestCasesPage />} />
+                <Route path="bugs" element={<BugsPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Routes>
+            } />
+          </Routes>
+        </Layout>
       </ProjectProvider>
     </BrowserRouter>
   );
