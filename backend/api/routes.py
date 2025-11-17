@@ -690,21 +690,67 @@ async def preview_test_cases(
 
             gherkin_content = "\n".join(gherkin_lines)
         else:
-            # Fallback: Generate basic template
-            gherkin_content = f"""Feature: {title}
-  {user_story.description}
+            # Fallback: Generate multiple scenarios based on test type (NO AI)
+            gherkin_lines = [
+                f"Feature: {title}",
+                f"  {user_story.description}",
+                "",
+                f"  User Story: {user_story.id}",
+                f"  Test Type: {test_type}",
+                f"  Note: AI generation unavailable - using template scenarios",
+                "",
+            ]
 
-  User Story: {user_story.id}
-  Test Type: {test_type}
+            # Generate scenarios_per_test scenarios based on test type
+            for s in range(1, scenarios_per_test + 1):
+                scenario_type = "Happy Path" if s == 1 else ("Negative" if s == 2 else f"Edge Case {s-2}")
 
-  @{test_type.lower()} @manual
-  Scenario: Basic validation for {user_story.title}
-    Given the system is ready
-    And the user has necessary permissions
-    When the user performs the action described in {user_story.id}
-    Then the system should respond according to acceptance criteria
-    And the changes should be persisted correctly
-"""
+                if test_type == "FUNCTIONAL":
+                    gherkin_lines.extend([
+                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"Scenario {s}: {scenario_type} - {user_story.title[:50]}",
+                        f"  Given the system is configured for {user_story.id}",
+                        f"  And all prerequisites are met",
+                        f"  When {'the valid action is performed' if s == 1 else 'an invalid action is attempted' if s == 2 else 'edge case conditions are present'}",
+                        f"  Then {'the expected result is achieved' if s == 1 else 'appropriate error handling occurs' if s == 2 else 'boundary conditions are handled correctly'}",
+                        f"  And the system state is {'updated correctly' if s == 1 else 'remains consistent'}",
+                        ""
+                    ])
+                elif test_type == "UI":
+                    gherkin_lines.extend([
+                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"Scenario {s}: UI {scenario_type} - {user_story.title[:50]}",
+                        f"  Given the user is on the relevant page for {user_story.id}",
+                        f"  And the UI elements are loaded",
+                        f"  When the user {'performs the primary UI action' if s == 1 else 'attempts invalid UI interaction' if s == 2 else 'tests UI edge cases'}",
+                        f"  Then {'the UI responds correctly' if s == 1 else 'proper validation messages appear' if s == 2 else 'UI handles edge cases gracefully'}",
+                        f"  And the visual state is updated appropriately",
+                        ""
+                    ])
+                elif test_type == "API":
+                    gherkin_lines.extend([
+                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"Scenario {s}: API {scenario_type} - {user_story.title[:50]}",
+                        f"  Given the API endpoint is available for {user_story.id}",
+                        f"  And authentication is {'valid' if s == 1 else 'invalid' if s == 2 else 'edge case'}",
+                        f"  When a {'valid' if s == 1 else 'invalid' if s == 2 else 'boundary'} API request is made",
+                        f"  Then the response status is {'200 OK' if s == 1 else '400/401' if s == 2 else 'appropriate'}",
+                        f"  And the response data matches the expected schema",
+                        ""
+                    ])
+                else:
+                    gherkin_lines.extend([
+                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"Scenario {s}: {scenario_type} - {user_story.title[:50]}",
+                        f"  Given the system is ready for testing {user_story.id}",
+                        f"  And all preconditions are satisfied",
+                        f"  When the test action is executed",
+                        f"  Then the expected outcome is verified",
+                        f"  And no unexpected side effects occur",
+                        ""
+                    ])
+
+            gherkin_content = "\n".join(gherkin_lines)
 
         suggested_test_cases.append({
             "suggested_id": f"TC-{story_id}-{str(i+1).zfill(3)}",
@@ -719,15 +765,26 @@ async def preview_test_cases(
             "can_delete": True
         })
     
-    return {
+    response = {
         "project_id": story_db.project_id,  # Include project_id for frontend
         "user_story_id": story_id,
         "user_story_title": user_story.title,
         "suggested_test_cases": suggested_test_cases,
         "total_suggested": len(suggested_test_cases),
         "can_edit_before_save": True,
-        "can_add_more": True
+        "can_add_more": True,
+        "ai_generated": len(gherkin_scenarios) > 0
     }
+
+    # Add warning if AI generation failed
+    if use_ai and len(gherkin_scenarios) == 0:
+        response["warning"] = {
+            "message": "AI generation unavailable - using template scenarios",
+            "reason": "Gemini API key may be invalid, expired, or blocked. Check backend logs for details.",
+            "action": "Generate a new API key at: https://makersuite.google.com/app/apikey"
+        }
+
+    return response
 
 
 @router.post("/test-cases/batch")
