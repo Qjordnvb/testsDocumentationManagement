@@ -3,12 +3,10 @@
  */
 
 import { useProject } from '@/app/providers/ProjectContext';
-import { useAppStore } from '@/app/providers/appStore';
 import { Link } from 'react-router-dom';
 
 export const Header = () => {
   const { currentProject } = useProject();
-  const { sidebarCollapsed } = useAppStore();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">

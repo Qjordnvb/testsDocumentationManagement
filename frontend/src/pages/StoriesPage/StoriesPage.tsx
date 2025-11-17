@@ -140,7 +140,7 @@ export const StoriesPage = () => {
             setGenerateModalOpen(false);
             setSelectedStory(null);
           }}
-          userStory={selectedStory}
+          story={selectedStory}
           onSuccess={handleGenerateSuccess}
         />
       )}

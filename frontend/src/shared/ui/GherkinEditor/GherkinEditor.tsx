@@ -8,7 +8,7 @@ import { Save, X, FileText } from 'lucide-react';
 import { Button } from '../Button';
 
 interface GherkinEditorProps {
-  testCaseId: string;
+  testCaseId?: string;
   initialContent?: string;
   onSave: (content: string) => Promise<void>;
   onCancel: () => void;
@@ -16,7 +16,6 @@ interface GherkinEditorProps {
 }
 
 export const GherkinEditor = ({
-  testCaseId,
   initialContent = '',
   onSave,
   onCancel,

@@ -96,9 +96,9 @@ export const TestCaseFormModal = ({
 
     try {
       if (isEditMode) {
-        await testCaseApi.update(testCase.id, formData);
+        await testCaseApi.update(testCase.id, formData as any);
       } else {
-        await testCaseApi.create(formData);
+        await testCaseApi.create(formData as any);
       }
 
       setSaveSuccess(true);

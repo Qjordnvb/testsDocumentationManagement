@@ -3,8 +3,8 @@
  * Domain model types for Test Cases
  */
 
-export type TestType = 'Functional' | 'Integration' | 'E2E' | 'Performance' | 'Security' | 'Regression';
-export type TestStatus = 'pending' | 'passed' | 'failed' | 'skipped';
+export type TestType = 'FUNCTIONAL' | 'INTEGRATION' | 'UI' | 'API' | 'E2E' | 'PERFORMANCE' | 'SECURITY' | 'REGRESSION' | 'SMOKE' | 'ACCESSIBILITY';
+export type TestStatus = 'NOT_RUN' | 'PASSED' | 'FAILED' | 'BLOCKED' | 'SKIPPED';
 
 export interface TestStep {
   step_number: number;
@@ -28,13 +28,17 @@ export interface TestCase {
   description: string;
   user_story_id: string;
   test_type: TestType;
+  priority?: string;
+  status?: string;
   preconditions?: string;
   steps: TestStep[];
   expected_outcome: string;
   gherkin_scenario?: GherkinScenario;
+  gherkin_file_path?: string;
   last_execution_status?: TestStatus;
   last_execution_date?: string;
   created_at?: string;
+  created_date?: string;
   updated_at?: string;
 }
 
@@ -44,9 +48,11 @@ export interface CreateTestCaseDTO {
   description: string;
   user_story_id: string;
   test_type: TestType;
+  priority?: string;
+  status?: string;
   preconditions?: string;
-  steps: TestStep[];
-  expected_outcome: string;
+  steps?: TestStep[];
+  expected_outcome?: string;
   gherkin_scenario?: GherkinScenario;
 }
 

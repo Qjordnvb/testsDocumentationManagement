@@ -8,9 +8,8 @@ import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
 import { useGenerateStore } from '../model/generateStore';
 import { previewTests } from '../api/generateTests';
-import { formatTestSummary } from '../lib/testFormatter';
 import { ReviewTestCasesModal } from './ReviewTestCasesModal';
-import { Sparkles, AlertCircle, CheckCircle2, Settings } from 'lucide-react';
+import { Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { UserStory } from '@/entities/user-story';
 import type { SuggestedTestCase } from '../api/generateTests';
 
@@ -30,21 +29,14 @@ export const GenerateModal = ({
   const {
     isGenerating,
     generationError,
-    generatedTests,
-    useAi,
-    numScenarios,
     setIsGenerating,
     setGenerationError,
-    setGeneratedTests,
-    setUseAi,
-    setNumScenarios,
     resetGeneration,
   } = useGenerateStore();
-
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [numTestCases, setNumTestCases] = useState(5);
   const [scenariosPerTest, setScenariosPerTest] = useState(3);
   const [selectedTestTypes, setSelectedTestTypes] = useState<string[]>(['FUNCTIONAL', 'UI']);
+  const [useAi, setUseAi] = useState(true);
   const [suggestedTests, setSuggestedTests] = useState<SuggestedTestCase[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
 

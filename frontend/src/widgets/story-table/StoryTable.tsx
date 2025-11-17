@@ -31,6 +31,8 @@ import {
 interface StoryTableProps {
   stories: UserStory[];
   onGenerateTests: (story: UserStory) => void;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 const columnHelper = createColumnHelper<UserStory>();
