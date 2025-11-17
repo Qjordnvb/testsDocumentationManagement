@@ -128,6 +128,36 @@ export const TestCasesPage = () => {
     }
   };
 
+  const handleDeleteSuite = async (suite: TestSuite, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent suite collapse/expand
+
+    const count = suite.testCases.length;
+    const userStoryTitle = suite.userStory?.title || suite.userStoryId;
+
+    if (!confirm(`¿Estás seguro de eliminar TODOS los ${count} test cases del suite "${userStoryTitle}"?\n\nEsta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const testCaseIds = suite.testCases.map(tc => tc.id);
+      const result = await testCaseApi.batchDelete(testCaseIds);
+
+      if (result.errors && result.errors.length > 0) {
+        alert(`Suite eliminado parcialmente. ${result.deleted_count} test cases eliminados.\n\nErrores:\n${result.errors.join('\n')}`);
+      } else {
+        alert(`Suite eliminado exitosamente. ${result.deleted_count} test cases eliminados.`);
+      }
+
+      await loadData();
+    } catch (err: any) {
+      console.error('Error deleting suite:', err);
+      alert('Error al eliminar el suite de test cases');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenGherkin = async (testCase: TestCase) => {
     try {
       const content = await testCaseApi.getGherkinContent(testCase.id);
@@ -263,6 +293,16 @@ export const TestCasesPage = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Delete Suite Button */}
+                    <button
+                      onClick={(e) => handleDeleteSuite(suite, e)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title={`Delete all ${suite.testCases.length} test cases`}
+                      aria-label={`Delete suite ${suite.userStoryId}`}
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
 

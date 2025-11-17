@@ -48,6 +48,13 @@ export const testCaseApi = {
     await api.delete(`/test-cases/${id}`);
   },
 
+  batchDelete: async (testCaseIds: string[]): Promise<{ deleted_count: number; errors?: string[] }> => {
+    const { data } = await api.delete<{ deleted_count: number; errors?: string[] }>('/test-cases/batch', {
+      data: { test_case_ids: testCaseIds }
+    });
+    return data;
+  },
+
   executeTest: async (execution: TestExecution): Promise<void> => {
     await api.post('/test-executions', execution);
   },

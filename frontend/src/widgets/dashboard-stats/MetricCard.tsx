@@ -12,6 +12,7 @@ interface MetricCardProps {
     value: number;
     isPositive: boolean;
   };
+  onClick?: () => void;
 }
 
 const colorClasses = {
@@ -28,9 +29,13 @@ export const MetricCard = ({
   value,
   color = 'blue',
   trend,
+  onClick,
 }: MetricCardProps) => {
-  return (
-    <div className="metric-card hover:scale-105 transition-transform duration-200">
+  const baseClasses = "metric-card hover:scale-105 transition-transform duration-200";
+  const clickableClasses = onClick ? "cursor-pointer hover:shadow-lg" : "";
+
+  const content = (
+    <>
       <div className="flex items-start justify-between">
         {/* Icon */}
         <div
@@ -56,6 +61,24 @@ export const MetricCard = ({
         <p className="text-3xl font-bold text-gray-900">{value}</p>
         <p className="text-sm text-gray-600 mt-1">{label}</p>
       </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className={`${baseClasses} ${clickableClasses} text-left w-full`}
+        aria-label={`View ${label}`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={baseClasses}>
+      {content}
     </div>
   );
 };
