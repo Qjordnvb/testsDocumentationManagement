@@ -702,6 +702,12 @@ async def create_test_cases_batch(
 
     created_test_cases = []
 
+    # Get initial count ONCE before the loop to generate sequential IDs
+    initial_count = db.query(TestCaseDB).filter(
+        TestCaseDB.user_story_id == user_story_id
+    ).count()
+    print(f"📊 Initial test case count for story {user_story_id}: {initial_count}")
+
     for i, tc_data in enumerate(test_cases, 1):
         try:
             print(f"\n📝 Processing test case {i}/{len(test_cases)}...")
@@ -709,11 +715,8 @@ async def create_test_cases_batch(
 
             # Generate unique ID if not provided
             if "id" not in tc_data or not tc_data["id"]:
-                story_id = tc_data.get("user_story_id")
-                count = db.query(TestCaseDB).filter(
-                    TestCaseDB.user_story_id == story_id
-                ).count()
-                tc_data["id"] = f"TC-{story_id}-{str(count + 1).zfill(3)}"
+                # Use initial_count + current index to generate unique sequential IDs
+                tc_data["id"] = f"TC-{user_story_id}-{str(initial_count + i).zfill(3)}"
                 print(f"   Generated ID: {tc_data['id']}")
 
             # Save Gherkin content to file if provided
