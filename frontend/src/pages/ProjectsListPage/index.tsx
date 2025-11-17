@@ -19,6 +19,11 @@ export const ProjectsListPage = () => {
   const { setCurrentProject } = useProject();
   const navigate = useNavigate();
 
+  // Clear current project when viewing all projects
+  useEffect(() => {
+    setCurrentProject(null);
+  }, [setCurrentProject]);
+
   // Load projects on mount
   useEffect(() => {
     loadProjects();

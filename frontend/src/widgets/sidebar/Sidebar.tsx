@@ -5,6 +5,9 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useProject } from '@/app/providers/ProjectContext';
 import { useAppStore } from '@/app/providers/appStore';
+import { useState, useEffect } from 'react';
+import { projectApi } from '@/entities/project';
+import type { Project } from '@/entities/project';
 
 interface NavItem {
   path: string;
@@ -15,8 +18,9 @@ interface NavItem {
 export const Sidebar = () => {
   const location = useLocation();
   const { projectId } = useParams<{ projectId: string }>();
-  const { currentProject } = useProject();
+  const { currentProject, setCurrentProject } = useProject();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   // Build nav items with dynamic projectId
   const navItems: NavItem[] = projectId ? [
@@ -29,6 +33,25 @@ export const Sidebar = () => {
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
+  // Load projects when viewing all projects (no projectId)
+  useEffect(() => {
+    if (!projectId) {
+      const loadProjects = async () => {
+        try {
+          const projects = await projectApi.getAll();
+          setAllProjects(projects);
+        } catch (error) {
+          console.error('Error loading projects in sidebar:', error);
+        }
+      };
+      loadProjects();
+    }
+  }, [projectId]);
+
+  const handleProjectClick = (project: Project) => {
+    setCurrentProject(project);
   };
 
   return (
@@ -107,19 +130,42 @@ export const Sidebar = () => {
           </div>
         </>
       ) : (
-        // When viewing all projects - show welcome message
-        <div className="flex flex-col items-center justify-center h-full px-6 text-center pb-24">
-          {!sidebarCollapsed && (
+        // When viewing all projects - show list of projects
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!sidebarCollapsed ? (
             <>
-              <div className="text-6xl mb-4">📁</div>
-              <h2 className="text-lg font-bold mb-2">Todos los Proyectos</h2>
-              <p className="text-sm text-white/70">
-                Selecciona un proyecto para comenzar
-              </p>
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-sm font-semibold text-white/70 uppercase tracking-wider">
+                  Mis Proyectos
+                </h3>
+              </div>
+              <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+                {allProjects.map((project) => (
+                  <Link
+                    key={project.id}
+                    to={`/projects/${project.id}/dashboard`}
+                    onClick={() => handleProjectClick(project)}
+                    className="block p-3 rounded-lg hover:bg-white/10 transition-colors group"
+                  >
+                    <div className="font-medium text-white group-hover:text-white/90 truncate">
+                      {project.name}
+                    </div>
+                    <div className="text-xs text-white/50 mt-0.5 truncate">
+                      {project.id} • {project.total_test_cases} tests
+                    </div>
+                  </Link>
+                ))}
+                {allProjects.length === 0 && (
+                  <div className="text-center py-8 text-white/50 text-sm">
+                    No hay proyectos
+                  </div>
+                )}
+              </nav>
             </>
-          )}
-          {sidebarCollapsed && (
-            <div className="text-4xl">📁</div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-4xl">📁</div>
+            </div>
           )}
         </div>
       )}
