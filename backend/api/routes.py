@@ -623,11 +623,28 @@ async def preview_test_cases(
 
     # Generate multiple test cases with AI
     suggested_test_cases = []
-    
+
+    # Generate Gherkin scenarios using AI if enabled
+    gherkin_scenarios = []
+    if use_ai:
+        try:
+            print(f"🤖 Generating Gherkin scenarios with AI for story {story_id}...")
+            gherkin_scenarios = gemini_client.generate_gherkin_scenarios(
+                user_story,
+                num_scenarios=scenarios_per_test * num_test_cases
+            )
+            print(f"✅ Generated {len(gherkin_scenarios)} scenarios with AI")
+        except Exception as e:
+            print(f"⚠️ AI generation failed: {e}, using fallback")
+            use_ai = False
+
+    # Distribute scenarios across test cases
+    scenarios_per_tc = len(gherkin_scenarios) // num_test_cases if gherkin_scenarios else scenarios_per_test
+
     for i in range(num_test_cases):
         # Determine test type for this test case
         test_type = test_types[i % len(test_types)] if test_types else "FUNCTIONAL"
-        
+
         # Generate title based on test type and position
         titles = {
             "FUNCTIONAL": f"Functional tests for {user_story.title}",
@@ -637,9 +654,45 @@ async def preview_test_cases(
             "INTEGRATION": f"Integration tests for {user_story.title}",
         }
         title = titles.get(test_type, f"Test case {i+1} for {user_story.title}")
-        
-        # For preview, we'll generate a simple structure
-        # In reality, you'd call Gherkin generator here
+
+        # Get scenarios for this test case
+        start_idx = i * scenarios_per_tc
+        end_idx = start_idx + scenarios_per_tc
+        test_scenarios = gherkin_scenarios[start_idx:end_idx] if gherkin_scenarios else []
+
+        # Generate Gherkin content
+        if test_scenarios:
+            gherkin_lines = [
+                f"Feature: {title}",
+                f"  {user_story.description[:200]}..." if len(user_story.description) > 200 else f"  {user_story.description}",
+                "",
+                f"  User Story: {user_story.id}",
+                f"  Test Type: {test_type}",
+                "",
+            ]
+
+            for scenario in test_scenarios:
+                gherkin_lines.append(scenario.to_gherkin())
+                gherkin_lines.append("")  # Empty line between scenarios
+
+            gherkin_content = "\n".join(gherkin_lines)
+        else:
+            # Fallback: Generate basic template
+            gherkin_content = f"""Feature: {title}
+  {user_story.description}
+
+  User Story: {user_story.id}
+  Test Type: {test_type}
+
+  @{test_type.lower()} @manual
+  Scenario: Basic validation for {user_story.title}
+    Given the system is ready
+    And the user has necessary permissions
+    When the user performs the action described in {user_story.id}
+    Then the system should respond according to acceptance criteria
+    And the changes should be persisted correctly
+"""
+
         suggested_test_cases.append({
             "suggested_id": f"TC-{story_id}-{str(i+1).zfill(3)}",
             "title": title,
@@ -647,8 +700,8 @@ async def preview_test_cases(
             "test_type": test_type,
             "priority": "MEDIUM",
             "status": "NOT_RUN",
-            "scenarios_count": scenarios_per_test,
-            "gherkin_content": f"# Placeholder Gherkin content for {title}\n# Will be generated when saved",
+            "scenarios_count": len(test_scenarios) if test_scenarios else scenarios_per_test,
+            "gherkin_content": gherkin_content,
             "can_edit": True,
             "can_delete": True
         })
