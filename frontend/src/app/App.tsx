@@ -45,20 +45,18 @@ function App() {
             <Route path="/" element={<ProjectsListPage />} />
 
             {/* Project-scoped routes */}
-            <Route path="/projects/:projectId/*" element={
-              <Routes>
-                {/* Redirect /projects/:id to /projects/:id/dashboard */}
-                <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="/projects/:projectId">
+              {/* Redirect /projects/:id to /projects/:id/dashboard */}
+              <Route index element={<Navigate to="dashboard" replace />} />
 
-                {/* Project pages */}
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="stories" element={<StoriesPage />} />
-                <Route path="tests" element={<TestCasesPage />} />
-                <Route path="bugs" element={<BugsPage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-              </Routes>
-            } />
+              {/* Project pages */}
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="stories" element={<StoriesPage />} />
+              <Route path="tests" element={<TestCasesPage />} />
+              <Route path="bugs" element={<BugsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
           </Routes>
         </Layout>
       </ProjectProvider>

@@ -17,10 +17,28 @@ interface NavItem {
 
 export const Sidebar = () => {
   const location = useLocation();
-  const { projectId } = useParams<{ projectId: string }>();
+  const params = useParams();
+
+  // Extract projectId from params OR from URL as fallback
+  let projectId = params.projectId;
+
+  // Fallback: extract from URL if params doesn't have it
+  if (!projectId) {
+    const match = location.pathname.match(/\/projects\/([^/]+)/);
+    projectId = match ? match[1] : undefined;
+  }
+
   const { currentProject, setCurrentProject } = useProject();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+
+  // Debug logging
+  console.log('🔍 Sidebar:', {
+    projectId,
+    pathname: location.pathname,
+    params,
+    hasProjectId: !!projectId
+  });
 
   // Build nav items with dynamic projectId
   const navItems: NavItem[] = projectId ? [
@@ -44,9 +62,13 @@ export const Sidebar = () => {
           setAllProjects(projects);
         } catch (error) {
           console.error('Error loading projects in sidebar:', error);
+          setAllProjects([]); // Set empty array on error
         }
       };
       loadProjects();
+    } else {
+      // Clear projects list when inside a project
+      setAllProjects([]);
     }
   }, [projectId]);
 
@@ -87,7 +109,7 @@ export const Sidebar = () => {
       </div>
 
       {/* Navigation - Only show when inside a project */}
-      {projectId ? (
+      {projectId && projectId !== '' ? (
         <>
           <nav className="p-4 space-y-2">
             {navItems.map((item) => (

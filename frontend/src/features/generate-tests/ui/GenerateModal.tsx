@@ -61,8 +61,17 @@ export const GenerateModal = ({
 
   // Handle preview generation
   const handleGenerate = async () => {
+    console.log('🚀 Starting test case generation...', {
+      storyId: story.id,
+      numTestCases,
+      scenariosPerTest,
+      testTypes: selectedTestTypes,
+      useAi
+    });
+
     setIsGenerating(true);
     setGenerationError(null);
+    setSuggestedTests([]); // Clear previous suggestions
 
     try {
       const response = await previewTests({
@@ -73,15 +82,47 @@ export const GenerateModal = ({
         useAi,
       });
 
+      console.log('✅ Preview response received:', response);
+
+      if (!response.suggested_test_cases || response.suggested_test_cases.length === 0) {
+        console.warn('⚠️ Response has no test cases');
+        setGenerationError('No se generaron sugerencias de test cases. Intenta con otros parámetros.');
+        return;
+      }
+
+      console.log(`✅ Setting ${response.suggested_test_cases.length} suggested tests`);
       setSuggestedTests(response.suggested_test_cases);
 
       // Success notification
-      console.log(`Generated ${response.total_suggested} test case suggestions for story: ${story.title}`);
+      console.log(`✅ Generated ${response.total_suggested} test case suggestions for story: ${story.title}`);
     } catch (error: any) {
-      console.error('Generation error:', error);
-      setGenerationError(
-        error.response?.data?.detail || 'Error al generar sugerencias de test cases'
-      );
+      console.error('❌ Generation error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      // Better error handling
+      let errorMessage = 'Error al generar sugerencias de test cases';
+
+      if (error.response?.status === 400) {
+        errorMessage = error.response.data?.detail ||
+          'Este User Story no está asociado a un proyecto. Por favor, re-importa las user stories con project_id.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'User story no encontrada';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Error con la API key de Gemini. Verifica la configuración en el backend.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      console.error('❌ Final error message:', errorMessage);
+      setGenerationError(errorMessage);
+      setSuggestedTests([]); // Ensure empty array on error
     } finally {
       setIsGenerating(false);
     }

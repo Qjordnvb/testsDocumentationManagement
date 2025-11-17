@@ -4,7 +4,7 @@
  * Persists selection to localStorage
  */
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Project } from '@/entities/project';
 
@@ -39,15 +39,15 @@ export const ProjectProvider = ({ children }: ProjectProviderProps) => {
     setIsLoading(false);
   }, []);
 
-  // Save to localStorage when changes
-  const setCurrentProject = (project: Project | null) => {
+  // Memoize setCurrentProject to prevent infinite re-renders
+  const setCurrentProject = useCallback((project: Project | null) => {
     setCurrentProjectState(project);
     if (project) {
       localStorage.setItem('currentProject', JSON.stringify(project));
     } else {
       localStorage.removeItem('currentProject');
     }
-  };
+  }, []);
 
   return (
     <ProjectContext.Provider value={{ currentProject, setCurrentProject, isLoading }}>

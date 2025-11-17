@@ -19,10 +19,11 @@ export const ProjectsListPage = () => {
   const { setCurrentProject } = useProject();
   const navigate = useNavigate();
 
-  // Clear current project when viewing all projects
+  // Clear current project when viewing all projects (only on mount)
   useEffect(() => {
     setCurrentProject(null);
-  }, [setCurrentProject]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   // Load projects on mount
   useEffect(() => {
