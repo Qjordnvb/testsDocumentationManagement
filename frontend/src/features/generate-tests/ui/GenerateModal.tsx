@@ -263,10 +263,21 @@ export const GenerateModal = ({
 
         {/* Generation in progress */}
         {isGenerating && (
-          <div className="flex flex-col items-center justify-center py-8">
+          <div className="flex flex-col items-center justify-center py-8 px-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
-            <p className="text-sm text-gray-600">Generando test cases con IA...</p>
-            <p className="text-xs text-gray-500 mt-1">Esto puede tomar unos segundos</p>
+            <p className="text-sm font-medium text-gray-900">Generando test cases con IA...</p>
+            <p className="text-sm text-gray-600 mt-2">
+              Gemini está creando <strong>{numTestCases * scenariosPerTest} escenarios</strong>
+            </p>
+            <p className="text-sm text-gray-600">
+              ({numTestCases} test cases × {scenariosPerTest} escenarios cada uno)
+            </p>
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg max-w-md">
+              <p className="text-xs text-yellow-800 text-center">
+                ⏱️ Esto puede tomar hasta <strong>2 minutos</strong> para grandes cantidades de escenarios.
+                Por favor, espera sin cerrar esta ventana.
+              </p>
+            </div>
           </div>
         )}
 
