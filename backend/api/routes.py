@@ -672,8 +672,16 @@ async def create_test_cases_batch(
     """
     Create multiple test cases at once (after QA review)
     """
+    print("=" * 80)
+    print("🚀 BATCH CREATE TEST CASES - START")
+    print(f"📦 Received data: {test_cases_data}")
+    print("=" * 80)
+
     test_cases = test_cases_data.get("test_cases", [])
     user_story_id = test_cases_data.get("user_story_id")
+
+    print(f"📊 Number of test cases to create: {len(test_cases)}")
+    print(f"📝 User story ID: {user_story_id}")
 
     if not user_story_id:
         raise HTTPException(status_code=400, detail="user_story_id is required")
@@ -683,6 +691,9 @@ async def create_test_cases_batch(
     if not user_story:
         raise HTTPException(status_code=404, detail=f"User story {user_story_id} not found")
 
+    print(f"✅ User story found: {user_story.id} - {user_story.title}")
+    print(f"📁 Project ID: {user_story.project_id}")
+
     if not user_story.project_id:
         raise HTTPException(
             status_code=400,
@@ -691,43 +702,95 @@ async def create_test_cases_batch(
 
     created_test_cases = []
 
-    for tc_data in test_cases:
-        # Generate unique ID if not provided
-        if "id" not in tc_data or not tc_data["id"]:
-            story_id = tc_data.get("user_story_id")
-            count = db.query(TestCaseDB).filter(
-                TestCaseDB.user_story_id == story_id
-            ).count()
-            tc_data["id"] = f"TC-{story_id}-{str(count + 1).zfill(3)}"
-        
-        # Save Gherkin content to file if provided
-        gherkin_file_path = None
-        if "gherkin_content" in tc_data:
-            settings.ensure_directories()
-            gherkin_file = f"{settings.output_dir}/{tc_data['id']}.feature"
-            with open(gherkin_file, 'w') as f:
-                f.write(tc_data["gherkin_content"])
-            gherkin_file_path = gherkin_file
-        
-        # Create test case
-        db_test_case = TestCaseDB(
-            id=tc_data["id"],
-            project_id=user_story.project_id,  # Inherit from user story
-            title=tc_data.get("title", "Untitled Test Case"),
-            description=tc_data.get("description", ""),
-            user_story_id=tc_data["user_story_id"],
-            test_type=TestType[tc_data.get("test_type", "FUNCTIONAL")],
-            priority=TestPriority[tc_data.get("priority", "MEDIUM")],
-            status=TestStatus[tc_data.get("status", "NOT_RUN")],
-            gherkin_file_path=gherkin_file_path,
-            created_date=datetime.now()
-        )
-        
-        db.add(db_test_case)
-        created_test_cases.append(db_test_case)
+    for i, tc_data in enumerate(test_cases, 1):
+        try:
+            print(f"\n📝 Processing test case {i}/{len(test_cases)}...")
+            print(f"   Data: {tc_data}")
+
+            # Generate unique ID if not provided
+            if "id" not in tc_data or not tc_data["id"]:
+                story_id = tc_data.get("user_story_id")
+                count = db.query(TestCaseDB).filter(
+                    TestCaseDB.user_story_id == story_id
+                ).count()
+                tc_data["id"] = f"TC-{story_id}-{str(count + 1).zfill(3)}"
+                print(f"   Generated ID: {tc_data['id']}")
+
+            # Save Gherkin content to file if provided
+            gherkin_file_path = None
+            if "gherkin_content" in tc_data:
+                settings.ensure_directories()
+                gherkin_file = f"{settings.output_dir}/{tc_data['id']}.feature"
+                with open(gherkin_file, 'w') as f:
+                    f.write(tc_data["gherkin_content"])
+                gherkin_file_path = gherkin_file
+                print(f"   ✅ Gherkin file saved: {gherkin_file}")
+
+            # Parse enum values safely
+            test_type_str = tc_data.get("test_type", "FUNCTIONAL")
+            priority_str = tc_data.get("priority", "MEDIUM")
+            status_str = tc_data.get("status", "NOT_RUN")
+
+            print(f"   Enum values: type={test_type_str}, priority={priority_str}, status={status_str}")
+
+            # Try to get enum by name (FUNCTIONAL), fallback to getting by value
+            try:
+                test_type = TestType[test_type_str]
+            except KeyError:
+                print(f"   ⚠️ TestType KeyError for '{test_type_str}', using fallback")
+                # If name lookup fails, try value lookup
+                test_type = next((t for t in TestType if t.name == test_type_str), TestType.FUNCTIONAL)
+
+            try:
+                priority = TestPriority[priority_str]
+            except KeyError:
+                print(f"   ⚠️ TestPriority KeyError for '{priority_str}', using fallback")
+                priority = next((p for p in TestPriority if p.name == priority_str), TestPriority.MEDIUM)
+
+            try:
+                status = TestStatus[status_str]
+            except KeyError:
+                print(f"   ⚠️ TestStatus KeyError for '{status_str}', using fallback")
+                status = next((s for s in TestStatus if s.name == status_str), TestStatus.NOT_RUN)
+
+            print(f"   ✅ Enums resolved: {test_type}, {priority}, {status}")
+
+            # Create test case
+            db_test_case = TestCaseDB(
+                id=tc_data["id"],
+                project_id=user_story.project_id,  # Inherit from user story
+                title=tc_data.get("title", "Untitled Test Case"),
+                description=tc_data.get("description", ""),
+                user_story_id=tc_data["user_story_id"],
+                test_type=test_type,
+                priority=priority,
+                status=status,
+                gherkin_file_path=gherkin_file_path,
+                created_date=datetime.now()
+            )
+
+            db.add(db_test_case)
+            created_test_cases.append(db_test_case)
+            print(f"   ✅ Test case {tc_data['id']} added to session")
+
+        except Exception as e:
+            print(f"   ❌ ERROR processing test case {i}: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error creating test case {i}: {str(e)}"
+            )
     
+    print(f"\n💾 Committing {len(created_test_cases)} test cases to database...")
     db.commit()
-    
+    print(f"✅ Commit successful!")
+
+    print("=" * 80)
+    print("🎉 BATCH CREATE TEST CASES - COMPLETE")
+    print(f"✅ Created {len(created_test_cases)} test cases successfully")
+    print("=" * 80)
+
     return {
         "message": f"Created {len(created_test_cases)} test cases successfully",
         "created_count": len(created_test_cases),
