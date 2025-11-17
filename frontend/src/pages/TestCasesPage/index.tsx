@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { testCaseApi } from '@/entities/test-case';
-import { userStoryApi } from '@/entities/user-story';
+import { storyApi } from '@/entities/user-story';
 import { useProject } from '@/app/providers/ProjectContext';
 import type { TestCase } from '@/entities/test-case';
 import type { UserStory } from '@/entities/user-story';
@@ -57,7 +57,7 @@ export const TestCasesPage = () => {
       setLoading(true);
       const [tcData, usData] = await Promise.all([
         testCaseApi.getAll(projectId),
-        userStoryApi.getAll(projectId)
+        storyApi.getAll(projectId)
       ]);
       setTestCases(tcData);
       setUserStories(usData);
