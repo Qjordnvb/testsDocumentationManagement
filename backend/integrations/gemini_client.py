@@ -42,7 +42,22 @@ class GeminiClient:
     def _build_gherkin_prompt(self, user_story: UserStory, num_scenarios: int) -> str:
         """Build prompt for Gherkin scenario generation"""
 
+        # Get criteria if available, otherwise use description analysis
         criteria_text = user_story.get_criteria_text()
+        has_criteria = criteria_text != "No acceptance criteria defined"
+
+        if has_criteria:
+            criteria_section = f"""**Acceptance Criteria:**
+{criteria_text}"""
+        else:
+            criteria_section = f"""**Requirements to Test:**
+Based on the description above, identify and test:
+- Main functionality or feature being described
+- User interactions and workflows
+- Expected system behavior
+- Data validation and business rules
+- Error handling scenarios
+- Edge cases and boundary conditions"""
 
         prompt = f"""You are an expert QA engineer specializing in BDD (Behavior-Driven Development) and Gherkin syntax.
 
@@ -52,8 +67,7 @@ Generate {num_scenarios} comprehensive Gherkin test scenarios for the following 
 **Title:** {user_story.title}
 **Description:** {user_story.description}
 
-**Acceptance Criteria:**
-{criteria_text}
+{criteria_section}
 
 **CRITICAL REQUIREMENTS:**
 1. **READ THE ACCEPTANCE CRITERIA CAREFULLY** - Each criterion contains specific validation rules, field names, and requirements
