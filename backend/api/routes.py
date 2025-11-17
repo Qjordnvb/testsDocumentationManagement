@@ -628,14 +628,27 @@ async def preview_test_cases(
     gherkin_scenarios = []
     if use_ai:
         try:
+            total_scenarios_needed = scenarios_per_test * num_test_cases
             print(f"🤖 Generating Gherkin scenarios with AI for story {story_id}...")
+            print(f"   Requesting {total_scenarios_needed} scenarios ({scenarios_per_test} per test × {num_test_cases} tests)")
+            print(f"   User Story Title: {user_story.title}")
+            print(f"   User Story Description length: {len(user_story.description)} chars")
+
             gherkin_scenarios = gemini_client.generate_gherkin_scenarios(
                 user_story,
-                num_scenarios=scenarios_per_test * num_test_cases
+                num_scenarios=total_scenarios_needed
             )
             print(f"✅ Generated {len(gherkin_scenarios)} scenarios with AI")
+            if gherkin_scenarios:
+                print(f"   Sample scenario: {gherkin_scenarios[0].scenario_name}")
         except Exception as e:
-            print(f"⚠️ AI generation failed: {e}, using fallback")
+            import traceback
+            print(f"❌ AI generation failed with error:")
+            print(f"   Error type: {type(e).__name__}")
+            print(f"   Error message: {str(e)}")
+            print(f"   Traceback:")
+            traceback.print_exc()
+            print(f"⚠️  Using fallback generation instead")
             use_ai = False
 
     # Distribute scenarios across test cases
