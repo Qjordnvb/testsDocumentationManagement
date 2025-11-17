@@ -3,7 +3,7 @@
  * Review and edit AI-generated test case suggestions before saving
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
 import { batchCreateTestCases } from '../api/generateTests';
@@ -33,6 +33,14 @@ export const ReviewTestCasesModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // CRITICAL FIX: Update state when suggestedTests prop changes
+  useEffect(() => {
+    console.log('=== ReviewTestCasesModal: suggestedTests changed ===');
+    console.log('Received suggestedTests:', initialSuggestions);
+    console.log('Count:', initialSuggestions.length);
+    setTestCases(initialSuggestions);
+  }, [initialSuggestions]);
 
   // Handle edit test case
   const handleEdit = (id: string, field: string, value: string) => {
