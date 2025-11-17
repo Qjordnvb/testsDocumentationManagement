@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { testCaseApi } from '@/entities/test-case';
 import { storyApi } from '@/entities/user-story';
 import { useProject } from '@/app/providers/ProjectContext';
@@ -176,9 +177,10 @@ export const TestCasesPage = () => {
     try {
       await testCaseApi.delete(id);
       await loadData();
+      toast.success('Test case eliminado exitosamente');
     } catch (err: any) {
       console.error('Error deleting test case:', err);
-      alert('Error al eliminar test case');
+      toast.error('Error al eliminar test case');
     }
   };
 
@@ -198,15 +200,15 @@ export const TestCasesPage = () => {
       const result = await testCaseApi.batchDelete(testCaseIds);
 
       if (result.errors && result.errors.length > 0) {
-        alert(`Suite eliminado parcialmente. ${result.deleted_count} test cases eliminados.\n\nErrores:\n${result.errors.join('\n')}`);
+        toast.error(`Suite eliminado parcialmente. ${result.deleted_count} eliminados. ${result.errors.length} errores.`);
       } else {
-        alert(`Suite eliminado exitosamente. ${result.deleted_count} test cases eliminados.`);
+        toast.success(`Suite eliminado exitosamente. ${result.deleted_count} test cases eliminados.`);
       }
 
       await loadData();
     } catch (err: any) {
       console.error('Error deleting suite:', err);
-      alert('Error al eliminar el suite de test cases');
+      toast.error('Error al eliminar el suite de test cases');
     } finally {
       setLoading(false);
     }
@@ -219,7 +221,7 @@ export const TestCasesPage = () => {
       setGherkinTestCase(testCase);
     } catch (err: any) {
       console.error('Error loading Gherkin content:', err);
-      alert('Error al cargar el contenido Gherkin');
+      toast.error('Error al cargar el contenido Gherkin');
     }
   };
 
@@ -229,7 +231,7 @@ export const TestCasesPage = () => {
     try {
       await testCaseApi.updateGherkinContent(gherkinTestCase.id, content);
       setGherkinContent(content);
-      alert('Contenido Gherkin guardado exitosamente');
+      toast.success('Contenido Gherkin guardado exitosamente');
     } catch (err: any) {
       console.error('Error saving Gherkin content:', err);
       throw err; // Re-throw to let GherkinEditor handle the error
