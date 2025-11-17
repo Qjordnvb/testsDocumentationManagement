@@ -42,6 +42,7 @@ output/
 uploads/
 data/*.db
 data/*.db-journal
+backend/data/
 
 
 # OS
