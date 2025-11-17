@@ -7,7 +7,6 @@ import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
-import { useProject } from '@/app/providers/ProjectContext';
 import { useUploadStore } from '../model/uploadStore';
 import { uploadFile } from '../api/uploadFile';
 import { validateFile, formatFileSize } from '../lib/fileValidator';
@@ -21,7 +20,6 @@ interface UploadModalProps {
 
 export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
   const { projectId } = useParams<{ projectId: string }>();
-  const { currentProject } = useProject();
   const [dragActive, setDragActive] = useState(false);
   const {
     isUploading,

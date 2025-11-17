@@ -4,7 +4,8 @@
  * Persists selection to localStorage
  */
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import type { Project } from '@/entities/project';
 
 interface ProjectContextType {
