@@ -19,8 +19,6 @@ export const validateFileExtension = (file: File): ValidationResult => {
   const fileName = file.name.toLowerCase();
   const extension = fileName.split('.').pop();
 
-  console.log('Validating file:', fileName, 'Extension:', extension);
-
   if (!extension) {
     return {
       isValid: false,

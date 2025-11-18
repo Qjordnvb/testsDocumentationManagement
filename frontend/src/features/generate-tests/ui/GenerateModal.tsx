@@ -44,9 +44,6 @@ export const GenerateModal = ({
   // Combined loading state (local OR store)
   const isActuallyGenerating = isGenerating || isLoadingLocal;
 
-  // Debug log to track state changes
-  console.log('🔍 GenerateModal state:', { isGenerating, isLoadingLocal, isActuallyGenerating, suggestedTestsCount: suggestedTests.length });
-
   const availableTestTypes = [
     { value: 'FUNCTIONAL', label: 'Functional' },
     { value: 'UI', label: 'UI/UX' },
@@ -68,21 +65,11 @@ export const GenerateModal = ({
 
   // Handle preview generation
   const handleGenerate = async () => {
-    console.log('🚀 Starting test case generation...', {
-      storyId: story.id,
-      numTestCases,
-      scenariosPerTest,
-      testTypes: selectedTestTypes,
-      useAi
-    });
-
     // Set BOTH loading states
     setIsGenerating(true);
     setIsLoadingLocal(true);
     setGenerationError(null);
     setSuggestedTests([]); // Clear previous suggestions
-
-    console.log('✅ Loading states set to TRUE');
 
     // CRITICAL: Force React to re-render with loading state BEFORE making API call
     // Without this delay, the await blocks and React never shows the loading indicator
@@ -97,28 +84,13 @@ export const GenerateModal = ({
         useAi,
       });
 
-      console.log('✅ Preview response received:', response);
-
       if (!response.suggested_test_cases || response.suggested_test_cases.length === 0) {
-        console.warn('⚠️ Response has no test cases');
         setGenerationError('No se generaron sugerencias de test cases. Intenta con otros parámetros.');
         return;
       }
 
-      console.log(`✅ Setting ${response.suggested_test_cases.length} suggested tests`);
       setSuggestedTests(response.suggested_test_cases);
-
-      // Success notification
-      console.log(`✅ Generated ${response.total_suggested} test case suggestions for story: ${story.title}`);
     } catch (error: any) {
-      console.error('❌ Generation error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        response: error.response,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-
       // Better error handling
       let errorMessage = 'Error al generar sugerencias de test cases';
 
@@ -135,13 +107,11 @@ export const GenerateModal = ({
         errorMessage = error.message;
       }
 
-      console.error('❌ Final error message:', errorMessage);
       setGenerationError(errorMessage);
       setSuggestedTests([]); // Ensure empty array on error
     } finally {
       setIsGenerating(false);
       setIsLoadingLocal(false);
-      console.log('✅ Loading states set to FALSE');
     }
   };
 
