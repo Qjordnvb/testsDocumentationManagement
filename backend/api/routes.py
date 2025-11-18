@@ -55,7 +55,7 @@ async def get_projects(db: Session = Depends(get_db)):
         total_tests = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
         total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
 
-        coverage = (total_tests / total_stories * 100) if total_stories > 0 else 0.0
+        coverage = min((total_tests / total_stories * 100), 100.0) if total_stories > 0 else 0.0
 
         result.append({
             "id": project.id,
@@ -89,7 +89,7 @@ async def get_project(project_id: str, db: Session = Depends(get_db)):
     total_stories = db.query(UserStoryDB).filter(UserStoryDB.project_id == project.id).count()
     total_tests = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
     total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
-    coverage = (total_tests / total_stories * 100) if total_stories > 0 else 0.0
+    coverage = min((total_tests / total_stories * 100), 100.0) if total_stories > 0 else 0.0
 
     return {
         "id": project.id,
@@ -1010,17 +1010,64 @@ async def delete_test_case(test_id: str, db: Session = Depends(get_db)):
     tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
     if not tc:
         raise HTTPException(status_code=404, detail="Test case not found")
-    
+
     # Delete associated Gherkin file if exists
     if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
         os.remove(tc.gherkin_file_path)
-    
+
     db.delete(tc)
     db.commit()
-    
+
     return {
         "message": "Test case deleted successfully",
         "deleted_id": test_id
+    }
+
+
+@router.delete("/test-cases/batch")
+async def delete_test_cases_batch(
+    test_case_ids: dict,
+    db: Session = Depends(get_db)
+):
+    """Delete multiple test cases at once
+
+    Accepts: {"test_case_ids": ["TC-001", "TC-002", ...]}
+    """
+    ids_to_delete = test_case_ids.get("test_case_ids", [])
+
+    if not ids_to_delete:
+        raise HTTPException(status_code=400, detail="No test case IDs provided")
+
+    deleted_count = 0
+    deleted_ids = []
+    errors = []
+
+    for test_id in ids_to_delete:
+        try:
+            tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+            if tc:
+                # Delete associated Gherkin file if exists
+                if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
+                    try:
+                        os.remove(tc.gherkin_file_path)
+                    except Exception as e:
+                        print(f"Warning: Could not delete Gherkin file {tc.gherkin_file_path}: {e}")
+
+                db.delete(tc)
+                deleted_count += 1
+                deleted_ids.append(test_id)
+            else:
+                errors.append(f"Test case {test_id} not found")
+        except Exception as e:
+            errors.append(f"Error deleting {test_id}: {str(e)}")
+
+    db.commit()
+
+    return {
+        "message": f"Deleted {deleted_count} test case(s) successfully",
+        "deleted_count": deleted_count,
+        "deleted_ids": deleted_ids,
+        "errors": errors if errors else None
     }
 
 

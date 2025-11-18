@@ -5,6 +5,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { Layout } from '@/widgets/header/Layout';
 import { ProjectsListPage } from '@/pages/ProjectsListPage';
@@ -60,6 +61,32 @@ function App() {
           </Routes>
         </Layout>
       </ProjectProvider>
+      {/* Toast notifications */}
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </BrowserRouter>
   );
 }

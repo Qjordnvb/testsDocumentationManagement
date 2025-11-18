@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { testCaseApi } from '@/entities/test-case';
 import { storyApi } from '@/entities/user-story';
 import { useProject } from '@/app/providers/ProjectContext';
@@ -14,7 +15,7 @@ import type { UserStory } from '@/entities/user-story';
 import { Modal } from '@/shared/ui/Modal';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 import { TestCaseFormModal } from '@/features/test-case-management/ui';
-import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye, Search, Filter } from 'lucide-react';
 
 interface TestSuite {
   userStory: UserStory | null;
@@ -36,6 +37,16 @@ export const TestCasesPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [expandedSuites, setExpandedSuites] = useState<Set<string>>(new Set());
+
+  // Search and filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTestType, setSelectedTestType] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedPriority, setSelectedPriority] = useState<string>('ALL');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Validate project
   useEffect(() => {
@@ -75,11 +86,41 @@ export const TestCasesPage = () => {
     }
   };
 
-  // Group test cases by user story
+  // Group test cases by user story with search and filters
   const testSuites = useMemo<TestSuite[]>(() => {
-    const grouped: { [key: string]: TestCase[] } = {};
+    // Filter test cases based on search and filters
+    const filteredTests = testCases.filter(tc => {
+      // Search filter (search in ID, title, description)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          tc.id.toLowerCase().includes(query) ||
+          tc.title.toLowerCase().includes(query) ||
+          (tc.description && tc.description.toLowerCase().includes(query));
+        if (!matchesSearch) return false;
+      }
 
-    testCases.forEach(tc => {
+      // Test type filter
+      if (selectedTestType !== 'ALL' && tc.test_type !== selectedTestType) {
+        return false;
+      }
+
+      // Status filter
+      if (selectedStatus !== 'ALL' && tc.status !== selectedStatus) {
+        return false;
+      }
+
+      // Priority filter
+      if (selectedPriority !== 'ALL' && tc.priority !== selectedPriority) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Group filtered tests by user story
+    const grouped: { [key: string]: TestCase[] } = {};
+    filteredTests.forEach(tc => {
       if (!grouped[tc.user_story_id]) {
         grouped[tc.user_story_id] = [];
       }
@@ -94,7 +135,21 @@ export const TestCasesPage = () => {
         testCases: tcs.sort((a, b) => a.id.localeCompare(b.id))
       };
     }).sort((a, b) => a.userStoryId.localeCompare(b.userStoryId));
-  }, [testCases, userStories]);
+  }, [testCases, userStories, searchQuery, selectedTestType, selectedStatus, selectedPriority]);
+
+  // Paginate suites
+  const paginatedSuites = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return testSuites.slice(startIndex, endIndex);
+  }, [testSuites, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(testSuites.length / pageSize);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTestType, selectedStatus, selectedPriority]);
 
   const toggleSuite = (suiteId: string) => {
     setExpandedSuites(prev => {
@@ -122,9 +177,40 @@ export const TestCasesPage = () => {
     try {
       await testCaseApi.delete(id);
       await loadData();
+      toast.success('Test case eliminado exitosamente');
     } catch (err: any) {
       console.error('Error deleting test case:', err);
-      alert('Error al eliminar test case');
+      toast.error('Error al eliminar test case');
+    }
+  };
+
+  const handleDeleteSuite = async (suite: TestSuite, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent suite collapse/expand
+
+    const count = suite.testCases.length;
+    const userStoryTitle = suite.userStory?.title || suite.userStoryId;
+
+    if (!confirm(`¿Estás seguro de eliminar TODOS los ${count} test cases del suite "${userStoryTitle}"?\n\nEsta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const testCaseIds = suite.testCases.map(tc => tc.id);
+      const result = await testCaseApi.batchDelete(testCaseIds);
+
+      if (result.errors && result.errors.length > 0) {
+        toast.error(`Suite eliminado parcialmente. ${result.deleted_count} eliminados. ${result.errors.length} errores.`);
+      } else {
+        toast.success(`Suite eliminado exitosamente. ${result.deleted_count} test cases eliminados.`);
+      }
+
+      await loadData();
+    } catch (err: any) {
+      console.error('Error deleting suite:', err);
+      toast.error('Error al eliminar el suite de test cases');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,7 +221,7 @@ export const TestCasesPage = () => {
       setGherkinTestCase(testCase);
     } catch (err: any) {
       console.error('Error loading Gherkin content:', err);
-      alert('Error al cargar el contenido Gherkin');
+      toast.error('Error al cargar el contenido Gherkin');
     }
   };
 
@@ -145,7 +231,7 @@ export const TestCasesPage = () => {
     try {
       await testCaseApi.updateGherkinContent(gherkinTestCase.id, content);
       setGherkinContent(content);
-      alert('Contenido Gherkin guardado exitosamente');
+      toast.success('Contenido Gherkin guardado exitosamente');
     } catch (err: any) {
       console.error('Error saving Gherkin content:', err);
       throw err; // Re-throw to let GherkinEditor handle the error
@@ -194,17 +280,113 @@ export const TestCasesPage = () => {
         </div>
       </div>
 
+      {/* Search and Filters */}
+      <div className="card">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search bar */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar test cases por ID, título o descripción..."
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3">
+            {/* Test Type Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={selectedTestType}
+                onChange={(e) => setSelectedTestType(e.target.value)}
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="ALL">Todos los tipos</option>
+                <option value="FUNCTIONAL">Functional</option>
+                <option value="UI">UI</option>
+                <option value="API">API</option>
+                <option value="INTEGRATION">Integration</option>
+                <option value="SECURITY">Security</option>
+                <option value="PERFORMANCE">Performance</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="ALL">Todos los estados</option>
+              <option value="NOT_RUN">Not Run</option>
+              <option value="PASSED">Passed</option>
+              <option value="FAILED">Failed</option>
+              <option value="BLOCKED">Blocked</option>
+              <option value="SKIPPED">Skipped</option>
+            </select>
+
+            {/* Priority Filter */}
+            <select
+              value={selectedPriority}
+              onChange={(e) => setSelectedPriority(e.target.value)}
+              className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="ALL">Todas las prioridades</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+
+            {/* Clear Filters Button */}
+            {(searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedTestType('ALL');
+                  setSelectedStatus('ALL');
+                  setSelectedPriority('ALL');
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Results count */}
+        {(searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL') && (
+          <div className="mt-3 text-sm text-gray-600">
+            Mostrando {testSuites.reduce((sum, suite) => sum + suite.testCases.length, 0)} de {testCases.length} test cases
+            {testSuites.length < Object.keys(testCases.reduce((acc, tc) => ({ ...acc, [tc.user_story_id]: true }), {})).length && (
+              <span> en {testSuites.length} suites</span>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Test Suites (Grouped by User Story) */}
       {testSuites.length === 0 ? (
         <div className="card text-center py-12">
-          <div className="text-gray-400 text-lg mb-2">No hay test cases</div>
+          <div className="text-gray-400 text-lg mb-2">
+            {searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL'
+              ? 'No se encontraron test cases'
+              : 'No hay test cases'}
+          </div>
           <p className="text-gray-500 text-sm">
-            Genera test cases desde las user stories
+            {searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL'
+              ? 'Intenta ajustar los filtros o limpiarlos'
+              : 'Genera test cases desde las user stories'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {testSuites.map((suite) => {
+          {paginatedSuites.map((suite) => {
             const isExpanded = expandedSuites.has(suite.userStoryId);
             const passedCount = suite.testCases.filter(tc => tc.status === 'PASSED').length;
             const failedCount = suite.testCases.filter(tc => tc.status === 'FAILED').length;
@@ -263,6 +445,16 @@ export const TestCasesPage = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Delete Suite Button */}
+                    <button
+                      onClick={(e) => handleDeleteSuite(suite, e)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title={`Delete all ${suite.testCases.length} test cases`}
+                      aria-label={`Delete suite ${suite.userStoryId}`}
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
 
@@ -356,6 +548,96 @@ export const TestCasesPage = () => {
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 bg-white rounded-lg mt-4">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Mostrando <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> a{' '}
+                    <span className="font-medium">{Math.min(currentPage * pageSize, testSuites.length)}</span> de{' '}
+                    <span className="font-medium">{testSuites.length}</span> suites
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Page size selector */}
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="5">5 por página</option>
+                    <option value="10">10 por página</option>
+                    <option value="25">25 por página</option>
+                    <option value="50">50 por página</option>
+                  </select>
+
+                  {/* Page navigation */}
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ←
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 4) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 3) {
+                        pageNum = totalPages - 6 + i;
+                      } else {
+                        pageNum = currentPage - 3 + i;
+                      }
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNum
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      →
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

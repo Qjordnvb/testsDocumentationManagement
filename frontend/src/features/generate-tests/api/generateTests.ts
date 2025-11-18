@@ -10,7 +10,7 @@ import type { TestCase } from '@/entities/test-case';
 const api = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 60000, // 60s for AI generation
+  timeout: 180000, // 3 minutes for AI generation (Gemini can be slow for many scenarios)
 });
 
 export interface GenerateTestsParams {

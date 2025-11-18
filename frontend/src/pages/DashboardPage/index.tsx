@@ -140,24 +140,28 @@ export const Dashboard = () => {
           label="User Stories"
           value={stats?.total_user_stories || 0}
           color="blue"
+          onClick={() => navigate(`/projects/${projectId}/stories`)}
         />
         <MetricCard
           icon="✅"
           label="Test Cases"
           value={stats?.total_test_cases || 0}
           color="green"
+          onClick={() => navigate(`/projects/${projectId}/tests`)}
         />
         <MetricCard
           icon="🐛"
           label="Bug Reports"
           value={stats?.total_bugs || 0}
           color="red"
+          onClick={() => navigate(`/projects/${projectId}/bugs`)}
         />
         <MetricCard
           icon="📊"
           label="Test Coverage"
           value={`${coverage}%`}
           color="purple"
+          onClick={() => navigate(`/projects/${projectId}/tests`)}
         />
       </div>
 
