@@ -32,14 +32,6 @@ export const Sidebar = () => {
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
   const [allProjects, setAllProjects] = useState<Project[]>([]);
 
-  // Debug logging
-  console.log('🔍 Sidebar:', {
-    projectId,
-    pathname: location.pathname,
-    params,
-    hasProjectId: !!projectId
-  });
-
   // Build nav items with dynamic projectId
   const navItems: NavItem[] = projectId ? [
     { path: `/projects/${projectId}/dashboard`, label: 'Dashboard', icon: '📊' },

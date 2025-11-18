@@ -21,17 +21,21 @@ interface UploadModalProps {
 export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
   const { projectId } = useParams<{ projectId: string }>();
   const [dragActive, setDragActive] = useState(false);
-  const {
-    isUploading,
-    uploadProgress,
-    uploadError,
-    uploadedFile,
-    setIsUploading,
-    setUploadProgress,
-    setUploadError,
-    setUploadedFile,
-    resetUpload,
-  } = useUploadStore();
+  const [isLoadingLocal, setIsLoadingLocal] = useState(false);
+
+  // Use Zustand store with explicit selectors to avoid stale closures
+  const isUploading = useUploadStore((state) => state.isUploading);
+  const uploadProgress = useUploadStore((state) => state.uploadProgress);
+  const uploadError = useUploadStore((state) => state.uploadError);
+  const uploadedFile = useUploadStore((state) => state.uploadedFile);
+  const setIsUploading = useUploadStore((state) => state.setIsUploading);
+  const setUploadProgress = useUploadStore((state) => state.setUploadProgress);
+  const setUploadError = useUploadStore((state) => state.setUploadError);
+  const setUploadedFile = useUploadStore((state) => state.setUploadedFile);
+  const resetUpload = useUploadStore((state) => state.resetUpload);
+
+  // Combined loading state (local OR store) - CRITICAL for showing loading indicator
+  const isActuallyUploading = isUploading || isLoadingLocal;
 
   // Handle drag events
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -64,25 +68,16 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
   // Handle file
   const handleFile = (file: File) => {
-    console.log('=== handleFile called ===');
-    console.log('File object:', file);
-    console.log('File name:', file.name);
-    console.log('File size:', file.size);
-    console.log('File type:', file.type);
-
     setUploadError(null);
 
     // Validate file
     const validation = validateFile(file);
-    console.log('Validation result:', validation);
 
     if (!validation.isValid) {
-      console.error('Validation failed:', validation.error);
       setUploadError(validation.error || 'Archivo inválido');
       return;
     }
 
-    console.log('File validated successfully!');
     setUploadedFile(file);
   };
 
@@ -90,33 +85,46 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
   const handleUpload = async () => {
     if (!uploadedFile || !projectId) return;
 
+    // Set BOTH loading states
     setIsUploading(true);
+    setIsLoadingLocal(true);
     setUploadError(null);
     setUploadProgress(0);
+
+    // CRITICAL: Force React to re-render with loading state BEFORE making API call
+    // Without this delay, the await blocks and React never shows the loading indicator
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
       const response = await uploadFile(uploadedFile, projectId, (progress) => {
         setUploadProgress(progress);
       });
 
-      // Success
-      console.log('Upload successful:', response);
+      // Wait a bit to show success state before closing
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Close modal and refresh stories
       handleClose();
       onSuccess?.();
     } catch (error: any) {
-      console.error('Upload error:', error);
       setUploadError(
         error.response?.data?.detail || 'Error al subir el archivo'
       );
       setIsUploading(false);
+      setIsLoadingLocal(false);
+    } finally {
+      setIsUploading(false);
+      setIsLoadingLocal(false);
     }
   };
 
   // Handle close
   const handleClose = () => {
-    resetUpload();
+    // Don't reset if upload is in progress
+    if (!isActuallyUploading) {
+      resetUpload();
+      setIsLoadingLocal(false);
+    }
     onClose();
   };
 
@@ -135,7 +143,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
             className={`
               relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
               ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-              ${isUploading ? 'opacity-50 pointer-events-none' : ''}
+              ${isActuallyUploading ? 'opacity-50 pointer-events-none' : ''}
             `}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -148,7 +156,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
               accept=".xlsx,.xls,.csv"
               onChange={handleFileChange}
               className="hidden"
-              disabled={isUploading}
+              disabled={isActuallyUploading}
             />
             <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
             <p className="text-sm text-gray-600 mb-2">
@@ -164,7 +172,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
         )}
 
         {/* Selected file */}
-        {uploadedFile && !isUploading && (
+        {uploadedFile && !isActuallyUploading && (
           <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
             <FileSpreadsheet className="w-8 h-8 text-green-600 flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -185,24 +193,44 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
         )}
 
         {/* Upload progress */}
-        {isUploading && (
-          <div className="space-y-2">
+        {isActuallyUploading && (
+          <div className="space-y-3">
             <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
               <FileSpreadsheet className="w-8 h-8 text-blue-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {uploadedFile?.name}
                 </p>
-                <p className="text-xs text-gray-500">Subiendo...</p>
+                <p className="text-xs text-gray-500">
+                  {uploadProgress < 100 ? 'Subiendo archivo...' : 'Procesando con IA...'}
+                </p>
               </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-            <p className="text-xs text-center text-gray-500">{uploadProgress}%</p>
+
+            {uploadProgress < 100 ? (
+              <div className="space-y-1">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-center text-gray-500">{uploadProgress}%</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>La IA está extrayendo los criterios de aceptación...</span>
+                </div>
+                <p className="text-xs text-center text-gray-500">
+                  Esto puede tomar unos segundos dependiendo del tamaño del archivo
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -216,14 +244,24 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-4 border-t">
-          <Button variant="secondary" onClick={handleClose} disabled={isUploading}>
+          <Button variant="secondary" onClick={handleClose} disabled={isActuallyUploading}>
             Cancelar
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={!uploadedFile || isUploading}
+            disabled={!uploadedFile || isActuallyUploading}
           >
-            {isUploading ? 'Subiendo...' : 'Subir archivo'}
+            {isActuallyUploading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {uploadProgress < 100 ? 'Subiendo...' : 'Procesando...'}
+              </span>
+            ) : (
+              'Subir archivo'
+            )}
           </Button>
         </div>
       </div>

@@ -34,11 +34,8 @@ export const ReviewTestCasesModal = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // CRITICAL FIX: Update state when suggestedTests prop changes
+  // Update state when suggestedTests prop changes
   useEffect(() => {
-    console.log('=== ReviewTestCasesModal: suggestedTests changed ===');
-    console.log('Received suggestedTests:', initialSuggestions);
-    console.log('Count:', initialSuggestions.length);
     setTestCases(initialSuggestions);
   }, [initialSuggestions]);
 
