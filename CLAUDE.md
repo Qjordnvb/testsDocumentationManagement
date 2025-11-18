@@ -1,7 +1,27 @@
 # CLAUDE.md - Documentación Técnica Completa
 
-**Última Actualización**: 2025-11-16
-**Estado**: Multi-Project Architecture implementada en backend, pendiente integración frontend
+**Última Actualización**: 2025-11-18
+**Estado**: 🟢 Backend 100% | 🟡 Frontend 85% Funcional
+**Branch**: `claude/create-qa-flow-frontend-01Bhq5TXVYeMVNCXSz6hcaCg`
+
+---
+
+## ⚠️ IMPORTANTE: Estado Actual
+
+### Base de Datos Vacía
+La BD está completamente vacía (0 proyectos, 0 user stories). Por eso los contadores de criterios están en 0.
+
+**Para inicializar el sistema**:
+1. Crear un proyecto: `POST /projects`
+2. Upload Excel con user stories: `POST /upload?project_id=PROJ-001`
+3. Ver criterios en frontend: `/projects/PROJ-001/stories` → Click en chevron `>` para expandir fila
+
+**Formato Excel requerido**:
+- Columna: `acceptance_criteria`
+- Separadores soportados: `\n`, `;`, `|`, `- `
+- Ejemplo: `- Validar email\n- Validar password\n- Redirect dashboard`
+
+**Ver detalles en**: [PROJECT_STATUS.md](./PROJECT_STATUS.md) → Sección "Quick Start"
 
 ---
 
@@ -13,7 +33,7 @@
 4. [Modelos Pydantic](#modelos-pydantic)
 5. [Configuración](#configuración)
 6. [Guía de Integración Frontend](#guía-de-integración-frontend)
-7. [Tareas Pendientes](#tareas-pendientes)
+7. [Acceptance Criteria - Cómo Funciona](#acceptance-criteria---cómo-funciona)
 8. [Flujo de Trabajo Actual](#flujo-de-trabajo-actual)
 
 ---
@@ -1511,6 +1531,226 @@ async def get_project_user_stories(
 - [ ] Remover `setInterval` de DashboardPage (línea 34)
 - [ ] Agregar botón manual "Actualizar Métricas"
 - [ ] Usar `useProject()` para recargar stats cuando cambia proyecto
+
+---
+
+## ACCEPTANCE CRITERIA - CÓMO FUNCIONA
+
+### Backend Implementation
+
+#### 1. Database Model (`backend/database/models.py`)
+```python
+class UserStoryDB(Base):
+    __tablename__ = "user_stories"
+
+    # ... otros campos ...
+    acceptance_criteria = Column(Text, nullable=True)  # Stored as JSON string
+    total_criteria = Column(Integer, default=0)
+    completed_criteria = Column(Integer, default=0)
+    completion_percentage = Column(Float, default=0.0)
+```
+
+#### 2. Pydantic Model (`backend/models/user_story.py`)
+```python
+class AcceptanceCriteria(BaseModel):
+    id: Optional[str] = None
+    description: str
+    completed: bool = False
+
+class UserStory(BaseModel):
+    id: str
+    title: str
+    description: str
+    acceptance_criteria: List[AcceptanceCriteria] = []
+    # ...
+
+    def get_completion_percentage(self) -> float:
+        if not self.acceptance_criteria:
+            return 0.0
+        completed = sum(1 for ac in self.acceptance_criteria if ac.completed)
+        return (completed / len(self.acceptance_criteria)) * 100
+```
+
+#### 3. File Parser (`backend/parsers/file_parser.py`)
+
+**Detecta columnas**:
+```python
+COLUMN_MAPPINGS = {
+    "acceptance_criteria": [
+        "acceptance_criteria", "acceptance", "criteria", "ac",
+        "conditions", "definition_of_done", "dod"
+    ]
+}
+```
+
+**Parsea múltiples formatos**:
+```python
+def _parse_acceptance_criteria(self, criteria_text: str) -> List[AcceptanceCriteria]:
+    separators = ["\n", ";", "|", "- "]  # ✅ Múltiples separadores
+    # Genera: [
+    #   AcceptanceCriteria(id="AC-1", description="...", completed=False),
+    #   AcceptanceCriteria(id="AC-2", description="...", completed=False),
+    # ]
+```
+
+**Formato Excel soportado**:
+
+| id | title | description | acceptance_criteria | priority | status |
+|----|-------|-------------|---------------------|----------|--------|
+| US-001 | User Login | Como usuario... | - Validar email\n- Validar password\n- Redirect dashboard | High | Backlog |
+
+**Separadores aceptados**:
+- `\n` (salto de línea): `Criterion 1\nCriterion 2`
+- `;` (punto y coma): `Criterion 1; Criterion 2`
+- `|` (pipe): `Criterion 1 | Criterion 2`
+- `- ` (guión): `- Criterion 1\n- Criterion 2`
+
+#### 4. API Endpoint (`backend/api/routes.py`)
+
+**POST /upload** (líneas 328-356):
+```python
+# Al guardar:
+existing_story.acceptance_criteria = json.dumps(
+    [ac.dict() for ac in user_story.acceptance_criteria]
+) if user_story.acceptance_criteria else None
+existing_story.total_criteria = len(user_story.acceptance_criteria)
+existing_story.completed_criteria = sum(1 for ac in user_story.acceptance_criteria if ac.completed)
+existing_story.completion_percentage = user_story.get_completion_percentage()
+```
+
+**GET /user-stories** (línea 413):
+```python
+# Al retornar:
+{
+    "id": "US-001",
+    "title": "User Login",
+    "acceptance_criteria": json.loads(s.acceptance_criteria) if s.acceptance_criteria else [],  # ✅ Parse JSON
+    "total_criteria": s.total_criteria,
+    "completed_criteria": s.completed_criteria,
+    "completion_percentage": s.completion_percentage,
+}
+```
+
+### Frontend Implementation
+
+#### 1. TypeScript Types (`frontend/src/entities/user-story/model/types.ts`)
+```typescript
+export interface AcceptanceCriteria {
+  id?: string;
+  description: string;
+  completed: boolean;
+}
+
+export interface UserStory {
+  id: string;
+  title: string;
+  description: string;
+  acceptance_criteria: AcceptanceCriteria[];
+  completion_percentage?: number;
+  // ...
+}
+```
+
+#### 2. StoryTable - Columna Criterios (`frontend/src/widgets/story-table/StoryTable.tsx:83-105`)
+```typescript
+<div className="flex items-center gap-2">
+  {/* Contador: 2/3 */}
+  <span className="text-sm text-gray-600">
+    {completed}/{criteria.length}
+  </span>
+
+  {/* Barra de progreso */}
+  <div className="w-20 h-2 bg-gray-200 rounded-full">
+    <div
+      className="h-full bg-green-500 rounded-full"
+      style={{ width: `${(completed / criteria.length) * 100}%` }}
+    />
+  </div>
+</div>
+```
+
+#### 3. StoryTable - Fila Expandida (`frontend/src/widgets/story-table/StoryTable.tsx:274-295`)
+```typescript
+<div className="p-4 border-t">
+  <h4 className="font-semibold mb-2">
+    Criterios de Aceptación ({row.original.acceptance_criteria.length})
+  </h4>
+
+  <ul className="space-y-2">
+    {row.original.acceptance_criteria.map((criterion, index) => (
+      <li key={criterion.id || index} className="flex items-start gap-2">
+        {criterion.completed ? (
+          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+        ) : (
+          <Circle className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+        )}
+        <span className={criterion.completed ? 'text-gray-500 line-through' : ''}>
+          {criterion.description}
+        </span>
+      </li>
+    ))}
+  </ul>
+</div>
+```
+
+### Cómo Se Ve en el Frontend
+
+**Tabla (vista contraída)**:
+```
+┌──────────┬─────────────────┬──────────────┬───────────┐
+│ ID       │ Title           │ Criterios    │ Status    │
+├──────────┼─────────────────┼──────────────┼───────────┤
+│ > US-001 │ User Login      │ 2/3 [▓▓░]   │ Backlog   │
+│ > US-002 │ User Logout     │ 1/2 [▓░░]   │ To Do     │
+└──────────┴─────────────────┴──────────────┴───────────┘
+```
+
+**Fila expandida** (click en `>` chevron):
+```
+┌────────────────────────────────────────────────────────┐
+│ US-001: User Login                                     │
+├────────────────────────────────────────────────────────┤
+│ Descripción:                                           │
+│ Como usuario quiero iniciar sesión...                  │
+│                                                        │
+│ Criterios de Aceptación (3):                          │
+│ ✓ El usuario puede ingresar email y password          │
+│ ✓ El sistema valida las credenciales                  │
+│ ○ Redirect exitoso al dashboard                       │
+│                                                        │
+│ Metadata:                                              │
+│ Epic: Authentication | Sprint: 1 | Points: 5          │
+└────────────────────────────────────────────────────────┘
+```
+
+### Troubleshooting
+
+**Problema**: Contador está en 0
+
+**Posibles causas**:
+1. **BD vacía** → Crear proyecto + upload Excel
+2. **Excel sin columna** → Verificar que tiene "acceptance_criteria" (o variantes)
+3. **Formato incorrecto** → Usar separadores: `\n`, `;`, `|`, `- `
+4. **Datos viejos** → Re-importar Excel después de migración
+
+**Verificación**:
+```bash
+# Backend
+cd backend && python -c "
+from database.db import SessionLocal
+from database.models import UserStoryDB
+import json
+
+db = SessionLocal()
+story = db.query(UserStoryDB).first()
+if story:
+    criteria = json.loads(story.acceptance_criteria) if story.acceptance_criteria else []
+    print(f'Story: {story.id}')
+    print(f'Criteria JSON: {story.acceptance_criteria}')
+    print(f'Parsed: {len(criteria)} items')
+db.close()
+"
+```
 
 ---
 
