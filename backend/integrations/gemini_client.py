@@ -22,7 +22,7 @@ class GeminiClient:
                 "temperature": 0.7,
                 "top_p": 0.95,
                 "top_k": 40,
-                "max_output_tokens": 8192,  # Maximum tokens for response
+                "max_output_tokens": 16384,  # 16k tokens (Gemini 2.5 Flash supports up to 64k)
                 "response_mime_type": "application/json",  # Request JSON format explicitly
             }
         )
