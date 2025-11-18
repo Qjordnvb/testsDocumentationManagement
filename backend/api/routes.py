@@ -11,7 +11,7 @@ from datetime import datetime
 
 from backend.models import (
     Project, CreateProjectDTO, UpdateProjectDTO, ProjectStatus,
-    UserStory, TestCase, BugReport, TestType, TestPriority, TestStatus
+    UserStory, AcceptanceCriteria, TestCase, BugReport, TestType, TestPriority, TestStatus
 )
 from backend.parsers import FileParser
 from backend.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
@@ -255,7 +255,8 @@ async def get_project_stats(project_id: str, db: Session = Depends(get_db)):
 async def upload_file(
     file: UploadFile = File(...),
     project_id: str = Query(..., description="Project ID to associate user stories with"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    gemini_client: GeminiClient = Depends(get_gemini_client)
 ):
     """
     Upload and parse XLSX/CSV file with user stories
@@ -294,9 +295,9 @@ async def upload_file(
 
         print(f"File saved successfully. Size: {file_path.stat().st_size} bytes")
 
-        # Parse file
-        print("Starting file parsing...")
-        parser = FileParser()
+        # Parse file with AI support for acceptance criteria
+        print("Starting file parsing with AI support...")
+        parser = FileParser(gemini_client=gemini_client)
         result = parser.parse(str(file_path))
 
         print(f"Parse result: success={result.success}, stories={len(result.user_stories)}, errors={result.errors}")
@@ -360,12 +361,36 @@ async def upload_file(
 
         db.commit()
         print(f"Database commit successful! Inserted: {len(saved_stories)}, Updated: {len(updated_stories)}")
+
+        # Fetch the saved stories with all data
+        all_story_ids = [s.id for s in result.user_stories]
+        db_stories = db.query(UserStoryDB).filter(UserStoryDB.id.in_(all_story_ids)).all()
+
+        # Format stories with acceptance criteria
+        formatted_stories = []
+        for story in db_stories:
+            formatted_stories.append({
+                "id": story.id,
+                "title": story.title,
+                "description": story.description,
+                "acceptance_criteria": json.loads(story.acceptance_criteria) if story.acceptance_criteria else [],
+                "total_criteria": story.total_criteria,
+                "completed_criteria": story.completed_criteria,
+                "completion_percentage": story.completion_percentage,
+                "priority": story.priority,
+                "status": story.status
+            })
+
+        print(f"Returning {len(formatted_stories)} stories with criteria")
         print("=== UPLOAD COMPLETE ===\n")
 
         return {
             "message": f"Successfully processed {len(result.user_stories)} user stories ({len(saved_stories)} new, {len(updated_stories)} updated)",
-            "inserted": saved_stories,
-            "updated": updated_stories,
+            "file_name": file.filename,
+            "stories_count": len(formatted_stories),
+            "user_stories": formatted_stories,
+            "inserted": len(saved_stories),
+            "updated": len(updated_stories),
             "total": len(result.user_stories),
             "file_path": str(file_path),
             "detected_columns": parser.get_detected_columns_info()
@@ -466,13 +491,27 @@ async def generate_test_cases(
             detail=f"User story {story_id} is not associated with a project. Please re-import user stories with project_id."
         )
 
-    # Convert to UserStory model (simplified, you may want to fetch full data)
+    # Parse acceptance criteria from JSON
+    acceptance_criteria = []
+    if story_db.acceptance_criteria:
+        try:
+            criteria_data = json.loads(story_db.acceptance_criteria)
+            acceptance_criteria = [AcceptanceCriteria(**ac) for ac in criteria_data]
+        except Exception as e:
+            print(f"Warning: Failed to parse acceptance criteria for {story_id}: {e}")
+
+    # Convert to UserStory model with full data including acceptance criteria
     user_story = UserStory(
         id=story_db.id,
         title=story_db.title,
         description=story_db.description,
+        acceptance_criteria=acceptance_criteria,
         priority=story_db.priority,
-        status=story_db.status
+        status=story_db.status,
+        epic=story_db.epic,
+        sprint=story_db.sprint,
+        story_points=story_db.story_points,
+        assigned_to=story_db.assigned_to
     )
 
     # Generate scenarios
@@ -622,12 +661,26 @@ async def preview_test_cases(
             detail=f"User story {story_id} is not associated with a project. Please re-import user stories with project_id."
         )
 
+    # Parse acceptance criteria from JSON
+    acceptance_criteria = []
+    if story_db.acceptance_criteria:
+        try:
+            criteria_data = json.loads(story_db.acceptance_criteria)
+            acceptance_criteria = [AcceptanceCriteria(**ac) for ac in criteria_data]
+        except Exception as e:
+            print(f"Warning: Failed to parse acceptance criteria for {story_id}: {e}")
+
     user_story = UserStory(
         id=story_db.id,
         title=story_db.title,
         description=story_db.description,
+        acceptance_criteria=acceptance_criteria,
         priority=story_db.priority,
-        status=story_db.status
+        status=story_db.status,
+        epic=story_db.epic,
+        sprint=story_db.sprint,
+        story_points=story_db.story_points,
+        assigned_to=story_db.assigned_to
     )
 
     # Generate multiple test cases with AI
@@ -694,63 +747,64 @@ async def preview_test_cases(
 
             gherkin_content = "\n".join(gherkin_lines)
         else:
-            # Fallback: Generate multiple scenarios based on test type (NO AI)
+            # Fallback: Generate multiple scenarios based on test type (NO AI) - EN ESPAÑOL
             gherkin_lines = [
                 f"Feature: {title}",
                 f"  {user_story.description}",
                 "",
-                f"  User Story: {user_story.id}",
-                f"  Test Type: {test_type}",
-                f"  Note: AI generation unavailable - using template scenarios",
+                f"  Historia de Usuario: {user_story.id}",
+                f"  Tipo de Prueba: {test_type}",
+                f"  Nota: Generación con IA no disponible - usando escenarios de plantilla",
                 "",
             ]
 
             # Generate scenarios_per_test scenarios based on test type
             for s in range(1, scenarios_per_test + 1):
-                scenario_type = "Happy Path" if s == 1 else ("Negative" if s == 2 else f"Edge Case {s-2}")
+                scenario_type = "Camino Feliz" if s == 1 else ("Negativo" if s == 2 else f"Caso Extremo {s-2}")
+                scenario_type_en = "Happy Path" if s == 1 else ("Negative" if s == 2 else f"Edge Case {s-2}")
 
                 if test_type == "FUNCTIONAL":
                     gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
                         f"Scenario {s}: {scenario_type} - {user_story.title[:50]}",
-                        f"  Given the system is configured for {user_story.id}",
-                        f"  And all prerequisites are met",
-                        f"  When {'the valid action is performed' if s == 1 else 'an invalid action is attempted' if s == 2 else 'edge case conditions are present'}",
-                        f"  Then {'the expected result is achieved' if s == 1 else 'appropriate error handling occurs' if s == 2 else 'boundary conditions are handled correctly'}",
-                        f"  And the system state is {'updated correctly' if s == 1 else 'remains consistent'}",
+                        f"  Given el sistema está configurado para {user_story.id}",
+                        f"  And todos los prerequisitos están cumplidos",
+                        f"  When {'se realiza la acción válida' if s == 1 else 'se intenta una acción inválida' if s == 2 else 'se presentan condiciones de caso extremo'}",
+                        f"  Then {'se logra el resultado esperado' if s == 1 else 'ocurre el manejo de errores apropiado' if s == 2 else 'se manejan correctamente las condiciones de frontera'}",
+                        f"  And el estado del sistema {'se actualiza correctamente' if s == 1 else 'permanece consistente'}",
                         ""
                     ])
                 elif test_type == "UI":
                     gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
                         f"Scenario {s}: UI {scenario_type} - {user_story.title[:50]}",
-                        f"  Given the user is on the relevant page for {user_story.id}",
-                        f"  And the UI elements are loaded",
-                        f"  When the user {'performs the primary UI action' if s == 1 else 'attempts invalid UI interaction' if s == 2 else 'tests UI edge cases'}",
-                        f"  Then {'the UI responds correctly' if s == 1 else 'proper validation messages appear' if s == 2 else 'UI handles edge cases gracefully'}",
-                        f"  And the visual state is updated appropriately",
+                        f"  Given el usuario está en la página relevante para {user_story.id}",
+                        f"  And los elementos de UI están cargados",
+                        f"  When el usuario {'realiza la acción principal de UI' if s == 1 else 'intenta una interacción de UI inválida' if s == 2 else 'prueba casos extremos de UI'}",
+                        f"  Then {'la UI responde correctamente' if s == 1 else 'aparecen mensajes de validación apropiados' if s == 2 else 'la UI maneja casos extremos apropiadamente'}",
+                        f"  And el estado visual se actualiza apropiadamente",
                         ""
                     ])
                 elif test_type == "API":
                     gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
                         f"Scenario {s}: API {scenario_type} - {user_story.title[:50]}",
-                        f"  Given the API endpoint is available for {user_story.id}",
-                        f"  And authentication is {'valid' if s == 1 else 'invalid' if s == 2 else 'edge case'}",
-                        f"  When a {'valid' if s == 1 else 'invalid' if s == 2 else 'boundary'} API request is made",
-                        f"  Then the response status is {'200 OK' if s == 1 else '400/401' if s == 2 else 'appropriate'}",
-                        f"  And the response data matches the expected schema",
+                        f"  Given el endpoint de API está disponible para {user_story.id}",
+                        f"  And la autenticación es {'válida' if s == 1 else 'inválida' if s == 2 else 'caso extremo'}",
+                        f"  When se realiza una petición API {'válida' if s == 1 else 'inválida' if s == 2 else 'de frontera'}",
+                        f"  Then el código de respuesta es {'200 OK' if s == 1 else '400/401' if s == 2 else 'apropiado'}",
+                        f"  And los datos de respuesta coinciden con el esquema esperado",
                         ""
                     ])
                 else:
                     gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type.lower().replace(' ', '_')}",
+                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
                         f"Scenario {s}: {scenario_type} - {user_story.title[:50]}",
-                        f"  Given the system is ready for testing {user_story.id}",
-                        f"  And all preconditions are satisfied",
-                        f"  When the test action is executed",
-                        f"  Then the expected outcome is verified",
-                        f"  And no unexpected side effects occur",
+                        f"  Given el sistema está listo para probar {user_story.id}",
+                        f"  And todas las precondiciones están satisfechas",
+                        f"  When se ejecuta la acción de prueba",
+                        f"  Then se verifica el resultado esperado",
+                        f"  And no ocurren efectos secundarios inesperados",
                         ""
                     ])
 
@@ -1007,27 +1061,7 @@ async def update_test_case(
         }
     }
 
-
-@router.delete("/test-cases/{test_id}")
-async def delete_test_case(test_id: str, db: Session = Depends(get_db)):
-    """Delete test case"""
-    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-    if not tc:
-        raise HTTPException(status_code=404, detail="Test case not found")
-
-    # Delete associated Gherkin file if exists
-    if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
-        os.remove(tc.gherkin_file_path)
-
-    db.delete(tc)
-    db.commit()
-
-    return {
-        "message": "Test case deleted successfully",
-        "deleted_id": test_id
-    }
-
-
+# IMPORTANT: /batch endpoint MUST come BEFORE /{test_id} to avoid path matching conflicts
 @router.delete("/test-cases/batch")
 async def delete_test_cases_batch(
     test_case_ids: dict,
@@ -1072,6 +1106,26 @@ async def delete_test_cases_batch(
         "deleted_count": deleted_count,
         "deleted_ids": deleted_ids,
         "errors": errors if errors else None
+    }
+
+
+@router.delete("/test-cases/{test_id}")
+async def delete_test_case(test_id: str, db: Session = Depends(get_db)):
+    """Delete single test case"""
+    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Test case not found")
+
+    # Delete associated Gherkin file if exists
+    if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
+        os.remove(tc.gherkin_file_path)
+
+    db.delete(tc)
+    db.commit()
+
+    return {
+        "message": "Test case deleted successfully",
+        "deleted_id": test_id
     }
 
 

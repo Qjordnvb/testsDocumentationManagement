@@ -15,7 +15,16 @@ class GeminiClient:
     def __init__(self, api_key: str):
         """Initialize Gemini client with API key"""
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
+        self.model = genai.GenerativeModel(
+            "gemini-2.5-flash",
+            # Configure generation for better performance
+            generation_config={
+                "temperature": 0.7,
+                "top_p": 0.95,
+                "top_k": 40,
+                "max_output_tokens": 8192,
+            }
+        )
 
     def _extract_response_text(self, response) -> str:
         """
@@ -49,14 +58,44 @@ class GeminiClient:
     ) -> List[GherkinScenario]:
         """
         Generate Gherkin scenarios from a user story using AI
+        Automatically splits into multiple requests if needed to avoid timeouts
 
         Args:
             user_story: UserStory object
-            num_scenarios: Number of scenarios to generate
+            num_scenarios: Number of scenarios to generate (any amount)
 
         Returns:
             List of GherkinScenario objects
         """
+        # Split into batches to avoid timeout (Gemini has internal 60s timeout)
+        BATCH_SIZE = 15  # Generate max 15 scenarios per API call
+
+        if num_scenarios <= BATCH_SIZE:
+            # Single request
+            return self._generate_batch(user_story, num_scenarios)
+        else:
+            # Multiple requests
+            print(f"📦 Splitting {num_scenarios} scenarios into batches of {BATCH_SIZE}...")
+            all_scenarios = []
+            remaining = num_scenarios
+            batch_num = 1
+
+            while remaining > 0:
+                batch_size = min(BATCH_SIZE, remaining)
+                print(f"   Batch {batch_num}: Requesting {batch_size} scenarios...")
+
+                scenarios = self._generate_batch(user_story, batch_size)
+                all_scenarios.extend(scenarios)
+
+                print(f"   ✅ Batch {batch_num}: Got {len(scenarios)} scenarios")
+                remaining -= batch_size
+                batch_num += 1
+
+            print(f"✅ Total generated: {len(all_scenarios)}/{num_scenarios} scenarios")
+            return all_scenarios
+
+    def _generate_batch(self, user_story: UserStory, num_scenarios: int) -> List[GherkinScenario]:
+        """Generate a single batch of scenarios"""
         prompt = self._build_gherkin_prompt(user_story, num_scenarios)
 
         try:
@@ -65,7 +104,11 @@ class GeminiClient:
             scenarios = self._parse_gherkin_response(response_text)
             return scenarios
         except Exception as e:
-            print(f"   ❌ Error generating Gherkin scenarios: {e}")
+            error_msg = str(e)
+            if "timeout" in error_msg.lower() or "504" in error_msg:
+                print(f"❌ Timeout generating {num_scenarios} scenarios in this batch.")
+            else:
+                print(f"❌ Error: {e}")
             return []
 
     def generate_gherkin_scenarios_batched(
@@ -135,79 +178,84 @@ class GeminiClient:
         return all_scenarios
 
     def _build_gherkin_prompt(self, user_story: UserStory, num_scenarios: int) -> str:
-        """Build prompt for Gherkin scenario generation"""
+        """Build prompt for Gherkin scenario generation IN SPANISH"""
 
         # Get criteria if available, otherwise use description analysis
         criteria_text = user_story.get_criteria_text()
         has_criteria = criteria_text != "No acceptance criteria defined"
 
         if has_criteria:
-            criteria_section = f"""**Acceptance Criteria:**
+            criteria_section = f"""**Criterios de Aceptación:**
 {criteria_text}"""
         else:
-            criteria_section = f"""**Requirements to Test:**
-Based on the description above, identify and test:
-- Main functionality or feature being described
-- User interactions and workflows
-- Expected system behavior
-- Data validation and business rules
-- Error handling scenarios
-- Edge cases and boundary conditions"""
+            criteria_section = f"""**Requisitos a Probar:**
+Basado en la descripción anterior, identificar y probar:
+- Funcionalidad principal o característica descrita
+- Interacciones de usuario y flujos de trabajo
+- Comportamiento esperado del sistema
+- Validación de datos y reglas de negocio
+- Escenarios de manejo de errores
+- Casos extremos y condiciones de frontera"""
 
-        prompt = f"""You are an expert QA engineer specializing in BDD (Behavior-Driven Development) and Gherkin syntax.
+        prompt = f"""Eres un ingeniero QA experto especializado en BDD (Desarrollo Guiado por Comportamiento) y sintaxis Gherkin.
 
-Generate {num_scenarios} comprehensive Gherkin test scenarios for the following user story:
+Genera {num_scenarios} escenarios de prueba Gherkin comprehensivos para la siguiente historia de usuario:
 
-**User Story ID:** {user_story.id}
-**Title:** {user_story.title}
-**Description:** {user_story.description}
+**ID de Historia:** {user_story.id}
+**Título:** {user_story.title}
+**Descripción:** {user_story.description}
 
 {criteria_section}
 
-**CRITICAL REQUIREMENTS:**
-1. **READ THE ACCEPTANCE CRITERIA CAREFULLY** - Each criterion contains specific validation rules, field names, and requirements
-2. Generate {num_scenarios} different scenarios that DIRECTLY test the acceptance criteria above:
-   - At least 1 Happy Path scenario (all validations pass)
-   - At least 1 Negative scenario (validation failures from the criteria)
-   - At least 1 Edge Case scenario (boundary conditions from the criteria)
+**REQUISITOS CRÍTICOS:**
+1. **LEE LOS CRITERIOS DE ACEPTACIÓN CUIDADOSAMENTE** - Cada criterio contiene reglas de validación específicas, nombres de campos y requisitos
+2. Genera {num_scenarios} escenarios diferentes que PRUEBEN DIRECTAMENTE los criterios de aceptación anteriores:
+   - Al menos 1 escenario Happy Path (todas las validaciones pasan)
+   - Al menos 1 escenario Negativo (fallos de validación de los criterios)
+   - Al menos 1 caso Edge Case (condiciones de frontera de los criterios)
 
-3. **BE EXTREMELY SPECIFIC:**
-   - Use EXACT field names mentioned in the acceptance criteria
-   - Use EXACT validation rules (e.g., if criteria says "DNI must be 8 digits", test with 7 digits for negative case)
-   - Use EXACT data formats specified (dates, phone numbers, email patterns, age ranges, etc.)
-   - Include specific error messages mentioned in the criteria
+3. **SÉ EXTREMADAMENTE ESPECÍFICO:**
+   - Usa los nombres EXACTOS de campos mencionados en los criterios
+   - Usa las reglas de validación EXACTAS (ej: si el criterio dice "DNI debe tener 8 dígitos", prueba con 7 dígitos para caso negativo)
+   - Usa los formatos de datos EXACTOS especificados (fechas, teléfonos, patrones de email, rangos de edad, etc.)
+   - Incluye mensajes de error específicos mencionados en los criterios
 
-4. Use proper Gherkin syntax (Given, When, Then, And)
-5. Include appropriate tags based on scenario type:
-   - @smoke @regression @positive @happy_path (for successful flows)
-   - @regression @negative @validation @error_handling (for error cases)
-   - @regression @edge_case (for boundary testing)
+4. Usa sintaxis Gherkin apropiada (Given, When, Then, And) - Las palabras clave DEBEN estar en INGLÉS, pero el CONTENIDO en ESPAÑOL
+5. Incluye tags apropiados según tipo de escenario:
+   - @smoke @regression @positive @happy_path (para flujos exitosos)
+   - @regression @negative @validation @error_handling (para casos de error)
+   - @regression @edge_case (para pruebas de frontera)
 
-6. Each scenario must be:
-   - Directly traceable to one or more acceptance criteria
-   - Realistic and executable by a QA tester
-   - Specific enough that a developer could automate it
+6. Cada escenario debe:
+   - Ser directamente trazable a uno o más criterios de aceptación
+   - Ser realista y ejecutable por un QA tester
+   - Ser lo suficientemente específico para que un desarrollador pueda automatizarlo
 
-**Examples of GOOD vs BAD scenarios:**
-❌ BAD (too generic): "When I enter valid data"
-✅ GOOD (specific): "When I enter '12345678' into the 'DNI' field"
+**Ejemplos de escenarios BUENOS vs MALOS:**
+❌ MALO (muy genérico): "When ingreso datos válidos"
+✅ BUENO (específico): "When ingreso '12345678' en el campo 'DNI'"
 
-❌ BAD (vague): "Then I should see an error"
-✅ GOOD (exact): "Then I should see an error message 'El DNI debe tener 8 dígitos' next to the 'DNI' field"
+❌ MALO (vago): "Then debería ver un error"
+✅ BUENO (exacto): "Then debería ver el mensaje de error 'El DNI debe tener 8 dígitos' junto al campo 'DNI'"
 
-**Output Format:**
-Return a JSON array with this exact structure (return ONLY valid JSON, no markdown, no extra text):
+**IMPORTANTE - IDIOMA:**
+- Las palabras clave de Gherkin (Given, When, Then, And) deben estar en INGLÉS
+- Todo el CONTENIDO de los pasos debe estar en ESPAÑOL
+- Los nombres de campos, validaciones y mensajes deben usar la terminología EXACTA de los criterios
+
+**Formato de Salida:**
+Retorna un array JSON con esta estructura exacta (retorna SOLO JSON válido, sin markdown, sin texto adicional):
 [
   {{
-    "scenario_name": "Descriptive scenario name that references what is being tested (Happy Path)",
+    "scenario_name": "Nombre descriptivo del escenario que referencia lo que se está probando (en español)",
     "tags": ["smoke", "positive"],
-    "given_steps": ["I am on the [exact page name from criteria]", "additional preconditions"],
-    "when_steps": ["I enter '[specific test data]' into the '[exact field name]' field", "more specific actions"],
-    "then_steps": ["I should see [exact expected result from criteria]", "additional verifications"]
+    "given_steps": ["estoy en la página '[nombre exacto de la página]'", "precondiciones adicionales"],
+    "when_steps": ["ingreso '[datos de prueba específicos]' en el campo '[nombre exacto del campo]'", "más acciones específicas"],
+    "then_steps": ["debería ver [resultado exacto esperado de los criterios]", "verificaciones adicionales"]
   }}
 ]
 
-Generate the scenarios now (return ONLY the JSON array, no additional text):"""
+Genera los escenarios ahora (retorna SOLO el array JSON, sin texto adicional):"""
 
         return prompt
 
@@ -348,6 +396,83 @@ Generate the test data now:"""
         except Exception as e:
             print(f"Error generating test data: {e}")
             return {"valid_data": [], "invalid_data": [], "edge_cases": []}
+
+    def extract_acceptance_criteria(self, raw_text: str) -> List[str]:
+        """
+        Extract clean acceptance criteria from raw text with markdown/formatting
+        DOES NOT REWRITE - Only extracts the exact criteria text, removing noise
+
+        Args:
+            raw_text: Raw acceptance criteria text from Excel (may contain markdown, headers, etc.)
+
+        Returns:
+            List of clean acceptance criteria descriptions (exact text from original)
+        """
+        prompt = f"""You are a technical parser extracting acceptance criteria from a user story.
+
+**CRITICAL RULES:**
+1. **DO NOT REWRITE OR PARAPHRASE** - Extract the exact text as written
+2. **DO NOT INVENT** - Only extract what exists in the text
+3. **REMOVE**: Section headers (###, **bold titles**), explanations, links, images
+4. **GROUP RELATED ITEMS**: When you see a question followed by multiple answer options, treat the ENTIRE question (including all options) as ONE criterion
+
+**IMPORTANT - Detect Question Patterns:**
+- If you see a question like "Pregunta 1: ¿...?" followed by multiple single-word or short bullet points, those bullets are ANSWER OPTIONS, not separate criteria
+- Combine the question + all its options into ONE criterion
+- Examples:
+  ❌ WRONG (44 criteria):
+    - "Amarga"
+    - "Ligera"
+    - "Balanceada"
+  ✅ CORRECT (1 criterion):
+    - "Pregunta 2: ¿Cómo describirías su sabor? Opciones: Amarga, Ligera, Balanceada, Refrescante, Fresca, Dulce, Otro"
+
+**Input text:**
+```
+{raw_text}
+```
+
+**Instructions:**
+1. Look for bullet points (-, *, •) or numbered items (1., 2., etc.)
+2. Identify MAIN criteria (field validations, business rules, features)
+3. When you find a question with multiple short answers below it, group them as ONE criterion
+4. Skip section headers like "Campos del Formulario", "Validaciones", etc.
+5. Skip very short items (< 15 characters) that are clearly answer options, not criteria
+6. Return ONLY a JSON array of strings
+
+**Output format:**
+```json
+["criterion 1 with full details", "criterion 2 including question and all options", ...]
+```
+
+Extract now:"""
+
+        try:
+            response = self.model.generate_content(prompt)
+            text = response.text.strip()
+
+            # Extract JSON from response
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+
+            criteria_list = json.loads(text)
+
+            # Validate it's a list of strings
+            if not isinstance(criteria_list, list):
+                print(f"⚠️  AI returned non-list: {type(criteria_list)}")
+                return []
+
+            # Filter out empty strings and validate
+            clean_criteria = [c.strip() for c in criteria_list if isinstance(c, str) and c.strip()]
+
+            print(f"✅ AI extracted {len(clean_criteria)} criteria from text")
+            return clean_criteria
+
+        except Exception as e:
+            print(f"❌ AI extraction failed: {e}")
+            return []
 
     def improve_acceptance_criteria(self, user_story: UserStory) -> List[str]:
         """

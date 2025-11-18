@@ -10,6 +10,7 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   getPaginationRowModel,
+  getExpandedRowModel,
   flexRender,
   createColumnHelper,
   type ColumnDef,
@@ -53,18 +54,25 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
       columnHelper.display({
         id: 'expander',
         header: () => null,
-        cell: ({ row }) => (
-          <button
-            onClick={row.getToggleExpandedHandler()}
-            className="flex items-center justify-center w-8 h-8 hover:bg-gray-100 rounded transition-colors"
-          >
-            {row.getIsExpanded() ? (
-              <ChevronDown className="w-4 h-4 text-gray-600" />
-            ) : (
-              <ChevronRightIcon className="w-4 h-4 text-gray-600" />
-            )}
-          </button>
-        ),
+        cell: ({ row }) => {
+          const handleClick = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            row.toggleExpanded();
+          };
+
+          return (
+            <button
+              onClick={handleClick}
+              className="flex items-center justify-center w-8 h-8 hover:bg-gray-100 rounded transition-colors"
+            >
+              {row.getIsExpanded() ? (
+                <ChevronDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ChevronRightIcon className="w-4 h-4 text-gray-600" />
+              )}
+            </button>
+          );
+        },
       }),
       columnHelper.accessor('id', {
         header: 'ID',
@@ -159,7 +167,6 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
     [onGenerateTests]
   );
 
-  // Create table instance
   const table = useReactTable({
     data: stories,
     columns,
@@ -177,6 +184,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
     initialState: {
       pagination: {
         pageSize: 10,
@@ -246,9 +254,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {table.getRowModel().rows.map((row) => (
                 <React.Fragment key={row.id}>
-                  <tr
-                    className="hover:bg-gray-50 transition-colors"
-                  >
+                  <tr className="hover:bg-gray-50 transition-colors">
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-4">
                         {flexRender(
@@ -259,7 +265,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
                     ))}
                   </tr>
                   {row.getIsExpanded() && (
-                    <tr key={`${row.id}-expanded`}>
+                    <tr>
                       <td colSpan={columns.length} className="px-4 py-4 bg-gray-50">
                         <div className="space-y-4 max-w-4xl">
                           {/* Description */}

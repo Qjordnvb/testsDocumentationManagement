@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 
 interface UploadState {
   // Upload state
@@ -20,28 +21,35 @@ interface UploadState {
   resetUpload: () => void;
 }
 
-export const useUploadStore = create<UploadState>((set) => ({
-  // Initial state
-  isUploading: false,
-  uploadProgress: 0,
-  uploadError: null,
-  uploadedFile: null,
-
-  // Actions
-  setIsUploading: (isUploading) => set({ isUploading }),
-
-  setUploadProgress: (progress) => set({ uploadProgress: progress }),
-
-  setUploadError: (error) =>
-    set({ uploadError: error, isUploading: false }),
-
-  setUploadedFile: (file) => set({ uploadedFile: file }),
-
-  resetUpload: () =>
-    set({
+export const useUploadStore = create<UploadState>()(
+  devtools(
+    (set) => ({
+      // Initial state
       isUploading: false,
       uploadProgress: 0,
       uploadError: null,
       uploadedFile: null,
+
+      // Actions
+      setIsUploading: (isUploading) =>
+        set({ isUploading }, false, 'setIsUploading'),
+
+      setUploadProgress: (progress) =>
+        set({ uploadProgress: progress }, false, 'setUploadProgress'),
+
+      setUploadError: (error) =>
+        set({ uploadError: error, isUploading: false }, false, 'setUploadError'),
+
+      setUploadedFile: (file) => set({ uploadedFile: file }, false, 'setUploadedFile'),
+
+      resetUpload: () =>
+        set({
+          isUploading: false,
+          uploadProgress: 0,
+          uploadError: null,
+          uploadedFile: null,
+        }, false, 'resetUpload'),
     }),
-}));
+    { name: 'UploadStore' }
+  )
+);

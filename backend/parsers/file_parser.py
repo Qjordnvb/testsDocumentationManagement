@@ -9,6 +9,10 @@ import re
 from datetime import datetime
 
 from backend.models import UserStory, AcceptanceCriteria, Priority, Status
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.integrations.gemini_client import GeminiClient
 
 
 class ParseResult:
@@ -44,11 +48,14 @@ class FileParser:
         ],
         "acceptance_criteria": [
             "acceptance_criteria",
+            "acceptance criteria",  # With space
+            "acceptancecriteria",   # No space
             "acceptance",
             "criteria",
             "ac",
             "conditions",
             "definition_of_done",
+            "definition of done",   # With space
             "dod",
         ],
         "priority": ["priority", "pri", "importance"],
@@ -60,8 +67,9 @@ class FileParser:
         "work_item_type": ["work_item_type", "type", "item_type", "work_type"],
     }
 
-    def __init__(self):
+    def __init__(self, gemini_client=None):
         self.detected_columns: Dict[str, str] = {}
+        self.gemini_client = gemini_client  # Optional: for AI-powered criteria extraction
 
     def parse(self, file_path: str) -> ParseResult:
         """
@@ -113,10 +121,13 @@ class FileParser:
         self.detected_columns = {}
         df_columns_lower = {col.lower(): col for col in df.columns}
 
+        print(f"🔍 Excel columns found: {list(df.columns)}")
+
         for field, variations in self.COLUMN_MAPPINGS.items():
             for variation in variations:
                 if variation.lower() in df_columns_lower:
                     self.detected_columns[field] = df_columns_lower[variation.lower()]
+                    print(f"✅ Mapped '{field}' -> Excel column '{df_columns_lower[variation.lower()]}'")
                     break
 
     def _parse_row(self, row: pd.Series, row_idx: int) -> Optional[UserStory]:
@@ -188,17 +199,58 @@ class FileParser:
     ) -> List[AcceptanceCriteria]:
         """Parse acceptance criteria from text"""
         if not criteria_text or pd.isna(criteria_text):
+            print(f"⚠️  No acceptance criteria text provided (empty or NaN)")
             return []
+
+        print(f"📝 Parsing acceptance criteria: {criteria_text[:100]}...")
 
         criteria_list = []
 
+        # Check if text is complex (has markdown, many lines, formatting)
+        text_length = len(criteria_text)
+        line_count = criteria_text.count('\n')
+        has_markdown = '**' in criteria_text or '###' in criteria_text or '![' in criteria_text
+
+        # Use AI extraction if:
+        # 1. Gemini client is available
+        # 2. Text is complex (long, many lines, or has markdown)
+        use_ai = (
+            self.gemini_client is not None and
+            (text_length > 500 or line_count > 10 or has_markdown)
+        )
+
+        if use_ai:
+            print(f"🤖 Using AI to extract criteria (length={text_length}, lines={line_count}, markdown={has_markdown})")
+            try:
+                ai_criteria = self.gemini_client.extract_acceptance_criteria(criteria_text)
+
+                if ai_criteria and len(ai_criteria) > 0:
+                    for i, description in enumerate(ai_criteria):
+                        criteria_list.append(
+                            AcceptanceCriteria(
+                                id=f"AC-{i + 1}",
+                                description=description,
+                                completed=False
+                            )
+                        )
+                    print(f"✅ AI extracted {len(criteria_list)} clean criteria")
+                    return criteria_list
+                else:
+                    print(f"⚠️  AI returned empty list, falling back to regex parser")
+            except Exception as e:
+                print(f"❌ AI extraction failed: {e}, falling back to regex parser")
+
+        # Fallback: Simple regex-based parsing
+        print(f"📋 Using regex parser (simpler format detected)")
+
         # Try to split by common separators
-        separators = ["\n", ";", "|", "- "]
+        separators = ["\n", ";", "|"]
         lines = [criteria_text]
 
         for sep in separators:
             if sep in criteria_text:
                 lines = criteria_text.split(sep)
+                print(f"✂️  Split by '{repr(sep)}' into {len(lines)} lines")
                 break
 
         # Clean and create AcceptanceCriteria objects
@@ -206,7 +258,7 @@ class FileParser:
             line = line.strip()
             # Remove common bullet points and numbering
             line = re.sub(r"^[\d\.\-\*\•\→]+\s*", "", line)
-            if line:
+            if line and len(line) > 5:  # Skip very short lines
                 criteria_list.append(
                     AcceptanceCriteria(
                         id=f"AC-{i + 1}",
@@ -215,6 +267,7 @@ class FileParser:
                     )
                 )
 
+        print(f"✅ Parsed {len(criteria_list)} acceptance criteria")
         return criteria_list
 
     def _parse_priority(self, priority_text: Optional[str]) -> Priority:
