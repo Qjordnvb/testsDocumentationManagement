@@ -84,6 +84,10 @@ export const GenerateModal = ({
 
     console.log('✅ Loading states set to TRUE');
 
+    // CRITICAL: Force React to re-render with loading state BEFORE making API call
+    // Without this delay, the await blocks and React never shows the loading indicator
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     try {
       const response = await previewTests({
         storyId: story.id,
