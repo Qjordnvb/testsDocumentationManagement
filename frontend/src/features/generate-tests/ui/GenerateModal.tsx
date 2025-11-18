@@ -153,7 +153,7 @@ export const GenerateModal = ({
         </div>
 
         {/* Configuration */}
-        {!suggestedTests.length && (
+        {!suggestedTests.length && !isGenerating && (
           <div className="space-y-4">
             {/* AI toggle */}
             <div className="flex items-center justify-between">
