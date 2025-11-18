@@ -231,4 +231,14 @@ MIT License - Ver LICENSE file para detalles.
 
 ## 👥 Contribuciones
 
-Este es un proyecto interno. Para modificaciones, consultar [CLAUDE.md](./CLAUDE.md) para arquitectura y guías técnicas.
+Este es un proyecto interno. Para modificaciones, consultar:
+- **[CLAUDE.md](./CLAUDE.md)** - Documentación técnica completa (arquitectura, endpoints, modelos)
+- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Estado actual del proyecto y roadmap de tareas pendientes
+
+## 📚 Documentación
+
+| Archivo | Propósito |
+|---------|-----------|
+| `README.md` | Documentación general del usuario y quick start |
+| `CLAUDE.md` | Documentación técnica completa para desarrollo |
+| `PROJECT_STATUS.md` | Estado actual, tareas pendientes, y roadmap |
