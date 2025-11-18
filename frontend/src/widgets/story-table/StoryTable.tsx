@@ -15,6 +15,7 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
+  type ExpandedState,
 } from '@tanstack/react-table';
 import type { UserStory } from '@/entities/user-story';
 import { Button } from '@/shared/ui/Button';
@@ -26,6 +27,9 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronRight as ChevronRightIcon,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 
 interface StoryTableProps {
@@ -41,24 +45,39 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [expanded, setExpanded] = useState<ExpandedState>({});
 
   // Define columns
   const columns = useMemo<ColumnDef<UserStory, any>[]>(
     () => [
+      columnHelper.display({
+        id: 'expander',
+        header: () => null,
+        cell: ({ row }) => (
+          <button
+            onClick={row.getToggleExpandedHandler()}
+            className="flex items-center justify-center w-8 h-8 hover:bg-gray-100 rounded transition-colors"
+          >
+            {row.getIsExpanded() ? (
+              <ChevronDown className="w-4 h-4 text-gray-600" />
+            ) : (
+              <ChevronRightIcon className="w-4 h-4 text-gray-600" />
+            )}
+          </button>
+        ),
+      }),
+      columnHelper.accessor('id', {
+        header: 'ID',
+        cell: (info) => (
+          <span className="font-mono text-xs text-gray-600">{info.getValue()}</span>
+        ),
+      }),
       columnHelper.accessor('title', {
         header: 'Título',
         cell: (info) => (
           <div className="max-w-md">
             <p className="font-medium text-gray-900 truncate">{info.getValue()}</p>
           </div>
-        ),
-      }),
-      columnHelper.accessor('description', {
-        header: 'Descripción',
-        cell: (info) => (
-          <p className="text-sm text-gray-600 line-clamp-2 max-w-lg">
-            {info.getValue()}
-          </p>
         ),
       }),
       columnHelper.accessor('acceptance_criteria', {
@@ -85,17 +104,38 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
           );
         },
       }),
-      columnHelper.accessor('created_at', {
-        header: 'Fecha',
+      columnHelper.accessor('priority', {
+        header: 'Prioridad',
         cell: (info) => {
-          const date = new Date(info.getValue());
+          const priority = info.getValue();
+          const colors = {
+            Critical: 'bg-red-100 text-red-800',
+            High: 'bg-orange-100 text-orange-800',
+            Medium: 'bg-yellow-100 text-yellow-800',
+            Low: 'bg-gray-100 text-gray-800',
+          };
           return (
-            <span className="text-sm text-gray-600">
-              {date.toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
+            <span className={`px-2 py-1 text-xs font-medium rounded ${colors[priority as keyof typeof colors] || colors.Medium}`}>
+              {priority}
+            </span>
+          );
+        },
+      }),
+      columnHelper.accessor('status', {
+        header: 'Estado',
+        cell: (info) => {
+          const status = info.getValue();
+          const colors = {
+            Backlog: 'bg-gray-100 text-gray-800',
+            'To Do': 'bg-blue-100 text-blue-800',
+            'In Progress': 'bg-purple-100 text-purple-800',
+            'In Review': 'bg-yellow-100 text-yellow-800',
+            Testing: 'bg-orange-100 text-orange-800',
+            Done: 'bg-green-100 text-green-800',
+          };
+          return (
+            <span className={`px-2 py-1 text-xs font-medium rounded ${colors[status as keyof typeof colors] || colors.Backlog}`}>
+              {status}
             </span>
           );
         },
@@ -127,10 +167,12 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
       sorting,
       columnFilters,
       globalFilter,
+      expanded,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -203,19 +245,87 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-4 whitespace-nowrap">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                <>
+                  <tr
+                    key={row.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-4">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  {row.getIsExpanded() && (
+                    <tr key={`${row.id}-expanded`}>
+                      <td colSpan={columns.length} className="px-4 py-4 bg-gray-50">
+                        <div className="space-y-4 max-w-4xl">
+                          {/* Description */}
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-900 mb-2">Descripción</h4>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {row.original.description}
+                            </p>
+                          </div>
+
+                          {/* Acceptance Criteria */}
+                          {row.original.acceptance_criteria && row.original.acceptance_criteria.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                                Criterios de Aceptación ({row.original.acceptance_criteria.length})
+                              </h4>
+                              <ul className="space-y-2">
+                                {row.original.acceptance_criteria.map((criterion: any, index: number) => (
+                                  <li key={criterion.id || index} className="flex items-start gap-2">
+                                    {criterion.completed ? (
+                                      <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                    ) : (
+                                      <Circle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-sm ${criterion.completed ? 'text-gray-500 line-through' : 'text-gray-700'}`}>
+                                      {criterion.description}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Additional metadata */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            {row.original.epic && (
+                              <div>
+                                <span className="font-semibold text-gray-700">Epic:</span>
+                                <span className="ml-2 text-gray-600">{row.original.epic}</span>
+                              </div>
+                            )}
+                            {row.original.sprint && (
+                              <div>
+                                <span className="font-semibold text-gray-700">Sprint:</span>
+                                <span className="ml-2 text-gray-600">{row.original.sprint}</span>
+                              </div>
+                            )}
+                            {row.original.story_points && (
+                              <div>
+                                <span className="font-semibold text-gray-700">Story Points:</span>
+                                <span className="ml-2 text-gray-600">{row.original.story_points}</span>
+                              </div>
+                            )}
+                            {row.original.assigned_to && (
+                              <div>
+                                <span className="font-semibold text-gray-700">Asignado a:</span>
+                                <span className="ml-2 text-gray-600">{row.original.assigned_to}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>

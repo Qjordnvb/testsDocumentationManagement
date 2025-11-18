@@ -73,6 +73,9 @@ class UserStoryDB(Base):
     created_date = Column(DateTime, default=datetime.now)
     updated_date = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+    # Acceptance Criteria (stored as JSON)
+    acceptance_criteria = Column(Text, nullable=True)  # JSON array of AcceptanceCriteria objects
+
     # Completion tracking
     total_criteria = Column(Integer, default=0)
     completed_criteria = Column(Integer, default=0)
