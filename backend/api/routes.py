@@ -324,6 +324,10 @@ async def upload_file(
                 existing_story.sprint = user_story.sprint
                 existing_story.story_points = user_story.story_points
                 existing_story.assigned_to = user_story.assigned_to
+                # Save acceptance criteria as JSON
+                existing_story.acceptance_criteria = json.dumps(
+                    [ac.dict() for ac in user_story.acceptance_criteria]
+                ) if user_story.acceptance_criteria else None
                 existing_story.total_criteria = len(user_story.acceptance_criteria)
                 existing_story.completed_criteria = sum(1 for ac in user_story.acceptance_criteria if ac.completed)
                 existing_story.completion_percentage = user_story.get_completion_percentage()
@@ -343,6 +347,10 @@ async def upload_file(
                     sprint=user_story.sprint,
                     story_points=user_story.story_points,
                     assigned_to=user_story.assigned_to,
+                    # Save acceptance criteria as JSON
+                    acceptance_criteria=json.dumps(
+                        [ac.dict() for ac in user_story.acceptance_criteria]
+                    ) if user_story.acceptance_criteria else None,
                     total_criteria=len(user_story.acceptance_criteria),
                     completed_criteria=sum(1 for ac in user_story.acceptance_criteria if ac.completed),
                     completion_percentage=user_story.get_completion_percentage()
@@ -402,7 +410,7 @@ async def get_user_stories(
             "sprint": s.sprint,
             "story_points": s.story_points,
             "assigned_to": s.assigned_to,
-            "acceptance_criteria": [],  # TODO: Fetch from relationship
+            "acceptance_criteria": json.loads(s.acceptance_criteria) if s.acceptance_criteria else [],
             "created_at": s.created_date.isoformat() if s.created_date else None,
             "updated_at": s.updated_date.isoformat() if s.updated_date else None,
             "completion_percentage": s.completion_percentage,
@@ -429,6 +437,7 @@ async def get_user_story(story_id: str, db: Session = Depends(get_db)):
         "epic": story.epic,
         "sprint": story.sprint,
         "story_points": story.story_points,
+        "acceptance_criteria": json.loads(story.acceptance_criteria) if story.acceptance_criteria else [],
         "completion_percentage": story.completion_percentage
     }
 

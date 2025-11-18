@@ -39,6 +39,13 @@ export const GenerateModal = ({
   const [useAi, setUseAi] = useState(true);
   const [suggestedTests, setSuggestedTests] = useState<SuggestedTestCase[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isLoadingLocal, setIsLoadingLocal] = useState(false);
+
+  // Combined loading state (local OR store)
+  const isActuallyGenerating = isGenerating || isLoadingLocal;
+
+  // Debug log to track state changes
+  console.log('🔍 GenerateModal state:', { isGenerating, isLoadingLocal, isActuallyGenerating, suggestedTestsCount: suggestedTests.length });
 
   const availableTestTypes = [
     { value: 'FUNCTIONAL', label: 'Functional' },
@@ -69,9 +76,17 @@ export const GenerateModal = ({
       useAi
     });
 
+    // Set BOTH loading states
     setIsGenerating(true);
+    setIsLoadingLocal(true);
     setGenerationError(null);
     setSuggestedTests([]); // Clear previous suggestions
+
+    console.log('✅ Loading states set to TRUE');
+
+    // CRITICAL: Force React to re-render with loading state BEFORE making API call
+    // Without this delay, the await blocks and React never shows the loading indicator
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
       const response = await previewTests({
@@ -125,6 +140,8 @@ export const GenerateModal = ({
       setSuggestedTests([]); // Ensure empty array on error
     } finally {
       setIsGenerating(false);
+      setIsLoadingLocal(false);
+      console.log('✅ Loading states set to FALSE');
     }
   };
 
@@ -153,7 +170,7 @@ export const GenerateModal = ({
         </div>
 
         {/* Configuration */}
-        {!suggestedTests.length && !isGenerating && (
+        {!suggestedTests.length && !isActuallyGenerating && (
           <div className="space-y-4">
             {/* AI toggle */}
             <div className="flex items-center justify-between">
@@ -194,7 +211,7 @@ export const GenerateModal = ({
                 value={numTestCases}
                 onChange={(e) => setNumTestCases(Number(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                disabled={isGenerating}
+                disabled={isActuallyGenerating}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>1</span>
@@ -215,7 +232,7 @@ export const GenerateModal = ({
                 value={scenariosPerTest}
                 onChange={(e) => setScenariosPerTest(Number(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                disabled={isGenerating}
+                disabled={isActuallyGenerating}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>1</span>
@@ -241,9 +258,9 @@ export const GenerateModal = ({
                         ? 'bg-blue-100 border-blue-300 text-blue-800'
                         : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                       }
-                      ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      ${isActuallyGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                     `}
-                    disabled={isGenerating}
+                    disabled={isActuallyGenerating}
                   >
                     {testType.label}
                   </button>
@@ -262,7 +279,7 @@ export const GenerateModal = ({
         )}
 
         {/* Generation in progress */}
-        {isGenerating && (
+        {isActuallyGenerating && (
           <div className="flex flex-col items-center justify-center py-8 px-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
             <p className="text-sm font-medium text-gray-900">Generando test cases con IA...</p>
@@ -282,7 +299,7 @@ export const GenerateModal = ({
         )}
 
         {/* Success result */}
-        {!isGenerating && suggestedTests.length > 0 && (
+        {!isActuallyGenerating && suggestedTests.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
               <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
