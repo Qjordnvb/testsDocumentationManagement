@@ -691,18 +691,13 @@ async def preview_test_cases(
     if use_ai:
         try:
             total_scenarios_needed = scenarios_per_test * num_test_cases
-            print(f"🤖 Generating Gherkin scenarios with AI for story {story_id}...")
-            print(f"   Requesting {total_scenarios_needed} scenarios ({scenarios_per_test} per test × {num_test_cases} tests)")
-            print(f"   User Story Title: {user_story.title}")
-            print(f"   User Story Description length: {len(user_story.description)} chars")
 
-            gherkin_scenarios = gemini_client.generate_gherkin_scenarios(
+            # Use batched generation for better reliability and performance
+            gherkin_scenarios = gemini_client.generate_gherkin_scenarios_batched(
                 user_story,
-                num_scenarios=total_scenarios_needed
+                num_scenarios=total_scenarios_needed,
+                batch_size=15  # Generate max 15 scenarios per API call
             )
-            print(f"✅ Generated {len(gherkin_scenarios)} scenarios with AI")
-            if gherkin_scenarios:
-                print(f"   Sample scenario: {gherkin_scenarios[0].scenario_name}")
         except Exception as e:
             import traceback
             print(f"❌ AI generation failed with error:")

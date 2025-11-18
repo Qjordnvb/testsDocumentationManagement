@@ -4,6 +4,7 @@ Google Gemini AI client for generating test scenarios and improving documentatio
 import google.generativeai as genai
 from typing import List, Optional, Dict
 import json
+import time
 
 from backend.models import UserStory, GherkinScenario, TestType
 
@@ -24,6 +25,33 @@ class GeminiClient:
                 "max_output_tokens": 8192,
             }
         )
+
+    def _extract_response_text(self, response) -> str:
+        """
+        Extract text from Gemini response safely (handles both simple and multi-part responses)
+
+        Args:
+            response: Gemini API response object
+
+        Returns:
+            Extracted text from response
+        """
+        try:
+            # Try simple accessor first (works for single-Part responses)
+            return response.text
+        except (ValueError, AttributeError) as e:
+            # Multi-part response - combine all parts
+            print(f"   ℹ️  Multi-part response detected, extracting parts...")
+            parts_text = []
+            try:
+                for candidate in response.candidates:
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'text'):
+                            parts_text.append(part.text)
+                return "".join(parts_text)
+            except Exception as inner_e:
+                print(f"   ❌ Error extracting multi-part response: {inner_e}")
+                raise ValueError(f"Could not extract text from response: {e}")
 
     def generate_gherkin_scenarios(
         self, user_story: UserStory, num_scenarios: int = 3
@@ -72,7 +100,8 @@ class GeminiClient:
 
         try:
             response = self.model.generate_content(prompt)
-            scenarios = self._parse_gherkin_response(response.text)
+            response_text = self._extract_response_text(response)  # ✅ Fix multi-part issue
+            scenarios = self._parse_gherkin_response(response_text)
             return scenarios
         except Exception as e:
             error_msg = str(e)
@@ -81,6 +110,72 @@ class GeminiClient:
             else:
                 print(f"❌ Error: {e}")
             return []
+
+    def generate_gherkin_scenarios_batched(
+        self,
+        user_story: UserStory,
+        num_scenarios: int = 3,
+        batch_size: int = 15
+    ) -> List[GherkinScenario]:
+        """
+        Generate Gherkin scenarios in batches to improve reliability and avoid timeouts
+
+        This method splits large scenario generation requests into smaller batches,
+        which reduces the chance of API failures and makes the process more reliable.
+
+        Args:
+            user_story: UserStory object
+            num_scenarios: Total number of scenarios to generate
+            batch_size: Maximum scenarios per API call (default 15)
+
+        Returns:
+            List of GherkinScenario objects
+        """
+        # If request is small, use single call
+        if num_scenarios <= batch_size:
+            return self.generate_gherkin_scenarios(user_story, num_scenarios)
+
+        # Calculate batches
+        num_batches = (num_scenarios + batch_size - 1) // batch_size
+        all_scenarios = []
+
+        print(f"🤖 Generating Gherkin scenarios with AI for story {user_story.id}...")
+        print(f"   Requesting {num_scenarios} scenarios ({batch_size} per batch)")
+        print(f"   User Story Title: {user_story.title}")
+        print(f"   User Story Description length: {len(user_story.description)} chars")
+        print(f"📦 Splitting {num_scenarios} scenarios into batches of {batch_size}...")
+
+        for batch_num in range(num_batches):
+            batch_start = batch_num * batch_size
+            batch_end = min(batch_start + batch_size, num_scenarios)
+            batch_count = batch_end - batch_start
+
+            print(f"   Batch {batch_num + 1}: Requesting {batch_count} scenarios...")
+
+            try:
+                batch_scenarios = self.generate_gherkin_scenarios(
+                    user_story,
+                    num_scenarios=batch_count
+                )
+
+                all_scenarios.extend(batch_scenarios)
+                print(f"   ✅ Batch {batch_num + 1}: Got {len(batch_scenarios)} scenarios")
+
+                # Rate limiting: Wait 1 second between batches (except last one)
+                if batch_num < num_batches - 1:
+                    time.sleep(1)
+
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+                print(f"   ✅ Batch {batch_num + 1}: Got 0 scenarios")
+                # Continue with remaining batches instead of failing completely
+
+        print(f"✅ Total generated: {len(all_scenarios)}/{num_scenarios} scenarios")
+        if len(all_scenarios) > 0:
+            print(f"✅ Generated {len(all_scenarios)} scenarios with AI")
+            print(f"   Sample scenario: {all_scenarios[0].scenario_name}")
+
+        return all_scenarios
 
     def _build_gherkin_prompt(self, user_story: UserStory, num_scenarios: int) -> str:
         """Build prompt for Gherkin scenario generation IN SPANISH"""
@@ -233,7 +328,7 @@ Return the JSON array now:"""
 
         try:
             response = self.model.generate_content(prompt)
-            test_types_text = response.text.strip()
+            test_types_text = self._extract_response_text(response).strip()  # ✅ Fix multi-part issue
 
             # Extract JSON
             if "```json" in test_types_text:
@@ -288,7 +383,7 @@ Generate the test data now:"""
 
         try:
             response = self.model.generate_content(prompt)
-            data_text = response.text.strip()
+            data_text = self._extract_response_text(response).strip()  # ✅ Fix multi-part issue
 
             # Extract JSON
             if "```json" in data_text:
@@ -412,7 +507,7 @@ Generate the improved criteria now:"""
 
         try:
             response = self.model.generate_content(prompt)
-            criteria_text = response.text.strip()
+            criteria_text = self._extract_response_text(response).strip()  # ✅ Fix multi-part issue
 
             # Extract JSON
             if "```json" in criteria_text:
