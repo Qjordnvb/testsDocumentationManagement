@@ -22,7 +22,8 @@ class GeminiClient:
                 "temperature": 0.7,
                 "top_p": 0.95,
                 "top_k": 40,
-                "max_output_tokens": 8192,
+                "max_output_tokens": 16384,  # 16k tokens (Gemini 2.5 Flash supports up to 64k)
+                "response_mime_type": "application/json",  # Request JSON format explicitly
             }
         )
 
@@ -68,7 +69,7 @@ class GeminiClient:
             List of GherkinScenario objects
         """
         # Split into batches to avoid timeout (Gemini has internal 60s timeout)
-        BATCH_SIZE = 15  # Generate max 15 scenarios per API call
+        BATCH_SIZE = 8  # Generate max 8 scenarios per API call (reduced from 15 to avoid JSON truncation)
 
         if num_scenarios <= BATCH_SIZE:
             # Single request
@@ -115,7 +116,7 @@ class GeminiClient:
         self,
         user_story: UserStory,
         num_scenarios: int = 3,
-        batch_size: int = 15
+        batch_size: int = 8
     ) -> List[GherkinScenario]:
         """
         Generate Gherkin scenarios in batches to improve reliability and avoid timeouts
@@ -126,7 +127,7 @@ class GeminiClient:
         Args:
             user_story: UserStory object
             num_scenarios: Total number of scenarios to generate
-            batch_size: Maximum scenarios per API call (default 15)
+            batch_size: Maximum scenarios per API call (default 8, reduced from 15 to avoid JSON truncation)
 
         Returns:
             List of GherkinScenario objects
@@ -287,11 +288,25 @@ Genera los escenarios ahora (retorna SOLO el array JSON, sin texto adicional):""
             return scenarios
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON response: {e}")
-            print(f"Response text: {response_text}")
+            error_msg = str(e)
+
+            # Detect if JSON is truncated (common issue with long responses)
+            if "Unterminated string" in error_msg or "Expecting" in error_msg:
+                print(f"⚠️  JSON truncated by Gemini API (response too long)")
+                print(f"   Error: {error_msg}")
+                print(f"   Response length: {len(response_text)} chars")
+                print(f"   💡 Try reducing batch size or simplifying acceptance criteria")
+            else:
+                print(f"❌ Failed to parse JSON response: {e}")
+                print(f"   Response text preview: {response_text[:500]}...")
+
+            return []
+        except KeyError as e:
+            print(f"❌ Missing required field in scenario: {e}")
+            print(f"   Response text preview: {response_text[:500]}...")
             return []
         except Exception as e:
-            print(f"Error parsing Gherkin response: {e}")
+            print(f"❌ Error parsing Gherkin response: {e}")
             return []
 
     def suggest_test_types(self, user_story: UserStory) -> List[TestType]:
