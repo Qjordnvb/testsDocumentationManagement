@@ -3,7 +3,7 @@
  * Interactive table for displaying user stories with filters and actions
  */
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -245,9 +245,8 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {table.getRowModel().rows.map((row) => (
-                <>
+                <React.Fragment key={row.id}>
                   <tr
-                    key={row.id}
                     className="hover:bg-gray-50 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -325,7 +324,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
