@@ -15,7 +15,8 @@ import type { UserStory } from '@/entities/user-story';
 import { Modal } from '@/shared/ui/Modal';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 import { TestCaseFormModal } from '@/features/test-case-management/ui';
-import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye, Search, Filter } from 'lucide-react';
+import { TestRunnerModal } from '@/features/test-execution/ui/TestRunnerModal';
+import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye, Search, Filter, PlayCircle } from 'lucide-react';
 
 interface TestSuite {
   userStory: UserStory | null;
@@ -37,6 +38,10 @@ export const TestCasesPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [expandedSuites, setExpandedSuites] = useState<Set<string>>(new Set());
+
+  // Test Runner Modal state
+  const [runningTestCase, setRunningTestCase] = useState<TestCase | null>(null);
+  const [showTestRunner, setShowTestRunner] = useState(false);
 
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -211,6 +216,19 @@ export const TestCasesPage = () => {
       toast.error('Error al eliminar el suite de test cases');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunTest = async (testCase: TestCase) => {
+    try {
+      // Load Gherkin content if needed
+      const content = await testCaseApi.getGherkinContent(testCase.id);
+      setGherkinContent(content);
+      setRunningTestCase(testCase);
+      setShowTestRunner(true);
+    } catch (err: any) {
+      console.error('Error loading test case:', err);
+      toast.error('Error al cargar test case para ejecución');
     }
   };
 
@@ -514,6 +532,14 @@ export const TestCasesPage = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div className="flex items-center justify-end gap-3">
                                   <button
+                                    onClick={() => handleRunTest(tc)}
+                                    className="text-purple-600 hover:text-purple-900 flex items-center gap-1"
+                                    title="Ejecutar Test"
+                                    disabled={!tc.gherkin_file_path}
+                                  >
+                                    <PlayCircle size={16} />
+                                  </button>
+                                  <button
                                     onClick={() => setSelectedTestCase(tc)}
                                     className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
                                     title="Ver detalles"
@@ -758,6 +784,26 @@ export const TestCasesPage = () => {
         }}
         testCase={editingTestCase || undefined}
       />
+
+      {/* Test Runner Modal */}
+      {runningTestCase && projectId && (
+        <TestRunnerModal
+          isOpen={showTestRunner}
+          onClose={() => {
+            setShowTestRunner(false);
+            setRunningTestCase(null);
+          }}
+          testCaseId={runningTestCase.id}
+          testCaseTitle={runningTestCase.title}
+          gherkinContent={gherkinContent}
+          projectId={projectId}
+          onSave={() => {
+            setShowTestRunner(false);
+            setRunningTestCase(null);
+            loadData(); // Reload to reflect updated status
+          }}
+        />
+      )}
     </div>
   );
 };

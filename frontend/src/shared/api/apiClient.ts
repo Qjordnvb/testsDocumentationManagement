@@ -151,6 +151,27 @@ export const apiService = {
     return data;
   },
 
+
+  // ==================== Test Execution (NUEVO - SPRINT 1) ====================
+
+  // Guardar una ejecución de prueba
+  createTestExecution: async (payload: any): Promise<any> => {
+    const { data } = await api.post('/test-executions', payload);
+    return data;
+  },
+
+  // Subir evidencia (screenshot/video)
+  uploadEvidence: async (file: File, projectId: string, entityType: 'execution' | 'bug'): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Nota: Los params van en la URL o query params según tu backend endpoints/executions.py
+    const { data } = await api.post('/upload-evidence', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      params: { project_id: projectId, entity_type: entityType }
+    });
+    return data;
+  },
+
   // ==================== File Downloads ====================
 
   // Download generated file

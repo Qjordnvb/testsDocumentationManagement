@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from backend.config import settings
-from backend.api.routes import router
+from backend.api.routes2 import router
 from backend.database import init_db
 
 

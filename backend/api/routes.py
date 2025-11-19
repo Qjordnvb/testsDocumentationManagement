@@ -8,11 +8,12 @@ from pathlib import Path
 import shutil
 import os
 from datetime import datetime
-
+from backend.models.test_case import TestExecutionCreate
 from backend.models import (
     Project, CreateProjectDTO, UpdateProjectDTO, ProjectStatus,
     UserStory, AcceptanceCriteria, TestCase, BugReport, TestType, TestPriority, TestStatus
 )
+from backend.api.endpoints import executions
 from backend.parsers import FileParser
 from backend.generators import GherkinGenerator, TestPlanGenerator, BugReportGenerator
 from backend.integrations import GeminiClient
@@ -822,7 +823,7 @@ async def preview_test_cases(
             "can_edit": True,
             "can_delete": True
         })
-    
+
     response = {
         "project_id": story_db.project_id,  # Include project_id for frontend
         "user_story_id": story_id,
@@ -965,7 +966,7 @@ async def create_test_cases_batch(
                 status_code=500,
                 detail=f"Error creating test case {i}: {str(e)}"
             )
-    
+
     print(f"\n💾 Committing {len(created_test_cases)} test cases to database...")
     db.commit()
     print(f"✅ Commit successful!")
@@ -997,7 +998,7 @@ async def get_test_case(test_id: str, db: Session = Depends(get_db)):
     tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
     if not tc:
         raise HTTPException(status_code=404, detail="Test case not found")
-    
+
     return {
         "id": tc.id,
         "title": tc.title,
@@ -1026,14 +1027,14 @@ async def update_test_case(
     tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
     if not tc:
         raise HTTPException(status_code=404, detail="Test case not found")
-    
+
     # Update allowed fields
     allowed_fields = [
         "title", "description", "test_type", "priority", "status",
         "estimated_time_minutes", "actual_time_minutes", "automated",
         "executed_by"
     ]
-    
+
     for field, value in updates.items():
         if field in allowed_fields and value is not None:
             if field in ["test_type", "priority", "status"]:
@@ -1045,10 +1046,10 @@ async def update_test_case(
                 elif field == "status":
                     value = TestStatus[value]
             setattr(tc, field, value)
-    
+
     db.commit()
     db.refresh(tc)
-    
+
     return {
         "message": "Test case updated successfully",
         "test_case": {
@@ -1135,13 +1136,13 @@ async def get_gherkin_content(test_id: str, db: Session = Depends(get_db)):
     tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
     if not tc:
         raise HTTPException(status_code=404, detail="Test case not found")
-    
+
     if not tc.gherkin_file_path or not os.path.exists(tc.gherkin_file_path):
         raise HTTPException(status_code=404, detail="Gherkin file not found")
-    
+
     with open(tc.gherkin_file_path, 'r') as f:
         content = f.read()
-    
+
     return {
         "test_case_id": test_id,
         "file_path": tc.gherkin_file_path,
@@ -1161,23 +1162,27 @@ async def update_gherkin_content(
         raise HTTPException(status_code=404, detail="Test case not found")
 
     gherkin_content = content_data.get("gherkin_content", "")
-    
+
     # Create file if doesn't exist
     if not tc.gherkin_file_path:
         settings.ensure_directories()
         tc.gherkin_file_path = f"{settings.output_dir}/{test_id}.feature"
-    
+
     # Write content to file
     with open(tc.gherkin_file_path, 'w') as f:
         f.write(gherkin_content)
-    
+
     db.commit()
-    
+
     return {
         "message": "Gherkin content updated successfully",
         "file_path": tc.gherkin_file_path
     }
 
+# ==================== Execution & Evidence ====================
+
+# Incluir el router de ejecuciones
+router.include_router(executions.router, tags=["Test Execution"])
 
 # ==================== Test Plan Generation ====================
 @router.post("/generate-test-plan")

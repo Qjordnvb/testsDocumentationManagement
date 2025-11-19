@@ -183,29 +183,42 @@ class BugReportDB(Base):
 
 
 class TestExecutionDB(Base):
-    """Test Execution tracking"""
+    """Test Execution tracking with detailed steps"""
     __tablename__ = "test_executions"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     test_case_id = Column(String, ForeignKey("test_cases.id"), nullable=False)
 
     # Execution details
-    executed_by = Column(String, nullable=False)
+    executed_by = Column(String, nullable=False) # Por ahora email o nombre
     execution_date = Column(DateTime, default=datetime.now)
     status = Column(SQLEnum(TestStatus), nullable=False)
 
+    # Environment context (NUEVO)
+    environment = Column(String, default="QA") # QA, STG, PROD
+    version = Column(String, nullable=True)    # v1.0.2, build #123
+
     # Metrics
-    execution_time_minutes = Column(Integer, nullable=True)
+    execution_time_minutes = Column(Float, nullable=True) # Cambiado a Float para mayor precisión (segundos/60)
     passed_steps = Column(Integer, default=0)
     failed_steps = Column(Integer, default=0)
     total_steps = Column(Integer, default=0)
+
+    # Detailed Results (NUEVO)
+    # Guardaremos JSON como Texto porque SQLite no tiene tipo JSON nativo estricto
+    # Estructura: [{"step_id": 1, "keyword": "Given", "text": "...", "status": "PASSED", "actual": "..."}]
+    step_results = Column(Text, nullable=True)
+
+    # Evidence (NUEVO)
+    # Estructura: ["/uploads/PROJ-1/exec/img1.png", ...]
+    evidence_files = Column(Text, nullable=True)
 
     # Notes and results
     notes = Column(Text, nullable=True)
     failure_reason = Column(Text, nullable=True)
 
     # Related bugs
-    bug_ids = Column(String, nullable=True)  # Comma-separated bug IDs
+    bug_ids = Column(String, nullable=True)  # Comma-separated: "BUG-001,BUG-002"
 
     # Relationships
     test_case = relationship("TestCaseDB", back_populates="executions")

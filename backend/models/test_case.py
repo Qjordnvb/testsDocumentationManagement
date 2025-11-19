@@ -2,7 +2,7 @@
 Test Case data models including Gherkin scenarios
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
 
@@ -193,3 +193,24 @@ class TestCase(BaseModel):
             "estimated_time": self.estimated_time_minutes,
             "actual_time": self.actual_time_minutes
         }
+class StepExecutionResult(BaseModel):
+    step_index: int
+    keyword: str  # Given, When, Then
+    text: str
+    status: TestStatus # PASSED, FAILED, SKIPPED
+    actual_result: Optional[str] = None
+    evidence_file: Optional[str] = None # Path al archivo subido
+    comment: Optional[str] = None
+
+class TestExecutionCreate(BaseModel):
+    test_case_id: str
+    executed_by: str
+    status: TestStatus
+    environment: str = "QA"
+    version: Optional[str] = None
+    execution_time_seconds: int
+    step_results: List[StepExecutionResult]
+    notes: Optional[str] = None
+    failure_reason: Optional[str] = None
+    evidence_files: List[str] = [] # Lista global de evidencias
+    bug_ids: List[str] = []
