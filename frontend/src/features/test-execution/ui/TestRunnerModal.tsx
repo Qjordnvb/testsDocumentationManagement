@@ -294,9 +294,9 @@ export const TestRunnerModal: React.FC<Props> = ({
                                       />
                                     </label>
                                   )}
-                                  <div className="text-xs text-red-500 flex items-center gap-1">
+                                  <div className="text-xs text-gray-500 flex items-center gap-1 italic">
                                     <AlertCircle size={12} />
-                                    El fallo detuvo el scenario
+                                    Puedes continuar ejecutando los siguientes steps
                                   </div>
                                 </div>
                               </div>
