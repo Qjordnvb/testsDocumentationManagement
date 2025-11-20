@@ -15,8 +15,8 @@ import type { UserStory } from '@/entities/user-story';
 import { Modal } from '@/shared/ui/Modal';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 import { TestCaseFormModal } from '@/features/test-case-management/ui';
-import { TestRunnerModal } from '@/features/test-execution/ui/TestRunnerModal';
-import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye, Search, Filter, PlayCircle } from 'lucide-react';
+import { TestRunnerModal, ExecutionHistory, ExecutionDetailsModal } from '@/features/test-execution/ui';
+import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye, Search, Filter, PlayCircle, History } from 'lucide-react';
 
 interface TestSuite {
   userStory: UserStory | null;
@@ -42,6 +42,11 @@ export const TestCasesPage = () => {
   // Test Runner Modal state
   const [runningTestCase, setRunningTestCase] = useState<TestCase | null>(null);
   const [showTestRunner, setShowTestRunner] = useState(false);
+
+  // Expandable test case rows (for execution history)
+  const [expandedTestCases, setExpandedTestCases] = useState<Set<string>>(new Set());
+  const [selectedExecutionId, setSelectedExecutionId] = useState<number | null>(null);
+  const [showExecutionDetails, setShowExecutionDetails] = useState(false);
 
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,6 +179,18 @@ export const TestCasesPage = () => {
     } else {
       setExpandedSuites(new Set(testSuites.map(suite => suite.userStoryId)));
     }
+  };
+
+  const toggleTestCase = (testCaseId: string) => {
+    setExpandedTestCases(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(testCaseId)) {
+        newSet.delete(testCaseId);
+      } else {
+        newSet.add(testCaseId);
+      }
+      return newSet;
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -483,6 +500,9 @@ export const TestCasesPage = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                              {/* Expand/Collapse */}
+                            </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               ID
                             </th>
@@ -504,68 +524,109 @@ export const TestCasesPage = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {suite.testCases.map((tc) => (
-                            <tr key={tc.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">
-                                {tc.id}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-900">
-                                {tc.title}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                  {tc.test_type || 'FUNCTIONAL'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  tc.status === 'PASSED' ? 'bg-green-100 text-green-800' :
-                                  tc.status === 'FAILED' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {tc.status || 'NOT_RUN'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {tc.created_date ? new Date(tc.created_date).toLocaleDateString() : '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex items-center justify-end gap-3">
-                                  <button
-                                    onClick={() => handleRunTest(tc)}
-                                    className="text-purple-600 hover:text-purple-900 flex items-center gap-1"
-                                    title="Ejecutar Test"
-                                    disabled={!tc.gherkin_file_path}
-                                  >
-                                    <PlayCircle size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => setSelectedTestCase(tc)}
-                                    className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
-                                    title="Ver detalles"
-                                  >
-                                    <Eye size={16} />
-                                  </button>
-                                  {tc.gherkin_file_path && (
+                          {suite.testCases.map((tc) => {
+                            const isTestExpanded = expandedTestCases.has(tc.id);
+                            return (
+                              <>
+                                <tr key={tc.id} className="hover:bg-gray-50">
+                                  <td className="px-3 py-4 whitespace-nowrap">
                                     <button
-                                      onClick={() => handleOpenGherkin(tc)}
-                                      className="text-green-600 hover:text-green-900 flex items-center gap-1"
-                                      title="Ver/Editar Gherkin"
+                                      onClick={() => toggleTestCase(tc.id)}
+                                      className="text-gray-400 hover:text-gray-600 transition-transform"
+                                      title={isTestExpanded ? "Ocultar historial" : "Ver historial de ejecuciones"}
                                     >
-                                      <FileCheck size={16} />
+                                      {isTestExpanded ? (
+                                        <ChevronDown size={18} className="text-blue-600" />
+                                      ) : (
+                                        <ChevronRight size={18} />
+                                      )}
                                     </button>
-                                  )}
-                                  <button
-                                    onClick={() => handleDelete(tc.id)}
-                                    className="text-red-600 hover:text-red-900 flex items-center gap-1"
-                                    title="Eliminar"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">
+                                    {tc.id}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900">
+                                    {tc.title}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                      {tc.test_type || 'FUNCTIONAL'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                      tc.status === 'PASSED' ? 'bg-green-100 text-green-800' :
+                                      tc.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {tc.status || 'NOT_RUN'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {tc.created_date ? new Date(tc.created_date).toLocaleDateString() : '-'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div className="flex items-center justify-end gap-3">
+                                      <button
+                                        onClick={() => handleRunTest(tc)}
+                                        className="text-purple-600 hover:text-purple-900 flex items-center gap-1"
+                                        title="Ejecutar Test"
+                                        disabled={!tc.gherkin_file_path}
+                                      >
+                                        <PlayCircle size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => setSelectedTestCase(tc)}
+                                        className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                                        title="Ver detalles"
+                                      >
+                                        <Eye size={16} />
+                                      </button>
+                                      {tc.gherkin_file_path && (
+                                        <button
+                                          onClick={() => handleOpenGherkin(tc)}
+                                          className="text-green-600 hover:text-green-900 flex items-center gap-1"
+                                          title="Ver/Editar Gherkin"
+                                        >
+                                          <FileCheck size={16} />
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleDelete(tc.id)}
+                                        className="text-red-600 hover:text-red-900 flex items-center gap-1"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+
+                                {/* Expandable Execution History Row */}
+                                {isTestExpanded && (
+                                  <tr key={`${tc.id}-history`}>
+                                    <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                                      <div className="max-w-5xl mx-auto">
+                                        <div className="flex items-center gap-2 mb-4">
+                                          <History size={18} className="text-blue-600" />
+                                          <h4 className="font-semibold text-gray-900">
+                                            Historial de Ejecuciones - {tc.title}
+                                          </h4>
+                                        </div>
+                                        <ExecutionHistory
+                                          testCaseId={tc.id}
+                                          onSelectExecution={(executionId) => {
+                                            setSelectedExecutionId(executionId);
+                                            setShowExecutionDetails(true);
+                                          }}
+                                        />
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -801,6 +862,18 @@ export const TestCasesPage = () => {
             setShowTestRunner(false);
             setRunningTestCase(null);
             loadData(); // Reload to reflect updated status
+          }}
+        />
+      )}
+
+      {/* Execution Details Modal */}
+      {selectedExecutionId && (
+        <ExecutionDetailsModal
+          executionId={selectedExecutionId}
+          isOpen={showExecutionDetails}
+          onClose={() => {
+            setShowExecutionDetails(false);
+            setSelectedExecutionId(null);
           }}
         />
       )}
