@@ -4,7 +4,7 @@
  * Grouped by User Story for better organization
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { testCaseApi } from '@/entities/test-case';
@@ -527,8 +527,8 @@ export const TestCasesPage = () => {
                           {suite.testCases.map((tc) => {
                             const isTestExpanded = expandedTestCases.has(tc.id);
                             return (
-                              <>
-                                <tr key={tc.id} className="hover:bg-gray-50">
+                              <React.Fragment key={tc.id}>
+                                <tr className="hover:bg-gray-50">
                                   <td className="px-3 py-4 whitespace-nowrap">
                                     <button
                                       onClick={() => toggleTestCase(tc.id)}
@@ -604,7 +604,7 @@ export const TestCasesPage = () => {
 
                                 {/* Expandable Execution History Row */}
                                 {isTestExpanded && (
-                                  <tr key={`${tc.id}-history`}>
+                                  <tr>
                                     <td colSpan={7} className="px-6 py-4 bg-gray-50">
                                       <div className="max-w-5xl mx-auto">
                                         <div className="flex items-center gap-2 mb-4">
@@ -624,7 +624,7 @@ export const TestCasesPage = () => {
                                     </td>
                                   </tr>
                                 )}
-                              </>
+                              </React.Fragment>
                             );
                           })}
                         </tbody>
