@@ -70,7 +70,7 @@ export const TestRunnerModal: React.FC<Props> = ({
         }
       }
 
-      // 2. Build step results (flatten all scenarios)
+      // 2. Build step results (flatten all scenarios but keep scenario name)
       const allStepResults: any[] = [];
       scenarios.forEach((scenario) => {
         scenario.steps.forEach((step: any) => {
@@ -79,6 +79,7 @@ export const TestRunnerModal: React.FC<Props> = ({
             keyword: step.keyword,
             text: step.text,
             status: step.status === 'pending' ? 'SKIPPED' : step.status.toUpperCase(),
+            scenario_name: scenario.scenarioName,  // Keep scenario grouping info
             evidence_file: stepEvidencePaths[step.id] || null
           });
         });

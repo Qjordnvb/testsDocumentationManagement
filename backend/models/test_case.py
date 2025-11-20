@@ -198,6 +198,7 @@ class StepExecutionResult(BaseModel):
     keyword: str  # Given, When, Then
     text: str
     status: TestStatus # PASSED, FAILED, SKIPPED
+    scenario_name: Optional[str] = None  # Name of the scenario this step belongs to
     actual_result: Optional[str] = None
     evidence_file: Optional[str] = None # Path al archivo subido
     comment: Optional[str] = None
