@@ -21,7 +21,19 @@ async def get_projects(db: Session = Depends(get_db)):
         total_tests = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
         total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
 
-        coverage = min((total_tests / total_stories * 100), 100.0) if total_stories > 0 else 0.0
+        # Calculate test coverage: % of stories that have at least 1 test case
+        # OLD (WRONG): coverage = min((total_tests / total_stories * 100), 100.0) - could give >100%
+        # NEW (CORRECT): Count stories with at least one test case
+        stories_with_tests = 0
+        if total_stories > 0:
+            # Get distinct user_story_ids that have test cases
+            story_ids_with_tests = db.query(TestCaseDB.user_story_id).filter(
+                TestCaseDB.project_id == project.id
+            ).distinct().all()
+            stories_with_tests = len(story_ids_with_tests)
+            coverage = (stories_with_tests / total_stories) * 100
+        else:
+            coverage = 0.0
 
         result.append({
             "id": project.id,
@@ -55,7 +67,18 @@ async def get_project(project_id: str, db: Session = Depends(get_db)):
     total_stories = db.query(UserStoryDB).filter(UserStoryDB.project_id == project.id).count()
     total_tests = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
     total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
-    coverage = min((total_tests / total_stories * 100), 100.0) if total_stories > 0 else 0.0
+
+    # Calculate test coverage: % of stories that have at least 1 test case
+    stories_with_tests = 0
+    if total_stories > 0:
+        # Get distinct user_story_ids that have test cases
+        story_ids_with_tests = db.query(TestCaseDB.user_story_id).filter(
+            TestCaseDB.project_id == project.id
+        ).distinct().all()
+        stories_with_tests = len(story_ids_with_tests)
+        coverage = (stories_with_tests / total_stories) * 100
+    else:
+        coverage = 0.0
 
     return {
         "id": project.id,
@@ -196,6 +219,18 @@ async def get_project_stats(project_id: str, db: Session = Depends(get_db)):
     total_test_cases = db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).count()
     total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project_id).count()
 
+    # Calculate test coverage: % of stories that have at least 1 test case
+    stories_with_tests = 0
+    if total_stories > 0:
+        # Get distinct user_story_ids that have test cases
+        story_ids_with_tests = db.query(TestCaseDB.user_story_id).filter(
+            TestCaseDB.project_id == project_id
+        ).distinct().all()
+        stories_with_tests = len(story_ids_with_tests)
+        coverage = (stories_with_tests / total_stories) * 100
+    else:
+        coverage = 0.0
+
     # Stories by status
     stories_by_status = {}
     for status in ["Backlog", "To Do", "In Progress", "Testing", "Done"]:
@@ -211,6 +246,7 @@ async def get_project_stats(project_id: str, db: Session = Depends(get_db)):
         "total_user_stories": total_stories,
         "total_test_cases": total_test_cases,
         "total_bugs": total_bugs,
+        "test_coverage": round(coverage, 2),
         "stories_by_status": stories_by_status,
         "timestamp": datetime.now().isoformat()
     }

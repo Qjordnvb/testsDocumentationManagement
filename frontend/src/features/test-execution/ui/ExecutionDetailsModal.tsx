@@ -1,13 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, CheckCircle2, XCircle, Circle, Calendar, Clock, User, Image, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, CheckCircle2, XCircle, Circle, Calendar, Clock, User, Image, AlertCircle, ChevronDown, ChevronRight, Bug } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
 import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-execution';
+import { BugReportModal } from '@/features/bug-management/ui';
 import toast from 'react-hot-toast';
 
 interface Props {
   executionId: number;
   isOpen: boolean;
   onClose: () => void;
+
+  // Context for bug reporting
+  projectId?: string;
+  testCaseTitle?: string;
+  userStoryId?: string;
+  onBugReported?: () => void;  // Callback after bug is created
 }
 
 interface ScenarioGroup {
@@ -18,11 +25,20 @@ interface ScenarioGroup {
   skippedSteps: number;
 }
 
-export const ExecutionDetailsModal: React.FC<Props> = ({ executionId, isOpen, onClose }) => {
+export const ExecutionDetailsModal: React.FC<Props> = ({
+  executionId,
+  isOpen,
+  onClose,
+  projectId,
+  testCaseTitle,
+  userStoryId,
+  onBugReported
+}) => {
   const [execution, setExecution] = useState<ExecutionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
   const [expandedScenarios, setExpandedScenarios] = useState<Set<string>>(new Set());
+  const [showBugReportModal, setShowBugReportModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && executionId) {
@@ -381,7 +397,21 @@ export const ExecutionDetailsModal: React.FC<Props> = ({ executionId, isOpen, on
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t bg-white flex justify-end gap-3">
+            <div className="p-4 border-t bg-white flex justify-between items-center gap-3">
+              {/* Left: Bug Report Button */}
+              <div>
+                {projectId && execution?.failed_steps > 0 && (
+                  <button
+                    onClick={() => setShowBugReportModal(true)}
+                    className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Bug size={18} />
+                    🐛 Reportar Bug Basado en Esta Ejecución
+                  </button>
+                )}
+              </div>
+
+              {/* Right: Close Button */}
               <button
                 onClick={onClose}
                 className="px-5 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
@@ -412,6 +442,26 @@ export const ExecutionDetailsModal: React.FC<Props> = ({ executionId, isOpen, on
             <X size={32} />
           </button>
         </div>
+      )}
+
+      {/* Bug Report Modal */}
+      {projectId && execution && (
+        <BugReportModal
+          isOpen={showBugReportModal}
+          onClose={() => setShowBugReportModal(false)}
+          onSuccess={(bug) => {
+            toast.success(`Bug ${bug.id} creado exitosamente`);
+            setShowBugReportModal(false);
+            if (onBugReported) {
+              onBugReported();
+            }
+          }}
+          projectId={projectId}
+          executionDetails={execution}
+          testCaseId={execution.test_case_id}
+          testCaseTitle={testCaseTitle}
+          userStoryId={userStoryId}
+        />
       )}
     </div>
   );

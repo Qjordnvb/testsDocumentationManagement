@@ -12,15 +12,10 @@ import { ProjectsListPage } from '@/pages/ProjectsListPage';
 import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
 import { TestCasesPage } from '@/pages/TestCasesPage';
+import { BugsPage } from '@/pages/BugsPage';
+import { BugDetailsPage } from '@/pages/BugDetailsPage';
 
 // Placeholder pages (to be created)
-
-const BugsPage = () => (
-  <div className="card">
-    <h1 className="text-2xl font-bold">🐛 Bug Reports</h1>
-    <p className="text-gray-600 mt-2">Coming soon...</p>
-  </div>
-);
 
 const ReportsPage = () => (
   <div className="card">
@@ -55,6 +50,7 @@ function App() {
               <Route path="stories" element={<StoriesPage />} />
               <Route path="tests" element={<TestCasesPage />} />
               <Route path="bugs" element={<BugsPage />} />
+              <Route path="bugs/:bugId" element={<BugDetailsPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
