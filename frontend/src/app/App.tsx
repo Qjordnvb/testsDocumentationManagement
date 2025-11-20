@@ -12,15 +12,9 @@ import { ProjectsListPage } from '@/pages/ProjectsListPage';
 import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
 import { TestCasesPage } from '@/pages/TestCasesPage';
+import { BugsPage } from '@/pages/BugsPage';
 
 // Placeholder pages (to be created)
-
-const BugsPage = () => (
-  <div className="card">
-    <h1 className="text-2xl font-bold">🐛 Bug Reports</h1>
-    <p className="text-gray-600 mt-2">Coming soon...</p>
-  </div>
-);
 
 const ReportsPage = () => (
   <div className="card">
