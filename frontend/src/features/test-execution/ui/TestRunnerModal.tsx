@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage, ChevronDown, ChevronRight, Bug } from 'lucide-react';
 import { useTestRunner } from '../model/useTestRunner';
 import { parseGherkinContent } from '@/shared/lib/gherkinParser';
 import { apiService } from '@/shared/api/apiClient';
 import { ConfirmModal } from '@/shared/ui';
+import { BugReportModal } from '@/features/bug-management/ui/BugReportModal';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -13,11 +14,12 @@ interface Props {
   testCaseTitle: string;
   gherkinContent: string;
   projectId: string;
+  userStoryId?: string;
   onSave: () => void;
 }
 
 export const TestRunnerModal: React.FC<Props> = ({
-  isOpen, onClose, testCaseId, testCaseTitle, gherkinContent, projectId, onSave
+  isOpen, onClose, testCaseId, testCaseTitle, gherkinContent, projectId, userStoryId, onSave
 }) => {
   const [parsedFeature, setParsedFeature] = useState(() => parseGherkinContent(gherkinContent));
 
@@ -34,6 +36,9 @@ export const TestRunnerModal: React.FC<Props> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showBugPrompt, setShowBugPrompt] = useState(false);
+  const [showBugModal, setShowBugModal] = useState(false);
+  const [savedExecutionId, setSavedExecutionId] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -115,11 +120,23 @@ export const TestRunnerModal: React.FC<Props> = ({
       console.log('[TestRunnerModal] Sending execution payload:', JSON.stringify(payload, null, 2));
 
       // 4. Send to backend
-      await apiService.createTestExecution(payload);
+      const response = await apiService.createTestExecution(payload);
+
+      // Save execution ID for bug reporting
+      if (response && response.execution_id) {
+        setSavedExecutionId(response.execution_id);
+      }
 
       toast.success("Ejecución guardada exitosamente");
       onSave();
-      onClose();
+
+      // Check if there are failed steps - prompt to create bug
+      const hasFailures = executionStatus === 'FAILED';
+      if (hasFailures) {
+        setShowBugPrompt(true);
+      } else {
+        onClose();
+      }
 
     } catch (error) {
       console.error("Error saving execution:", error);
@@ -362,6 +379,68 @@ export const TestRunnerModal: React.FC<Props> = ({
         variant="info"
         isLoading={isSaving}
       />
+
+      {/* Bug Report Prompt */}
+      <ConfirmModal
+        isOpen={showBugPrompt}
+        onClose={() => {
+          setShowBugPrompt(false);
+          onClose();
+        }}
+        onConfirm={() => {
+          setShowBugPrompt(false);
+          setShowBugModal(true);
+        }}
+        title="Test Failed - Create Bug Report?"
+        message={`La ejecución del test ha fallado con ${failedScenarios} scenario(s) fallido(s).\n\n¿Deseas crear un bug report ahora?\n\nEsto te permitirá documentar el problema con toda la información de la ejecución automáticamente.`}
+        confirmText="Sí, Crear Bug Report"
+        cancelText="No, Cerrar"
+        variant="warning"
+      />
+
+      {/* Bug Report Modal */}
+      {showBugModal && savedExecutionId && (
+        <BugReportModal
+          isOpen={showBugModal}
+          onClose={() => {
+            setShowBugModal(false);
+            onClose();
+          }}
+          onSuccess={() => {
+            setShowBugModal(false);
+            onClose();
+          }}
+          projectId={projectId}
+          testCaseId={testCaseId}
+          testCaseTitle={testCaseTitle}
+          userStoryId={userStoryId}
+          executionDetails={{
+            execution_id: savedExecutionId,
+            test_case_id: testCaseId,
+            executed_by: 'QA Tester',
+            execution_date: new Date().toISOString(),
+            status: executionStatus,
+            environment: 'QA',
+            version: '',
+            execution_time_minutes: elapsedSeconds / 60,
+            total_steps: totalSteps,
+            passed_steps: scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status === 'passed').length, 0),
+            failed_steps: scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status === 'failed').length, 0),
+            step_results: scenarios.flatMap(scenario =>
+              scenario.steps.map((step: any) => ({
+                step_index: step.id,
+                keyword: step.keyword,
+                text: step.text,
+                status: step.status.toUpperCase(),
+                scenario_name: scenario.scenarioName,
+                evidence_file: null
+              }))
+            ),
+            evidence_count: Object.keys(evidenceMap).length,
+            evidence_files: []
+          }}
+        />
+      )}
     </div>
   );
 };

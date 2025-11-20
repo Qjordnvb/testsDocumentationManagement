@@ -568,6 +568,7 @@ export const BugDetailsPage = () => {
           testCaseTitle={testCase.title}
           gherkinContent={gherkinContent}
           projectId={projectId}
+          userStoryId={bug?.user_story_id}
           onSave={handleTestExecutionComplete}
         />
       )}
