@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { X, CheckCircle2, XCircle, Circle, Calendar, Clock, User, Image, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, CheckCircle2, XCircle, Circle, Calendar, Clock, User, Image, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
-import type { ExecutionDetails } from '@/entities/test-execution';
+import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-execution';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -10,10 +10,19 @@ interface Props {
   onClose: () => void;
 }
 
+interface ScenarioGroup {
+  scenarioName: string;
+  steps: StepExecutionResult[];
+  passedSteps: number;
+  failedSteps: number;
+  skippedSteps: number;
+}
+
 export const ExecutionDetailsModal: React.FC<Props> = ({ executionId, isOpen, onClose }) => {
   const [execution, setExecution] = useState<ExecutionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
+  const [expandedScenarios, setExpandedScenarios] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen && executionId) {
@@ -26,12 +35,52 @@ export const ExecutionDetailsModal: React.FC<Props> = ({ executionId, isOpen, on
       setLoading(true);
       const data = await apiService.getExecutionDetails(executionId);
       setExecution(data);
+
+      // Auto-expand all scenarios
+      if (data?.step_results) {
+        const scenarioNames = new Set<string>(data.step_results.map((s: StepExecutionResult) => s.scenario_name || 'Unnamed Scenario'));
+        setExpandedScenarios(scenarioNames);
+      }
     } catch (err: any) {
       console.error('Error loading execution details:', err);
       toast.error('Error al cargar detalles de ejecución');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Group steps by scenario
+  const scenarioGroups = useMemo((): ScenarioGroup[] => {
+    if (!execution?.step_results) return [];
+
+    const grouped = execution.step_results.reduce((acc, step) => {
+      const scenarioName = step.scenario_name || 'Unnamed Scenario';
+      if (!acc[scenarioName]) {
+        acc[scenarioName] = [];
+      }
+      acc[scenarioName].push(step);
+      return acc;
+    }, {} as Record<string, StepExecutionResult[]>);
+
+    return Object.entries(grouped).map(([scenarioName, steps]) => ({
+      scenarioName,
+      steps,
+      passedSteps: steps.filter(s => s.status === 'PASSED').length,
+      failedSteps: steps.filter(s => s.status === 'FAILED').length,
+      skippedSteps: steps.filter(s => s.status === 'SKIPPED').length,
+    }));
+  }, [execution]);
+
+  const toggleScenario = (scenarioName: string) => {
+    setExpandedScenarios(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(scenarioName)) {
+        newSet.delete(scenarioName);
+      } else {
+        newSet.add(scenarioName);
+      }
+      return newSet;
+    });
   };
 
   const getStatusIcon = (status: string) => {
@@ -209,68 +258,108 @@ export const ExecutionDetailsModal: React.FC<Props> = ({ executionId, isOpen, on
               </div>
             </div>
 
-            {/* Steps */}
+            {/* Steps Grouped by Scenario */}
             <div className="flex-1 overflow-y-auto p-6">
               <h3 className="font-semibold text-gray-900 mb-4">Steps Ejecutados</h3>
-              <div className="space-y-3">
-                {execution.step_results.map((step, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg border transition-all ${getStepCardClass(step.status)}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1">{getStatusIcon(step.status)}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-2">
-                          <span className="font-bold text-purple-700 text-sm">{step.keyword}</span>
-                          <span className={`text-sm ${
-                            step.status === 'SKIPPED' ? 'text-gray-400 line-through' : 'text-gray-800'
-                          }`}>
-                            {step.text}
-                          </span>
-                        </div>
+              <div className="space-y-4">
+                {scenarioGroups.map((scenario, scenarioIdx) => {
+                  const isExpanded = expandedScenarios.has(scenario.scenarioName);
 
-                        {step.comment && (
-                          <p className="text-xs text-gray-600 mt-2 pl-2 border-l-2 border-gray-300">
-                            💬 {step.comment}
-                          </p>
-                        )}
-
-                        {/* Evidence */}
-                        {step.evidence_file && (
-                          <div className="mt-3 pl-2 border-l-2 border-blue-300">
-                            <p className="text-xs text-gray-600 mb-2 flex items-center gap-1">
-                              <Image size={12} />
-                              Evidencia adjunta:
-                            </p>
-                            <div className="relative group">
-                              <img
-                                src={apiService.getEvidenceUrl(step.evidence_file)}
-                                alt="Evidence"
-                                className="max-w-md border rounded cursor-pointer hover:shadow-lg transition-shadow"
-                                onClick={() => openEvidence(step.evidence_file!)}
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded flex items-center justify-center">
-                                <button
-                                  onClick={() => openEvidence(step.evidence_file!)}
-                                  className="opacity-0 group-hover:opacity-100 bg-white px-3 py-1 rounded shadow-lg text-sm font-medium transition-opacity"
-                                >
-                                  🔍 Ver en tamaño completo
-                                </button>
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {step.evidence_file.split('/').pop()}
+                  return (
+                    <div key={scenarioIdx} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      {/* Scenario Header (Clickable) */}
+                      <div
+                        onClick={() => toggleScenario(scenario.scenarioName)}
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors bg-gray-50/50"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          {isExpanded ? (
+                            <ChevronDown size={20} className="text-gray-500 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight size={20} className="text-gray-500 flex-shrink-0" />
+                          )}
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-800 text-base">{scenario.scenarioName}</h4>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {scenario.steps.length} steps •
+                              <span className="text-green-600 ml-1">{scenario.passedSteps} passed</span> •
+                              <span className="text-red-600 ml-1">{scenario.failedSteps} failed</span>
+                              {scenario.skippedSteps > 0 && (
+                                <> • <span className="text-gray-500 ml-1">{scenario.skippedSteps} skipped</span></>
+                              )}
                             </p>
                           </div>
-                        )}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-400 font-mono">
-                        #{idx + 1}
-                      </div>
+
+                      {/* Scenario Steps (Expandable) */}
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50/30">
+                          <div className="p-4 space-y-3">
+                            {scenario.steps.map((step, stepIdx) => (
+                              <div
+                                key={stepIdx}
+                                className={`p-3 rounded-lg border transition-all ${getStepCardClass(step.status)}`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-1">{getStatusIcon(step.status)}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start gap-2">
+                                      <span className="font-bold text-purple-700 text-sm">{step.keyword}</span>
+                                      <span className={`text-sm ${
+                                        step.status === 'SKIPPED' ? 'text-gray-400 line-through' : 'text-gray-800'
+                                      }`}>
+                                        {step.text}
+                                      </span>
+                                    </div>
+
+                                    {step.comment && (
+                                      <p className="text-xs text-gray-600 mt-2 pl-2 border-l-2 border-gray-300">
+                                        💬 {step.comment}
+                                      </p>
+                                    )}
+
+                                    {/* Evidence */}
+                                    {step.evidence_file && (
+                                      <div className="mt-3 pl-2 border-l-2 border-blue-300">
+                                        <p className="text-xs text-gray-600 mb-2 flex items-center gap-1">
+                                          <Image size={12} />
+                                          Evidencia adjunta:
+                                        </p>
+                                        <div className="relative group">
+                                          <img
+                                            src={apiService.getEvidenceUrl(step.evidence_file)}
+                                            alt="Evidence"
+                                            className="max-w-md border rounded cursor-pointer hover:shadow-lg transition-shadow"
+                                            onClick={() => openEvidence(step.evidence_file!)}
+                                          />
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded flex items-center justify-center">
+                                            <button
+                                              onClick={() => openEvidence(step.evidence_file!)}
+                                              className="opacity-0 group-hover:opacity-100 bg-white px-3 py-1 rounded shadow-lg text-sm font-medium transition-opacity"
+                                            >
+                                              🔍 Ver en tamaño completo
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {step.evidence_file.split('/').pop()}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-400 font-mono">
+                                    #{stepIdx + 1}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {execution.failure_reason && (

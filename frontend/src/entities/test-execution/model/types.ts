@@ -10,6 +10,7 @@ export interface StepExecutionResult {
   keyword: string;
   text: string;
   status: TestStatus;
+  scenario_name?: string;  // Name of the scenario this step belongs to
   actual_result?: string;
   evidence_file?: string;
   comment?: string;
