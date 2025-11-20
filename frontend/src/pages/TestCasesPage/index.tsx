@@ -860,6 +860,7 @@ export const TestCasesPage = () => {
           testCaseTitle={runningTestCase.title}
           gherkinContent={gherkinContent}
           projectId={projectId}
+          userStoryId={runningTestCase.user_story_id}
           onSave={() => {
             setShowTestRunner(false);
             setRunningTestCase(null);
