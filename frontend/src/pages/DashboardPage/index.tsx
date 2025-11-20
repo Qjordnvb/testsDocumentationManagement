@@ -78,12 +78,9 @@ export const Dashboard = () => {
     }
   };
 
-  // Calculate coverage
-  const coverage = stats
-    ? stats.total_user_stories > 0
-      ? Math.round((stats.total_test_cases / stats.total_user_stories) * 100)
-      : 0
-    : 0;
+  // Get coverage from backend (already calculated correctly)
+  // Backend calculates: (stories_with_tests / total_stories) * 100
+  const coverage = stats ? stats.test_coverage : 0;
 
   if (isLoadingStats) {
     return (
