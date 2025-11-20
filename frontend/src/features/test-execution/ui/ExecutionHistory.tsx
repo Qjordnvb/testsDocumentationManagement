@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, User, CheckCircle2, XCircle, Circle, Paperclip, Calendar } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
-import type { ExecutionSummary, ExecutionHistoryResponse } from '@/entities/test-execution';
+import type { ExecutionHistoryResponse } from '@/entities/test-execution';
 
 interface Props {
   testCaseId: string;

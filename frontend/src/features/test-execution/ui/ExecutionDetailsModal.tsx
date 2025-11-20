@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle2, XCircle, Circle, Calendar, Clock, User, Image, Download, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, XCircle, Circle, Calendar, Clock, User, Image, AlertCircle } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
-import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-execution';
+import type { ExecutionDetails } from '@/entities/test-execution';
 import toast from 'react-hot-toast';
 
 interface Props {
