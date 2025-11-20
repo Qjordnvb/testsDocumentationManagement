@@ -397,10 +397,10 @@ class TestPlanGenerator:
 
         # Calculate metrics
         total_tests = len(test_cases)
-        passed = sum(1 for tc in test_cases if tc.status.value == "Passed")
-        failed = sum(1 for tc in test_cases if tc.status.value == "Failed")
-        not_run = sum(1 for tc in test_cases if tc.status.value == "Not Run")
-        blocked = sum(1 for tc in test_cases if tc.status.value == "Blocked")
+        passed = sum(1 for tc in test_cases if tc.status.value == "PASSED")
+        failed = sum(1 for tc in test_cases if tc.status.value == "FAILED")
+        not_run = sum(1 for tc in test_cases if tc.status.value == "NOT_RUN")
+        blocked = sum(1 for tc in test_cases if tc.status.value == "BLOCKED")
 
         pass_rate = (passed / total_tests * 100) if total_tests > 0 else 0
 

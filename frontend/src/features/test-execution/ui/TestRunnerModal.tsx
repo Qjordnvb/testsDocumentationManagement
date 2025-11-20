@@ -95,6 +95,9 @@ export const TestRunnerModal: React.FC<Props> = ({
         evidence_files: allUploadedPaths
       };
 
+      // Debug: Log payload before sending
+      console.log('[TestRunnerModal] Sending execution payload:', JSON.stringify(payload, null, 2));
+
       // 4. Send to backend
       await apiService.createTestExecution(payload);
 
