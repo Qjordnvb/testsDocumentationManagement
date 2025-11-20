@@ -69,60 +69,91 @@ async def create_test_execution(
     """
     Save a detailed test execution result and update the parent Test Case
     """
-    # Debug: Log received data
-    print(f"[DEBUG] Received execution data: {execution_data.dict()}")
+    try:
+        # Debug: Log received data
+        print(f"[DEBUG] Received execution data for test case: {execution_data.test_case_id}")
+        print(f"[DEBUG] Status: {execution_data.status}, Steps count: {len(execution_data.step_results)}")
 
-    # 1. Validate Test Case exists
-    test_case = db.query(TestCaseDB).filter(TestCaseDB.id == execution_data.test_case_id).first()
-    if not test_case:
-        raise HTTPException(404, f"Test Case {execution_data.test_case_id} not found")
+        # 1. Validate Test Case exists
+        test_case = db.query(TestCaseDB).filter(TestCaseDB.id == execution_data.test_case_id).first()
+        if not test_case:
+            print(f"[ERROR] Test Case {execution_data.test_case_id} not found in database")
+            raise HTTPException(404, f"Test Case {execution_data.test_case_id} not found")
 
-    # 2. Calculate Metrics
-    total_steps = len(execution_data.step_results)
-    passed_steps = sum(1 for s in execution_data.step_results if s.status == TestStatus.PASSED)
-    failed_steps = sum(1 for s in execution_data.step_results if s.status == TestStatus.FAILED)
+        print(f"[DEBUG] Test case found: {test_case.id} - {test_case.title}")
 
-    # 3. Auto-determine Status if logic requires (Optional safeguard)
-    final_status = execution_data.status
-    if failed_steps > 0:
-        final_status = TestStatus.FAILED
-    elif passed_steps == total_steps and total_steps > 0:
-        final_status = TestStatus.PASSED
+        # 2. Calculate Metrics
+        total_steps = len(execution_data.step_results)
+        passed_steps = sum(1 for s in execution_data.step_results if s.status == TestStatus.PASSED)
+        failed_steps = sum(1 for s in execution_data.step_results if s.status == TestStatus.FAILED)
 
-    # 4. Create Execution Record
-    new_execution = TestExecutionDB(
-        test_case_id=execution_data.test_case_id,
-        executed_by=execution_data.executed_by,
-        execution_date=datetime.now(),
-        status=final_status,
-        environment=execution_data.environment,
-        version=execution_data.version,
-        execution_time_minutes=round(execution_data.execution_time_seconds / 60, 2),
-        passed_steps=passed_steps,
-        failed_steps=failed_steps,
-        total_steps=total_steps,
-        step_results=json.dumps([s.dict() for s in execution_data.step_results]), # Serialize JSON
-        evidence_files=json.dumps(execution_data.evidence_files), # Serialize JSON
-        notes=execution_data.notes,
-        failure_reason=execution_data.failure_reason,
-        bug_ids=",".join(execution_data.bug_ids) if execution_data.bug_ids else None
-    )
+        print(f"[DEBUG] Metrics - Total: {total_steps}, Passed: {passed_steps}, Failed: {failed_steps}")
 
-    db.add(new_execution)
+        # 3. Auto-determine Status if logic requires (Optional safeguard)
+        final_status = execution_data.status
+        if failed_steps > 0:
+            final_status = TestStatus.FAILED
+        elif passed_steps == total_steps and total_steps > 0:
+            final_status = TestStatus.PASSED
 
-    # 5. Update Parent Test Case
-    test_case.last_executed = datetime.now()
-    test_case.status = final_status
-    test_case.executed_by = execution_data.executed_by
-    # Update actual time if provided
-    if new_execution.execution_time_minutes:
-        test_case.actual_time_minutes = int(new_execution.execution_time_minutes)
+        # 4. Serialize step_results with better error handling
+        try:
+            serialized_steps = json.dumps([s.dict() for s in execution_data.step_results])
+            print(f"[DEBUG] Serialized {len(execution_data.step_results)} steps successfully")
+        except Exception as e:
+            print(f"[ERROR] Failed to serialize step_results: {str(e)}")
+            raise HTTPException(500, f"Failed to serialize step results: {str(e)}")
 
-    db.commit()
-    db.refresh(new_execution)
+        # 5. Create Execution Record
+        print(f"[DEBUG] Creating execution record...")
+        new_execution = TestExecutionDB(
+            test_case_id=execution_data.test_case_id,
+            executed_by=execution_data.executed_by,
+            execution_date=datetime.now(),
+            status=final_status,
+            environment=execution_data.environment,
+            version=execution_data.version,
+            execution_time_minutes=round(execution_data.execution_time_seconds / 60, 2),
+            passed_steps=passed_steps,
+            failed_steps=failed_steps,
+            total_steps=total_steps,
+            step_results=serialized_steps,
+            evidence_files=json.dumps(execution_data.evidence_files),
+            notes=execution_data.notes,
+            failure_reason=execution_data.failure_reason,
+            bug_ids=",".join(execution_data.bug_ids) if execution_data.bug_ids else None
+        )
 
-    return {
-        "message": "Execution saved successfully",
-        "execution_id": new_execution.id,
-        "status": new_execution.status.value
-    }
+        db.add(new_execution)
+        print(f"[DEBUG] Execution record added to session")
+
+        # 6. Update Parent Test Case
+        test_case.last_executed = datetime.now()
+        test_case.status = final_status
+        test_case.executed_by = execution_data.executed_by
+        # Update actual time if provided
+        if new_execution.execution_time_minutes:
+            test_case.actual_time_minutes = int(new_execution.execution_time_minutes)
+
+        print(f"[DEBUG] Test case updated, committing to database...")
+        db.commit()
+        db.refresh(new_execution)
+
+        print(f"[DEBUG] Execution saved successfully with ID: {new_execution.id}")
+
+        return {
+            "message": "Execution saved successfully",
+            "execution_id": new_execution.id,
+            "status": new_execution.status.value
+        }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in create_test_execution: {str(e)}")
+        print(f"[ERROR] Error type: {type(e).__name__}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(500, f"Internal server error: {str(e)}")
