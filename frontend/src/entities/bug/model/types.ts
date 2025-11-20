@@ -3,29 +3,30 @@
  * Types for bug reporting and tracking
  */
 
-export type BugSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-export type BugPriority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW';
+// Match backend Pydantic enum VALUES (not keys)
+export type BugSeverity = 'Critical' | 'High' | 'Medium' | 'Low';
+export type BugPriority = 'Urgent' | 'High' | 'Medium' | 'Low';
 export type BugStatus =
-  | 'NEW'
-  | 'ASSIGNED'
-  | 'IN_PROGRESS'
-  | 'FIXED'
-  | 'TESTING'
-  | 'VERIFIED'
-  | 'CLOSED'
-  | 'REOPENED'
-  | 'WONT_FIX'
-  | 'DUPLICATE';
+  | 'New'
+  | 'Assigned'
+  | 'In Progress'
+  | 'Fixed'
+  | 'Testing'
+  | 'Verified'
+  | 'Closed'
+  | 'Reopened'
+  | "Won't Fix"
+  | 'Duplicate';
 
 export type BugType =
-  | 'FUNCTIONAL'
-  | 'UI'
-  | 'PERFORMANCE'
-  | 'SECURITY'
-  | 'COMPATIBILITY'
-  | 'DATA'
+  | 'Functional'
+  | 'UI/UX'
+  | 'Performance'
+  | 'Security'
+  | 'Compatibility'
+  | 'Data'
   | 'API'
-  | 'CRASH';
+  | 'Crash';
 
 export interface Bug {
   id: string;

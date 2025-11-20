@@ -200,6 +200,37 @@ export const apiService = {
     });
     return data;
   },
+
+  // ==================== Reports ====================
+
+  // Download Bug Summary Report (Word)
+  downloadBugSummaryReport: async (projectId: string): Promise<Blob> => {
+    const { data } = await api.get(`/projects/${projectId}/reports/bug-summary`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
+  // Download Test Execution Summary Report (Word)
+  downloadTestExecutionSummary: async (projectId: string): Promise<Blob> => {
+    const { data } = await api.get(`/projects/${projectId}/reports/test-execution-summary`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
+  // Generate and download Test Plan Document
+  downloadTestPlan: async (projectId: string, format: 'pdf' | 'docx' = 'pdf'): Promise<Blob> => {
+    const { data } = await api.post(
+      `/generate-test-plan`,
+      null,
+      {
+        params: { project_id: projectId, format },
+        responseType: 'blob',
+      }
+    );
+    return data;
+  },
 };
 
 export default apiService;

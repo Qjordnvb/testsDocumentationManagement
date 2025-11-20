@@ -103,25 +103,25 @@ export const BugsPage = () => {
   // Get status badge class
   const getStatusBadgeClass = (status: BugStatus): string => {
     switch (status) {
-      case 'NEW':
+      case 'New':
         return 'bg-blue-100 text-blue-800';
-      case 'ASSIGNED':
+      case 'Assigned':
         return 'bg-purple-100 text-purple-800';
-      case 'IN_PROGRESS':
+      case 'In Progress':
         return 'bg-yellow-100 text-yellow-800';
-      case 'FIXED':
+      case 'Fixed':
         return 'bg-green-100 text-green-800';
-      case 'TESTING':
+      case 'Testing':
         return 'bg-indigo-100 text-indigo-800';
-      case 'VERIFIED':
+      case 'Verified':
         return 'bg-teal-100 text-teal-800';
-      case 'CLOSED':
+      case 'Closed':
         return 'bg-gray-100 text-gray-800';
-      case 'REOPENED':
+      case 'Reopened':
         return 'bg-red-100 text-red-800';
-      case 'WONT_FIX':
+      case "Won't Fix":
         return 'bg-gray-100 text-gray-600';
-      case 'DUPLICATE':
+      case 'Duplicate':
         return 'bg-gray-100 text-gray-600';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -131,13 +131,13 @@ export const BugsPage = () => {
   // Get severity badge class
   const getSeverityBadgeClass = (severity: BugSeverity): string => {
     switch (severity) {
-      case 'CRITICAL':
+      case 'Critical':
         return 'bg-red-600 text-white';
-      case 'HIGH':
+      case 'High':
         return 'bg-orange-500 text-white';
-      case 'MEDIUM':
+      case 'Medium':
         return 'bg-yellow-500 text-white';
-      case 'LOW':
+      case 'Low':
         return 'bg-green-500 text-white';
       default:
         return 'bg-gray-500 text-white';
@@ -147,13 +147,13 @@ export const BugsPage = () => {
   // Get priority badge class
   const getPriorityBadgeClass = (priority: BugPriority): string => {
     switch (priority) {
-      case 'URGENT':
+      case 'Urgent':
         return 'bg-red-100 text-red-800 border border-red-300';
-      case 'HIGH':
+      case 'High':
         return 'bg-orange-100 text-orange-800 border border-orange-300';
-      case 'MEDIUM':
+      case 'Medium':
         return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
-      case 'LOW':
+      case 'Low':
         return 'bg-green-100 text-green-800 border border-green-300';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -163,18 +163,18 @@ export const BugsPage = () => {
   // Get status icon
   const getStatusIcon = (status: BugStatus) => {
     switch (status) {
-      case 'VERIFIED':
-      case 'CLOSED':
+      case 'Verified':
+      case 'Closed':
         return <CheckCircle2 size={16} className="text-green-600" />;
-      case 'FIXED':
+      case 'Fixed':
         return <CheckCircle2 size={16} className="text-teal-600" />;
-      case 'IN_PROGRESS':
-      case 'TESTING':
+      case 'In Progress':
+      case 'Testing':
         return <Clock size={16} className="text-yellow-600" />;
-      case 'REOPENED':
+      case 'Reopened':
         return <AlertCircle size={16} className="text-red-600" />;
-      case 'WONT_FIX':
-      case 'DUPLICATE':
+      case "Won't Fix":
+      case 'Duplicate':
         return <XCircle size={16} className="text-gray-500" />;
       default:
         return <BugIcon size={16} className="text-blue-600" />;
@@ -297,10 +297,10 @@ export const BugsPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">Todas</option>
-              <option value="CRITICAL">Critical</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
             </select>
           </div>
 
@@ -313,10 +313,10 @@ export const BugsPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">Todas</option>
-              <option value="URGENT">Urgent</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
+              <option value="Urgent">Urgent</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
             </select>
           </div>
 
@@ -329,16 +329,16 @@ export const BugsPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">Todos</option>
-              <option value="NEW">New</option>
-              <option value="ASSIGNED">Assigned</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="FIXED">Fixed</option>
-              <option value="TESTING">Testing</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="CLOSED">Closed</option>
-              <option value="REOPENED">Reopened</option>
-              <option value="WONT_FIX">Won't Fix</option>
-              <option value="DUPLICATE">Duplicate</option>
+              <option value="New">New</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Fixed">Fixed</option>
+              <option value="Testing">Testing</option>
+              <option value="Verified">Verified</option>
+              <option value="Closed">Closed</option>
+              <option value="Reopened">Reopened</option>
+              <option value="Won't Fix">Won't Fix</option>
+              <option value="Duplicate">Duplicate</option>
             </select>
           </div>
 
@@ -351,14 +351,14 @@ export const BugsPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">Todos</option>
-              <option value="FUNCTIONAL">Functional</option>
-              <option value="UI">UI</option>
-              <option value="PERFORMANCE">Performance</option>
-              <option value="SECURITY">Security</option>
-              <option value="COMPATIBILITY">Compatibility</option>
-              <option value="DATA">Data</option>
+              <option value="Functional">Functional</option>
+              <option value="UI/UX">UI/UX</option>
+              <option value="Performance">Performance</option>
+              <option value="Security">Security</option>
+              <option value="Compatibility">Compatibility</option>
+              <option value="Data">Data</option>
               <option value="API">API</option>
-              <option value="CRASH">Crash</option>
+              <option value="Crash">Crash</option>
             </select>
           </div>
         </div>

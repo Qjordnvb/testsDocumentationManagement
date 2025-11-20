@@ -26,3 +26,7 @@ export type { CardProps } from './Card';
 // Table
 export { Table, TableHead, TableBody, TableRow, TableHeader, TableCell, TableEmpty, TableLoading } from './Table';
 export type { TableProps } from './Table';
+
+// ConfirmModal
+export { ConfirmModal } from './ConfirmModal';
+export type { ConfirmVariant } from './ConfirmModal';

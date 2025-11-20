@@ -3,6 +3,7 @@ import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload
 import { useTestRunner } from '../model/useTestRunner';
 import { parseGherkinContent } from '@/shared/lib/gherkinParser';
 import { apiService } from '@/shared/api/apiClient';
+import { ConfirmModal } from '@/shared/ui';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -32,6 +33,7 @@ export const TestRunnerModal: React.FC<Props> = ({
   } = useTestRunner(parsedFeature.scenarios);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
   if (!isOpen) return null;
 
@@ -47,9 +49,12 @@ export const TestRunnerModal: React.FC<Props> = ({
     }
   };
 
-  const handleSave = async () => {
-    if (!confirm("¿Estás seguro de guardar esta ejecución?")) return;
+  const handleSave = () => {
+    setShowSaveConfirm(true);
+  };
 
+  const handleConfirmSave = async () => {
+    setShowSaveConfirm(false);
     setIsSaving(true);
 
     try {
@@ -344,6 +349,19 @@ export const TestRunnerModal: React.FC<Props> = ({
           </button>
         </div>
       </div>
+
+      {/* Save Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showSaveConfirm}
+        onClose={() => setShowSaveConfirm(false)}
+        onConfirm={handleConfirmSave}
+        title="Confirmar Guardado"
+        message={`¿Estás seguro de guardar esta ejecución?\n\nSe guardará el estado actual de todos los steps y evidencias adjuntadas.\n\nEstado: ${executionStatus}\nTiempo: ${formatTime(elapsedSeconds)}\nScenarios: ${scenarios.length}\nSteps completados: ${scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status !== 'pending').length, 0)}/${totalSteps}`}
+        confirmText="Guardar Ejecución"
+        cancelText="Cancelar"
+        variant="info"
+        isLoading={isSaving}
+      />
     </div>
   );
 };
