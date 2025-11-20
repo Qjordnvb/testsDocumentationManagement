@@ -69,6 +69,9 @@ async def create_test_execution(
     """
     Save a detailed test execution result and update the parent Test Case
     """
+    # Debug: Log received data
+    print(f"[DEBUG] Received execution data: {execution_data.dict()}")
+
     # 1. Validate Test Case exists
     test_case = db.query(TestCaseDB).filter(TestCaseDB.id == execution_data.test_case_id).first()
     if not test_case:

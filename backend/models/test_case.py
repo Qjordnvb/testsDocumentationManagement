@@ -31,11 +31,11 @@ class TestPriority(str, Enum):
 
 class TestStatus(str, Enum):
     """Test execution status"""
-    NOT_RUN = "Not Run"
-    PASSED = "Passed"
-    FAILED = "Failed"
-    BLOCKED = "Blocked"
-    SKIPPED = "Skipped"
+    NOT_RUN = "NOT_RUN"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    BLOCKED = "BLOCKED"
+    SKIPPED = "SKIPPED"
 
 
 class TestStep(BaseModel):
