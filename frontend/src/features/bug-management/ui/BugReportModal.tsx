@@ -34,9 +34,9 @@ export const BugReportModal: React.FC<Props> = ({
   const [stepsToReproduce, setStepsToReproduce] = useState<string[]>(['']);
   const [expectedBehavior, setExpectedBehavior] = useState('');
   const [actualBehavior, setActualBehavior] = useState('');
-  const [severity, setSeverity] = useState<BugSeverity>('MEDIUM');
-  const [priority, setPriority] = useState<BugPriority>('MEDIUM');
-  const [bugType, setBugType] = useState<BugType>('FUNCTIONAL');
+  const [severity, setSeverity] = useState<BugSeverity>('Medium');
+  const [priority, setPriority] = useState<BugPriority>('Medium');
+  const [bugType, setBugType] = useState<BugType>('Functional');
   const [environment, setEnvironment] = useState('QA');
   const [browser, setBrowser] = useState('');
   const [os, setOs] = useState('');
@@ -182,9 +182,9 @@ export const BugReportModal: React.FC<Props> = ({
     setStepsToReproduce(['']);
     setExpectedBehavior('');
     setActualBehavior('');
-    setSeverity('MEDIUM');
-    setPriority('MEDIUM');
-    setBugType('FUNCTIONAL');
+    setSeverity('Medium');
+    setPriority('Medium');
+    setBugType('Functional');
     setEnvironment('QA');
     setBrowser('');
     setOs('');
@@ -373,10 +373,10 @@ export const BugReportModal: React.FC<Props> = ({
                   onChange={(e) => setSeverity(e.target.value as BugSeverity)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
-                  <option value="CRITICAL">🔴 Critical - System crash, data loss</option>
-                  <option value="HIGH">🟠 High - Major functionality broken</option>
-                  <option value="MEDIUM">🟡 Medium - Feature partially broken</option>
-                  <option value="LOW">🟢 Low - Minor issue, cosmetic</option>
+                  <option value="Critical">🔴 Critical - System crash, data loss</option>
+                  <option value="High">🟠 High - Major functionality broken</option>
+                  <option value="Medium">🟡 Medium - Feature partially broken</option>
+                  <option value="Low">🟢 Low - Minor issue, cosmetic</option>
                 </select>
               </div>
 
@@ -389,10 +389,10 @@ export const BugReportModal: React.FC<Props> = ({
                   onChange={(e) => setPriority(e.target.value as BugPriority)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
-                  <option value="URGENT">⚡ Urgent - Fix immediately</option>
-                  <option value="HIGH">🔥 High - Fix in current sprint</option>
-                  <option value="MEDIUM">📌 Medium - Fix in next sprint</option>
-                  <option value="LOW">📋 Low - Fix when possible</option>
+                  <option value="Urgent">⚡ Urgent - Fix immediately</option>
+                  <option value="High">🔥 High - Fix in current sprint</option>
+                  <option value="Medium">📌 Medium - Fix in next sprint</option>
+                  <option value="Low">📋 Low - Fix when possible</option>
                 </select>
               </div>
             </div>
@@ -407,14 +407,14 @@ export const BugReportModal: React.FC<Props> = ({
                 onChange={(e) => setBugType(e.target.value as BugType)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
-                <option value="FUNCTIONAL">Functional - Feature not working</option>
-                <option value="UI">UI - Visual or layout issue</option>
-                <option value="PERFORMANCE">Performance - Slow or laggy</option>
-                <option value="SECURITY">Security - Security vulnerability</option>
-                <option value="COMPATIBILITY">Compatibility - Browser/device issue</option>
-                <option value="DATA">Data - Data integrity issue</option>
+                <option value="Functional">Functional - Feature not working</option>
+                <option value="UI/UX">UI/UX - Visual or layout issue</option>
+                <option value="Performance">Performance - Slow or laggy</option>
+                <option value="Security">Security - Security vulnerability</option>
+                <option value="Compatibility">Compatibility - Browser/device issue</option>
+                <option value="Data">Data - Data integrity issue</option>
                 <option value="API">API - Backend/API error</option>
-                <option value="CRASH">Crash - Application crash</option>
+                <option value="Crash">Crash - Application crash</option>
               </select>
             </div>
 
