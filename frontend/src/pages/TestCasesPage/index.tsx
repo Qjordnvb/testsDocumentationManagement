@@ -46,6 +46,7 @@ export const TestCasesPage = () => {
   // Expandable test case rows (for execution history)
   const [expandedTestCases, setExpandedTestCases] = useState<Set<string>>(new Set());
   const [selectedExecutionId, setSelectedExecutionId] = useState<number | null>(null);
+  const [selectedExecutionTestCase, setSelectedExecutionTestCase] = useState<TestCase | null>(null);
   const [showExecutionDetails, setShowExecutionDetails] = useState(false);
 
   // Search and filters
@@ -617,6 +618,7 @@ export const TestCasesPage = () => {
                                           testCaseId={tc.id}
                                           onSelectExecution={(executionId) => {
                                             setSelectedExecutionId(executionId);
+                                            setSelectedExecutionTestCase(tc);
                                             setShowExecutionDetails(true);
                                           }}
                                         />
@@ -874,6 +876,14 @@ export const TestCasesPage = () => {
           onClose={() => {
             setShowExecutionDetails(false);
             setSelectedExecutionId(null);
+            setSelectedExecutionTestCase(null);
+          }}
+          projectId={projectId}
+          testCaseTitle={selectedExecutionTestCase?.title}
+          userStoryId={selectedExecutionTestCase?.user_story_id}
+          onBugReported={() => {
+            // Optionally reload test cases or show success message
+            loadData();
           }}
         />
       )}
