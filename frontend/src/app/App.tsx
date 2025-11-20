@@ -13,6 +13,7 @@ import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
 import { TestCasesPage } from '@/pages/TestCasesPage';
 import { BugsPage } from '@/pages/BugsPage';
+import { BugDetailsPage } from '@/pages/BugDetailsPage';
 
 // Placeholder pages (to be created)
 
@@ -49,6 +50,7 @@ function App() {
               <Route path="stories" element={<StoriesPage />} />
               <Route path="tests" element={<TestCasesPage />} />
               <Route path="bugs" element={<BugsPage />} />
+              <Route path="bugs/:bugId" element={<BugDetailsPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
