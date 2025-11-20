@@ -72,17 +72,9 @@ export const useTestRunner = (initialScenarios: GherkinScenario[]) => {
           step.id === stepId ? { ...step, status } : step
         );
 
-        // If step failed, mark all subsequent steps in this scenario as skipped
-        if (status === 'failed') {
-          const failedStepIndex = updatedSteps.findIndex((s: GherkinStep) => s.id === stepId);
-          if (failedStepIndex !== -1) {
-            for (let i = failedStepIndex + 1; i < updatedSteps.length; i++) {
-              if (updatedSteps[i].status === 'pending') {
-                updatedSteps[i] = { ...updatedSteps[i], status: 'skipped' };
-              }
-            }
-          }
-        }
+        // Note: We do NOT auto-skip subsequent steps when one fails
+        // QA must be able to execute and mark all steps independently
+        // A failed step doesn't prevent testing the remaining steps
 
         // Recalculate scenario status
         const newScenarioStatus = calculateScenarioStatus(updatedSteps);
