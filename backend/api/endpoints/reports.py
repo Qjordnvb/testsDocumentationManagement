@@ -108,6 +108,7 @@ async def generate_bug_summary_report(
         raise HTTPException(status_code=404, detail="No bugs found for this project")
 
     # Convert to Pydantic models
+    import json
     bugs = []
     for bug_db in bugs_db:
         bug = BugReport(
@@ -127,13 +128,19 @@ async def generate_bug_summary_report(
             version=bug_db.version,
             user_story_id=bug_db.user_story_id,
             test_case_id=bug_db.test_case_id,
+            screenshots=json.loads(bug_db.screenshots) if bug_db.screenshots else [],
+            logs=bug_db.logs,
+            notes=bug_db.notes,
+            workaround=bug_db.workaround,
+            root_cause=bug_db.root_cause,
+            fix_description=bug_db.fix_description,
             reported_by=bug_db.reported_by or "Unknown",
             assigned_to=bug_db.assigned_to,
+            verified_by=bug_db.verified_by,
             reported_date=bug_db.reported_date,
             assigned_date=bug_db.assigned_date,
             fixed_date=bug_db.fixed_date,
             verified_date=bug_db.verified_date,
-            verified_by=bug_db.verified_by,
             closed_date=bug_db.closed_date
         )
         bugs.append(bug)

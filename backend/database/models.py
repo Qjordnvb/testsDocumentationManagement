@@ -142,6 +142,11 @@ class BugReportDB(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
 
+    # Bug details (stored as JSON or newline-separated)
+    steps_to_reproduce = Column(Text, nullable=True)  # JSON array or newline-separated
+    expected_behavior = Column(Text, nullable=True)
+    actual_behavior = Column(Text, nullable=True)
+
     # Classification
     severity = Column(SQLEnum(BugSeverity), default=BugSeverity.MEDIUM)
     priority = Column(SQLEnum(BugPriority), default=BugPriority.MEDIUM)
@@ -157,6 +162,16 @@ class BugReportDB(Base):
     # Relationships
     user_story_id = Column(String, ForeignKey("user_stories.id"), nullable=True)
     test_case_id = Column(String, nullable=True)
+
+    # Evidence (stored as JSON array)
+    screenshots = Column(Text, nullable=True)  # JSON array of file paths
+    logs = Column(Text, nullable=True)
+
+    # Additional details
+    notes = Column(Text, nullable=True)
+    workaround = Column(Text, nullable=True)
+    root_cause = Column(Text, nullable=True)
+    fix_description = Column(Text, nullable=True)
 
     # People
     reported_by = Column(String, nullable=True)

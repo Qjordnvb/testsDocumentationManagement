@@ -61,12 +61,20 @@ async def create_bug_report(
     bug_gen = BugReportGenerator()
     doc_path = bug_gen.generate_bug_report(bug, settings.output_dir)
 
+    # Convert lists to JSON/newline-separated strings
+    import json
+    steps_str = '\n'.join(bug.steps_to_reproduce) if bug.steps_to_reproduce else None
+    screenshots_str = json.dumps(bug.screenshots) if bug.screenshots else None
+
     # Save to database
     db_bug = BugReportDB(
         id=bug.id,
         project_id=project_id,  # Inherit from user_story or test_case
         title=bug.title,
         description=bug.description,
+        steps_to_reproduce=steps_str,
+        expected_behavior=bug.expected_behavior,
+        actual_behavior=bug.actual_behavior,
         severity=bug.severity,
         priority=bug.priority,
         bug_type=bug.bug_type,
@@ -77,6 +85,10 @@ async def create_bug_report(
         version=bug.version,
         user_story_id=bug.user_story_id,
         test_case_id=bug.test_case_id,
+        screenshots=screenshots_str,
+        logs=bug.logs,
+        notes=bug.notes,
+        workaround=bug.workaround,
         reported_by=bug.reported_by,
         assigned_to=bug.assigned_to,
         reported_date=bug.reported_date or datetime.now(),
@@ -112,12 +124,16 @@ async def get_bugs(
     print(f"✅ Found {len(bugs)} bugs for project {project_id}")
 
     # Convert to response format
+    import json
     bugs_response = []
     for bug in bugs:
         bugs_response.append({
             "id": bug.id,
             "title": bug.title,
             "description": bug.description,
+            "steps_to_reproduce": bug.steps_to_reproduce.split('\n') if bug.steps_to_reproduce else [],
+            "expected_behavior": bug.expected_behavior,
+            "actual_behavior": bug.actual_behavior,
             "severity": bug.severity.value if bug.severity else "Medium",
             "priority": bug.priority.value if bug.priority else "Medium",
             "bug_type": bug.bug_type.value if bug.bug_type else "Functional",
@@ -128,6 +144,12 @@ async def get_bugs(
             "version": bug.version,
             "user_story_id": bug.user_story_id,
             "test_case_id": bug.test_case_id,
+            "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
+            "logs": bug.logs,
+            "notes": bug.notes,
+            "workaround": bug.workaround,
+            "root_cause": bug.root_cause,
+            "fix_description": bug.fix_description,
             "reported_by": bug.reported_by,
             "assigned_to": bug.assigned_to,
             "verified_by": bug.verified_by,
@@ -153,10 +175,14 @@ async def get_bug_by_id(
     if not bug:
         raise HTTPException(status_code=404, detail=f"Bug {bug_id} not found")
 
+    import json
     return {
         "id": bug.id,
         "title": bug.title,
         "description": bug.description,
+        "steps_to_reproduce": bug.steps_to_reproduce.split('\n') if bug.steps_to_reproduce else [],
+        "expected_behavior": bug.expected_behavior,
+        "actual_behavior": bug.actual_behavior,
         "severity": bug.severity.value if bug.severity else "Medium",
         "priority": bug.priority.value if bug.priority else "Medium",
         "bug_type": bug.bug_type.value if bug.bug_type else "Functional",
@@ -167,6 +193,12 @@ async def get_bug_by_id(
         "version": bug.version,
         "user_story_id": bug.user_story_id,
         "test_case_id": bug.test_case_id,
+        "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
+        "logs": bug.logs,
+        "notes": bug.notes,
+        "workaround": bug.workaround,
+        "root_cause": bug.root_cause,
+        "fix_description": bug.fix_description,
         "reported_by": bug.reported_by,
         "assigned_to": bug.assigned_to,
         "verified_by": bug.verified_by,
@@ -223,12 +255,20 @@ async def create_bug(
     bug_gen = BugReportGenerator()
     doc_path = bug_gen.generate_bug_report(bug, settings.output_dir)
 
+    # Convert lists to JSON/newline-separated strings
+    import json
+    steps_str = '\n'.join(bug.steps_to_reproduce) if bug.steps_to_reproduce else None
+    screenshots_str = json.dumps(bug.screenshots) if bug.screenshots else None
+
     # Save to database
     db_bug = BugReportDB(
         id=bug.id,
         project_id=project_id,
         title=bug.title,
         description=bug.description,
+        steps_to_reproduce=steps_str,
+        expected_behavior=bug.expected_behavior,
+        actual_behavior=bug.actual_behavior,
         severity=bug.severity,
         priority=bug.priority,
         bug_type=bug.bug_type,
@@ -239,8 +279,15 @@ async def create_bug(
         version=bug.version,
         user_story_id=bug.user_story_id,
         test_case_id=bug.test_case_id,
+        screenshots=screenshots_str,
+        logs=bug.logs,
+        notes=bug.notes,
+        workaround=bug.workaround,
+        root_cause=bug.root_cause,
+        fix_description=bug.fix_description,
         reported_by=bug.reported_by,
         assigned_to=bug.assigned_to,
+        verified_by=bug.verified_by,
         reported_date=bug.reported_date or datetime.now(),
         document_path=doc_path
     )
@@ -255,6 +302,9 @@ async def create_bug(
         "id": db_bug.id,
         "title": db_bug.title,
         "description": db_bug.description,
+        "steps_to_reproduce": db_bug.steps_to_reproduce.split('\n') if db_bug.steps_to_reproduce else [],
+        "expected_behavior": db_bug.expected_behavior,
+        "actual_behavior": db_bug.actual_behavior,
         "severity": db_bug.severity.value if db_bug.severity else "Medium",
         "priority": db_bug.priority.value if db_bug.priority else "Medium",
         "bug_type": db_bug.bug_type.value if db_bug.bug_type else "Functional",
@@ -265,6 +315,12 @@ async def create_bug(
         "version": db_bug.version,
         "user_story_id": db_bug.user_story_id,
         "test_case_id": db_bug.test_case_id,
+        "screenshots": json.loads(db_bug.screenshots) if db_bug.screenshots else [],
+        "logs": db_bug.logs,
+        "notes": db_bug.notes,
+        "workaround": db_bug.workaround,
+        "root_cause": db_bug.root_cause,
+        "fix_description": db_bug.fix_description,
         "reported_by": db_bug.reported_by,
         "assigned_to": db_bug.assigned_to,
         "verified_by": db_bug.verified_by,
@@ -288,8 +344,10 @@ async def update_bug(
 
     # Update allowed fields
     allowed_fields = [
-        "title", "description", "severity", "priority", "bug_type", "status",
+        "title", "description", "steps_to_reproduce", "expected_behavior", "actual_behavior",
+        "severity", "priority", "bug_type", "status",
         "environment", "browser", "os", "version",
+        "screenshots", "logs", "notes", "workaround", "root_cause", "fix_description",
         "assigned_to", "verified_by",
         "assigned_date", "fixed_date", "verified_date", "closed_date"
     ]
@@ -324,10 +382,14 @@ async def update_bug(
     print(f"✅ Bug {bug_id} updated successfully")
 
     # Return updated bug
+    import json
     return {
         "id": bug.id,
         "title": bug.title,
         "description": bug.description,
+        "steps_to_reproduce": bug.steps_to_reproduce.split('\n') if bug.steps_to_reproduce else [],
+        "expected_behavior": bug.expected_behavior,
+        "actual_behavior": bug.actual_behavior,
         "severity": bug.severity.value if bug.severity else "Medium",
         "priority": bug.priority.value if bug.priority else "Medium",
         "bug_type": bug.bug_type.value if bug.bug_type else "Functional",
@@ -338,6 +400,12 @@ async def update_bug(
         "version": bug.version,
         "user_story_id": bug.user_story_id,
         "test_case_id": bug.test_case_id,
+        "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
+        "logs": bug.logs,
+        "notes": bug.notes,
+        "workaround": bug.workaround,
+        "root_cause": bug.root_cause,
+        "fix_description": bug.fix_description,
         "reported_by": bug.reported_by,
         "assigned_to": bug.assigned_to,
         "verified_by": bug.verified_by,
