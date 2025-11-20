@@ -73,6 +73,11 @@ export const TestRunnerModal: React.FC<Props> = ({
       // 2. Build step results (flatten all scenarios but keep scenario name)
       const allStepResults: any[] = [];
       scenarios.forEach((scenario) => {
+        console.log('[TestRunnerModal] Processing scenario:', {
+          scenarioName: scenario.scenarioName,
+          stepsCount: scenario.steps.length
+        });
+
         scenario.steps.forEach((step: any) => {
           allStepResults.push({
             step_index: step.id,
@@ -83,6 +88,11 @@ export const TestRunnerModal: React.FC<Props> = ({
             evidence_file: stepEvidencePaths[step.id] || null
           });
         });
+      });
+
+      console.log('[TestRunnerModal] Built step results:', {
+        totalSteps: allStepResults.length,
+        uniqueScenarios: [...new Set(allStepResults.map(s => s.scenario_name))]
       });
 
       // 3. Build payload
