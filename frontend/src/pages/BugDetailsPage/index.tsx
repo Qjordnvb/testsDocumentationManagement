@@ -16,6 +16,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { bugApi } from '@/entities/bug';
 import { testCaseApi } from '@/entities/test-case';
+import { apiService } from '@/shared/api/apiClient';
 import { useProject } from '@/app/providers/ProjectContext';
 import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
@@ -127,6 +128,54 @@ export const BugDetailsPage = () => {
     }
 
     setShowTestRunner(true);
+  };
+
+  // Handle test execution completion with auto-status update
+  const handleTestExecutionComplete = async () => {
+    if (!testCase || !bugId) return;
+
+    try {
+      setShowTestRunner(false);
+
+      // Get the latest execution for this test case
+      const historyData = await apiService.getTestCaseExecutions(testCase.id);
+
+      if (historyData && historyData.executions && historyData.executions.length > 0) {
+        // Get the most recent execution (first in the array)
+        const latestExecution = historyData.executions[0];
+
+        // Auto-update bug status based on test result
+        let newStatus: BugStatus | null = null;
+
+        if (latestExecution.status === 'PASSED') {
+          newStatus = 'VERIFIED';
+          toast.success('✅ Test passed! Bug status actualizado a VERIFIED');
+        } else if (latestExecution.status === 'FAILED') {
+          newStatus = 'REOPENED';
+          toast.error('❌ Test failed! Bug status actualizado a REOPENED');
+        } else if (latestExecution.status === 'BLOCKED' || latestExecution.status === 'SKIPPED') {
+          toast(`⚠️ Test execution: ${latestExecution.status} - Bug status no cambiado`, {
+            icon: '⚠️'
+          });
+        }
+
+        // Update bug status if applicable
+        if (newStatus && bug) {
+          try {
+            await bugApi.updateStatus(bugId, newStatus);
+          } catch (err) {
+            console.error('Error updating bug status:', err);
+            toast.error('Error al actualizar status del bug automáticamente');
+          }
+        }
+      }
+
+      // Reload bug details to show updated status
+      await loadBugDetails();
+    } catch (err) {
+      console.error('Error handling test execution:', err);
+      toast.error('Error al procesar resultado del test');
+    }
   };
 
   // Get status badge class
@@ -519,11 +568,7 @@ export const BugDetailsPage = () => {
           testCaseTitle={testCase.title}
           gherkinContent={gherkinContent}
           projectId={projectId}
-          onSave={() => {
-            setShowTestRunner(false);
-            loadBugDetails(); // Reload bug to see if status changed
-            toast.success('Test re-ejecutado exitosamente');
-          }}
+          onSave={handleTestExecutionComplete}
         />
       )}
     </div>
