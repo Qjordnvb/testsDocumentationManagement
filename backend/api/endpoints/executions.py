@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from typing import List, Optional
 from pathlib import Path
 import shutil
@@ -157,3 +158,139 @@ async def create_test_execution(
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
         db.rollback()
         raise HTTPException(500, f"Internal server error: {str(e)}")
+
+
+# ==================== Get Execution History ====================
+
+@router.get("/test-cases/{test_case_id}/executions")
+async def get_test_case_executions(
+    test_case_id: str,
+    limit: int = Query(10, ge=1, le=50, description="Number of executions to return"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get execution history for a specific test case
+    Returns most recent executions first
+    """
+    print(f"[DEBUG] Fetching executions for test case: {test_case_id}, limit: {limit}")
+
+    # Validate test case exists
+    test_case = db.query(TestCaseDB).filter(TestCaseDB.id == test_case_id).first()
+    if not test_case:
+        raise HTTPException(404, f"Test case {test_case_id} not found")
+
+    # Get executions ordered by date (most recent first)
+    executions = db.query(TestExecutionDB).filter(
+        TestExecutionDB.test_case_id == test_case_id
+    ).order_by(TestExecutionDB.execution_date.desc()).limit(limit).all()
+
+    print(f"[DEBUG] Found {len(executions)} executions for test case {test_case_id}")
+
+    # Format response
+    result = []
+    for ex in executions:
+        result.append({
+            "execution_id": ex.id,
+            "executed_by": ex.executed_by,
+            "execution_date": ex.execution_date.isoformat(),
+            "status": ex.status.value,
+            "environment": ex.environment,
+            "version": ex.version,
+            "execution_time_minutes": ex.execution_time_minutes,
+            "passed_steps": ex.passed_steps,
+            "failed_steps": ex.failed_steps,
+            "total_steps": ex.total_steps,
+            "evidence_count": len(json.loads(ex.evidence_files)) if ex.evidence_files else 0,
+            "notes": ex.notes
+        })
+
+    return {
+        "test_case_id": test_case_id,
+        "test_case_title": test_case.title,
+        "executions": result,
+        "total": len(result)
+    }
+
+
+@router.get("/test-executions/{execution_id}")
+async def get_execution_details(
+    execution_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get detailed information about a specific execution
+    Includes all step results and evidence files
+    """
+    print(f"[DEBUG] Fetching execution details for ID: {execution_id}")
+
+    execution = db.query(TestExecutionDB).filter(
+        TestExecutionDB.id == execution_id
+    ).first()
+
+    if not execution:
+        raise HTTPException(404, f"Execution {execution_id} not found")
+
+    # Parse JSON fields
+    step_results = json.loads(execution.step_results) if execution.step_results else []
+    evidence_files = json.loads(execution.evidence_files) if execution.evidence_files else []
+
+    print(f"[DEBUG] Execution {execution_id} has {len(step_results)} steps and {len(evidence_files)} evidence files")
+
+    return {
+        "execution_id": execution.id,
+        "test_case_id": execution.test_case_id,
+        "executed_by": execution.executed_by,
+        "execution_date": execution.execution_date.isoformat(),
+        "status": execution.status.value,
+        "environment": execution.environment,
+        "version": execution.version,
+        "execution_time_minutes": execution.execution_time_minutes,
+        "passed_steps": execution.passed_steps,
+        "failed_steps": execution.failed_steps,
+        "total_steps": execution.total_steps,
+        "step_results": step_results,
+        "evidence_files": evidence_files,
+        "notes": execution.notes,
+        "failure_reason": execution.failure_reason,
+        "bug_ids": execution.bug_ids.split(",") if execution.bug_ids else []
+    }
+
+
+@router.get("/evidence/{file_path:path}")
+async def download_evidence(file_path: str):
+    """
+    Download or view evidence file (screenshot, log, etc.)
+    """
+    print(f"[DEBUG] Requesting evidence file: {file_path}")
+
+    # Security: Ensure path doesn't escape uploads directory
+    if ".." in file_path or file_path.startswith("/"):
+        raise HTTPException(400, "Invalid file path")
+
+    # Construct full path
+    full_path = Path(file_path)
+
+    if not full_path.exists():
+        print(f"[ERROR] Evidence file not found: {full_path}")
+        raise HTTPException(404, f"Evidence file not found: {file_path}")
+
+    # Determine media type based on extension
+    media_type = "application/octet-stream"
+    extension = full_path.suffix.lower()
+
+    if extension in [".png", ".jpg", ".jpeg", ".gif"]:
+        media_type = f"image/{extension[1:]}"
+    elif extension == ".mp4":
+        media_type = "video/mp4"
+    elif extension in [".txt", ".log"]:
+        media_type = "text/plain"
+    elif extension == ".json":
+        media_type = "application/json"
+
+    print(f"[DEBUG] Serving evidence file: {full_path.name}, type: {media_type}")
+
+    return FileResponse(
+        path=str(full_path),
+        media_type=media_type,
+        filename=full_path.name
+    )

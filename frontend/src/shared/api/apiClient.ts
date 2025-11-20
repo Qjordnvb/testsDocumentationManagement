@@ -172,6 +172,25 @@ export const apiService = {
     return data;
   },
 
+  // Get execution history for a test case
+  getTestCaseExecutions: async (testCaseId: string, limit: number = 10): Promise<any> => {
+    const { data } = await api.get(`/test-cases/${testCaseId}/executions`, {
+      params: { limit }
+    });
+    return data;
+  },
+
+  // Get detailed execution information
+  getExecutionDetails: async (executionId: number): Promise<any> => {
+    const { data } = await api.get(`/test-executions/${executionId}`);
+    return data;
+  },
+
+  // Get evidence file URL
+  getEvidenceUrl: (filePath: string): string => {
+    return `/api/v1/evidence/${filePath}`;
+  },
+
   // ==================== File Downloads ====================
 
   // Download generated file

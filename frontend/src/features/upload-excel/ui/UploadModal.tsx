@@ -96,7 +96,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
     await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
-      const response = await uploadFile(uploadedFile, projectId, (progress) => {
+      await uploadFile(uploadedFile, projectId, (progress) => {
         setUploadProgress(progress);
       });
 
