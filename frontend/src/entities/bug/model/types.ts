@@ -125,3 +125,20 @@ export interface BugFilters {
   assigned_to?: string;
   reported_by?: string;
 }
+
+export interface ScenarioGroup {
+  scenario_name: string;
+  bug_count: number;
+  bugs: Bug[];
+}
+
+export interface TestCaseGroup {
+  test_case_id: string;
+  test_case_title: string;
+  total_bugs: number;
+  scenarios: ScenarioGroup[];
+}
+
+export interface GroupedBugsResponse {
+  grouped_bugs: TestCaseGroup[];
+}

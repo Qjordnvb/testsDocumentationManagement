@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Bug, CreateBugDTO, UpdateBugDTO, BugFilters } from '../model/types';
+import type { Bug, CreateBugDTO, UpdateBugDTO, BugFilters, GroupedBugsResponse } from '../model/types';
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -62,5 +62,13 @@ export const bugApi = {
    */
   updateStatus: async (bugId: string, status: Bug['status']): Promise<Bug> => {
     return bugApi.update(bugId, { status });
+  },
+
+  /**
+   * Get bugs grouped by test case and scenario
+   */
+  getGrouped: async (projectId: string): Promise<GroupedBugsResponse> => {
+    const { data } = await api.get<GroupedBugsResponse>(`/bugs/grouped?project_id=${projectId}`);
+    return data;
   },
 };
