@@ -34,7 +34,9 @@ import {
   PlayCircle,
   ArrowLeft,
   Edit,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Paperclip
 } from 'lucide-react';
 
 export const BugDetailsPage = () => {
@@ -564,6 +566,74 @@ export const BugDetailsPage = () => {
           )}
         </div>
       </div>
+
+      {/* Evidence & Attachments */}
+      {bug.attachments && bug.attachments.length > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <ImageIcon size={18} />
+            Evidencia ({bug.attachments.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bug.attachments.map((attachment, index) => {
+              // Check if it's an image file
+              const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment);
+
+              if (isImage) {
+                return (
+                  <div key={index} className="group relative">
+                    <div className={`${borderRadius.lg} overflow-hidden border ${colors.gray.border200} hover:border-blue-400 transition-all hover:shadow-lg`}>
+                      <img
+                        src={`/api/v1${attachment}`}
+                        alt={`Evidence ${index + 1}`}
+                        className="w-full h-48 object-cover"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
+                        }}
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a
+                          href={`/api/v1${attachment}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`px-2 py-1 ${colors.white} ${colors.brand.primary[600]} ${borderRadius.base} text-xs font-medium hover:bg-blue-700 shadow-md`}
+                        >
+                          Ver completa
+                        </a>
+                      </div>
+                    </div>
+                    <p className={`${bodySmall.className} ${colors.gray.text600} mt-1 truncate`}>
+                      {attachment.split('/').pop()}
+                    </p>
+                  </div>
+                );
+              } else {
+                // Non-image attachment (file)
+                return (
+                  <div key={index} className={`p-4 border ${colors.gray.border200} ${borderRadius.lg} hover:border-blue-400 hover:bg-gray-50 transition-all`}>
+                    <a
+                      href={`/api/v1${attachment}`}
+                      download
+                      className="flex items-center gap-3 group"
+                    >
+                      <Paperclip size={20} className={colors.gray.text500} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`${bodySmall.className} ${colors.gray.text900} font-medium truncate group-hover:text-blue-600`}>
+                          {attachment.split('/').pop()}
+                        </p>
+                        <p className={`text-xs ${colors.gray.text500}`}>
+                          Click para descargar
+                        </p>
+                      </div>
+                    </a>
+                  </div>
+                );
+              }
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Test Runner Modal */}
       {testCase && projectId && (
