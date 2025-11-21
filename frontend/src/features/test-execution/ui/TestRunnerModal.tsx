@@ -80,6 +80,40 @@ export const TestRunnerModal: React.FC<Props> = ({
     }
   };
 
+  // Upload evidence for a specific scenario before reporting bug
+  const uploadScenarioEvidence = async (scenario: any) => {
+    console.log('[TestRunnerModal] Uploading evidence for scenario:', scenario.scenarioName);
+
+    const newUploadedPaths: Record<number, string> = { ...uploadedEvidencePaths };
+    const newAllFiles: string[] = [...allUploadedFiles];
+
+    for (const step of scenario.steps) {
+      if (evidenceMap[step.id]) {
+        try {
+          console.log(`[TestRunnerModal] Uploading evidence for step ${step.id}...`);
+          const response = await apiService.uploadEvidence(evidenceMap[step.id] as File, projectId, 'execution');
+
+          if (response.file_path) {
+            newUploadedPaths[step.id] = response.file_path;
+            newAllFiles.push(response.file_path);
+            console.log(`[TestRunnerModal] ✅ Uploaded: ${response.file_path}`);
+          }
+        } catch (error) {
+          console.error(`[TestRunnerModal] ❌ Error uploading evidence for step ${step.id}:`, error);
+        }
+      }
+    }
+
+    // Update state with uploaded paths
+    setUploadedEvidencePaths(newUploadedPaths);
+    setAllUploadedFiles(newAllFiles);
+
+    console.log('[TestRunnerModal] Evidence upload complete:', {
+      uploadedSteps: Object.keys(newUploadedPaths).length,
+      totalFiles: newAllFiles.length
+    });
+  };
+
   const linkBugsToExecution = async (executionId: number) => {
     try {
       // Get bug IDs from scenarioBugCounts
@@ -292,7 +326,11 @@ export const TestRunnerModal: React.FC<Props> = ({
                     totalSteps={scenario.steps.length}
                     bugCount={scenarioBugCounts[scenarioIdx] || 0}
                     showBugButton={scenario.status === 'failed'}
-                    onReportBug={() => {
+                    onReportBug={async () => {
+                      // Upload evidence for this scenario before opening bug modal
+                      await uploadScenarioEvidence(scenario);
+
+                      // Then open the bug modal
                       setSelectedScenarioForBug({
                         index: scenarioIdx,
                         name: scenario.scenarioName,
