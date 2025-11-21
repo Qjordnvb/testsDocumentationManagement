@@ -11,6 +11,11 @@ import { useUploadStore } from '../model/uploadStore';
 import { uploadFile } from '../api/uploadFile';
 import { validateFile, formatFileSize } from '../lib/fileValidator';
 import { Upload, X, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import {
+  colors,
+  borderRadius,
+  getTypographyPreset,
+} from '@/shared/design-system/tokens';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -134,6 +139,10 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
     setUploadError(null);
   };
 
+  // Get design tokens
+  const bodySmall = getTypographyPreset('bodySmall');
+  const bodyText = getTypographyPreset('body');
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Subir Excel/CSV">
       <div className="space-y-4">
@@ -141,8 +150,8 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
         {!uploadedFile && (
           <div
             className={`
-              relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
-              ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+              relative border-2 border-dashed ${borderRadius.lg} p-8 text-center transition-colors
+              ${dragActive ? `${colors.brand.primary.border500} ${colors.brand.primary[50]}` : `${colors.gray.border300} hover:${colors.gray.border400}`}
               ${isActuallyUploading ? 'opacity-50 pointer-events-none' : ''}
             `}
             onDragEnter={handleDrag}
@@ -158,14 +167,14 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
               className="hidden"
               disabled={isActuallyUploading}
             />
-            <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-sm text-gray-600 mb-2">
+            <Upload className={`w-12 h-12 mx-auto ${colors.gray.text400} mb-4`} />
+            <p className={`${bodySmall.className} ${colors.gray.text600} mb-2`}>
               Arrastra y suelta tu archivo aquí, o{' '}
-              <label htmlFor="file-upload" className="text-blue-600 hover:text-blue-700 cursor-pointer font-medium">
+              <label htmlFor="file-upload" className={`${colors.brand.primary.text600} hover:${colors.brand.primary.text700} cursor-pointer font-medium`}>
                 selecciona un archivo
               </label>
             </p>
-            <p className="text-xs text-gray-500">
+            <p className={`${bodySmall.className} ${colors.gray.text500}`}>
               Formatos aceptados: .xlsx, .xls, .csv (máx. 10MB)
             </p>
           </div>
@@ -173,21 +182,21 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
         {/* Selected file */}
         {uploadedFile && !isActuallyUploading && (
-          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-            <FileSpreadsheet className="w-8 h-8 text-green-600 flex-shrink-0" />
+          <div className={`flex items-center gap-3 p-4 ${colors.gray[50]} ${borderRadius.lg}`}>
+            <FileSpreadsheet className={`w-8 h-8 ${colors.status.success.text600} flex-shrink-0`} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className={`${bodySmall.className} font-medium ${colors.gray.text900} truncate`}>
                 {uploadedFile.name}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className={`${bodySmall.className} ${colors.gray.text500}`}>
                 {formatFileSize(uploadedFile.size)}
               </p>
             </div>
             <button
               onClick={handleRemoveFile}
-              className="p-1 hover:bg-gray-200 rounded transition-colors"
+              className={`p-1 hover:${colors.gray[200]} ${borderRadius.base} transition-colors`}
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className={`w-5 h-5 ${colors.gray.text500}`} />
             </button>
           </div>
         )}
@@ -195,13 +204,13 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
         {/* Upload progress */}
         {isActuallyUploading && (
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-              <FileSpreadsheet className="w-8 h-8 text-blue-600 flex-shrink-0" />
+            <div className={`flex items-center gap-3 p-4 ${colors.brand.primary[50]} ${borderRadius.lg}`}>
+              <FileSpreadsheet className={`w-8 h-8 ${colors.brand.primary.text600} flex-shrink-0`} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className={`${bodySmall.className} font-medium ${colors.gray.text900} truncate`}>
                   {uploadedFile?.name}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className={`${bodySmall.className} ${colors.gray.text500}`}>
                   {uploadProgress < 100 ? 'Subiendo archivo...' : 'Procesando con IA...'}
                 </p>
               </div>
@@ -209,24 +218,24 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
             {uploadProgress < 100 ? (
               <div className="space-y-1">
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className={`w-full ${colors.gray[200]} ${borderRadius.full} h-2`}>
                   <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    className={`${colors.brand.primary[600]} h-2 ${borderRadius.full} transition-all duration-300`}
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <p className="text-xs text-center text-gray-500">{uploadProgress}%</p>
+                <p className={`${bodySmall.className} text-center ${colors.gray.text500}`}>{uploadProgress}%</p>
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+                <div className={`flex items-center justify-center gap-2 ${bodySmall.className} ${colors.brand.primary.text600}`}>
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   <span>La IA está extrayendo los criterios de aceptación...</span>
                 </div>
-                <p className="text-xs text-center text-gray-500">
+                <p className={`${bodySmall.className} text-center ${colors.gray.text500}`}>
                   Esto puede tomar unos segundos dependiendo del tamaño del archivo
                 </p>
               </div>
@@ -236,9 +245,9 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
         {/* Error message */}
         {uploadError && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">{uploadError}</p>
+          <div className={`flex items-start gap-2 p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+            <AlertCircle className={`w-5 h-5 ${colors.status.error.text600} flex-shrink-0 mt-0.5`} />
+            <p className={`${bodySmall.className} ${colors.status.error.text800}`}>{uploadError}</p>
           </div>
         )}
 

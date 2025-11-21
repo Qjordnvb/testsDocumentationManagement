@@ -9,6 +9,11 @@ import { Button } from '@/shared/ui/Button';
 import { testCaseApi } from '@/entities/test-case';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { TestCase } from '@/entities/test-case';
+import {
+  colors,
+  borderRadius,
+  getTypographyPreset,
+} from '@/shared/design-system/tokens';
 
 interface TestCaseFormModalProps {
   isOpen: boolean;
@@ -127,6 +132,10 @@ export const TestCaseFormModal = ({
     onClose();
   };
 
+  // Get design tokens
+  const bodySmall = getTypographyPreset('bodySmall');
+  const labelText = getTypographyPreset('label');
+
   return (
     <Modal
       isOpen={isOpen}
@@ -137,13 +146,13 @@ export const TestCaseFormModal = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Success message */}
         {saveSuccess && (
-          <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className={`flex items-start gap-2 p-3 ${colors.status.success[50]} border ${colors.status.success.border200} ${borderRadius.lg}`}>
+            <CheckCircle2 className={`w-5 h-5 ${colors.status.success.text600} flex-shrink-0 mt-0.5`} />
             <div>
-              <p className="text-sm font-medium text-green-900">
+              <p className={`${bodySmall.className} font-medium ${colors.status.success.text900}`}>
                 {isEditMode ? '¡Test case actualizado!' : '¡Test case creado!'}
               </p>
-              <p className="text-xs text-green-700 mt-1">
+              <p className={`${bodySmall.className} ${colors.status.success.text700} mt-1`}>
                 Cerrando modal...
               </p>
             </div>
@@ -152,15 +161,15 @@ export const TestCaseFormModal = ({
 
         {/* Error message */}
         {saveError && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">{saveError}</p>
+          <div className={`flex items-start gap-2 p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+            <AlertCircle className={`w-5 h-5 ${colors.status.error.text600} flex-shrink-0 mt-0.5`} />
+            <p className={`${bodySmall.className} ${colors.status.error.text800}`}>{saveError}</p>
           </div>
         )}
 
         {/* Title */}
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="title" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             Título *
           </label>
           <input
@@ -169,7 +178,7 @@ export const TestCaseFormModal = ({
             name="title"
             value={formData.title}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             placeholder="Ej: Verificar login con credenciales válidas"
             required
             disabled={isSaving || saveSuccess}
@@ -178,7 +187,7 @@ export const TestCaseFormModal = ({
 
         {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="description" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             Descripción
           </label>
           <textarea
@@ -187,7 +196,7 @@ export const TestCaseFormModal = ({
             value={formData.description}
             onChange={handleChange}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             placeholder="Describe el objetivo y alcance de este test case..."
             disabled={isSaving || saveSuccess}
           />
@@ -195,7 +204,7 @@ export const TestCaseFormModal = ({
 
         {/* User Story ID */}
         <div>
-          <label htmlFor="user_story_id" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="user_story_id" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             ID de User Story *
           </label>
           <input
@@ -204,7 +213,7 @@ export const TestCaseFormModal = ({
             name="user_story_id"
             value={formData.user_story_id}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             placeholder="Ej: US-001"
             required
             disabled={isSaving || saveSuccess}
@@ -214,7 +223,7 @@ export const TestCaseFormModal = ({
         {/* Test Type and Priority */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="test_type" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="test_type" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
               Tipo de Test
             </label>
             <select
@@ -222,7 +231,7 @@ export const TestCaseFormModal = ({
               name="test_type"
               value={formData.test_type}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               disabled={isSaving || saveSuccess}
             >
               <option value="FUNCTIONAL">Functional</option>
@@ -239,7 +248,7 @@ export const TestCaseFormModal = ({
           </div>
 
           <div>
-            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="priority" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
               Prioridad
             </label>
             <select
@@ -247,7 +256,7 @@ export const TestCaseFormModal = ({
               name="priority"
               value={formData.priority}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               disabled={isSaving || saveSuccess}
             >
               <option value="LOW">Low</option>
@@ -260,7 +269,7 @@ export const TestCaseFormModal = ({
 
         {/* Status */}
         <div>
-          <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="status" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             Estado
           </label>
           <select
@@ -268,7 +277,7 @@ export const TestCaseFormModal = ({
             name="status"
             value={formData.status}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             disabled={isSaving || saveSuccess}
           >
             <option value="NOT_RUN">Not Run</option>
@@ -280,8 +289,8 @@ export const TestCaseFormModal = ({
         </div>
 
         {/* Info */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-800">
+        <div className={`p-3 ${colors.brand.primary[50]} border ${colors.brand.primary.border200} ${borderRadius.lg}`}>
+          <p className={`${bodySmall.className} ${colors.brand.primary.text800}`}>
             💡 Después de crear el test case, podrás agregar escenarios Gherkin usando el editor.
           </p>
         </div>

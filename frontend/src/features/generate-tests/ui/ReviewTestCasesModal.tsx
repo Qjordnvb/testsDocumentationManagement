@@ -9,6 +9,11 @@ import { Button } from '@/shared/ui/Button';
 import { batchCreateTestCases } from '../api/generateTests';
 import { CheckCircle2, AlertCircle, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
 import type { SuggestedTestCase } from '../api/generateTests';
+import {
+  colors,
+  borderRadius,
+  getTypographyPreset,
+} from '@/shared/design-system/tokens';
 
 interface ReviewTestCasesModalProps {
   isOpen: boolean;
@@ -101,6 +106,11 @@ export const ReviewTestCasesModal = ({
     onClose();
   };
 
+  // Get design tokens
+  const bodySmall = getTypographyPreset('bodySmall');
+  const bodyText = getTypographyPreset('body');
+  const labelText = getTypographyPreset('label');
+
   return (
     <Modal
       isOpen={isOpen}
@@ -110,24 +120,24 @@ export const ReviewTestCasesModal = ({
     >
       <div className="space-y-4">
         {/* Header info */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm font-medium text-blue-900">
+        <div className={`p-3 ${colors.brand.primary[50]} border ${colors.brand.primary.border200} ${borderRadius.lg}`}>
+          <p className={`${bodySmall.className} font-medium ${colors.brand.primary.text900}`}>
             User Story: {userStoryTitle}
           </p>
-          <p className="text-xs text-blue-700 mt-1">
+          <p className={`${bodySmall.className} ${colors.brand.primary.text700} mt-1`}>
             {testCases.length} test case{testCases.length !== 1 ? 's' : ''} para revisar
           </p>
         </div>
 
         {/* Success message */}
         {saveSuccess && (
-          <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className={`flex items-start gap-2 p-3 ${colors.status.success[50]} border ${colors.status.success.border200} ${borderRadius.lg}`}>
+            <CheckCircle2 className={`w-5 h-5 ${colors.status.success.text600} flex-shrink-0 mt-0.5`} />
             <div>
-              <p className="text-sm font-medium text-green-900">
+              <p className={`${bodySmall.className} font-medium ${colors.status.success.text900}`}>
                 ¡Test cases guardados exitosamente!
               </p>
-              <p className="text-xs text-green-700 mt-1">
+              <p className={`${bodySmall.className} ${colors.status.success.text700} mt-1`}>
                 Cerrando modal...
               </p>
             </div>
@@ -136,9 +146,9 @@ export const ReviewTestCasesModal = ({
 
         {/* Error message */}
         {saveError && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">{saveError}</p>
+          <div className={`flex items-start gap-2 p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+            <AlertCircle className={`w-5 h-5 ${colors.status.error.text600} flex-shrink-0 mt-0.5`} />
+            <p className={`${bodySmall.className} ${colors.status.error.text800}`}>{saveError}</p>
           </div>
         )}
 
@@ -151,20 +161,20 @@ export const ReviewTestCasesModal = ({
             return (
               <div
                 key={tc.suggested_id}
-                className="p-4 border border-gray-200 rounded-lg bg-white"
+                className={`p-4 border ${colors.gray.border200} ${borderRadius.lg} ${colors.white}`}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-500">
+                      <span className={`${bodySmall.className} font-medium ${colors.gray.text500}`}>
                         #{index + 1}
                       </span>
-                      <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">
+                      <span className={`px-2 py-0.5 ${bodySmall.className} font-medium ${borderRadius.base} ${colors.brand.primary[100]} ${colors.brand.primary.text800}`}>
                         {tc.test_type}
                       </span>
                       {tc.scenarios_count && (
-                        <span className="text-xs text-gray-500">
+                        <span className={`${bodySmall.className} ${colors.gray.text500}`}>
                           {tc.scenarios_count} escenario{tc.scenarios_count !== 1 ? 's' : ''}
                         </span>
                       )}
@@ -176,11 +186,11 @@ export const ReviewTestCasesModal = ({
                         type="text"
                         value={tc.title}
                         onChange={(e) => handleEdit(tc.suggested_id, 'title', e.target.value)}
-                        className="w-full px-2 py-1 text-sm font-medium border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full px-2 py-1 ${bodySmall.className} font-medium border ${colors.brand.primary.border300} ${borderRadius.base} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                         placeholder="Título del test case"
                       />
                     ) : (
-                      <h4 className="text-sm font-medium text-gray-900">
+                      <h4 className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>
                         {tc.title}
                       </h4>
                     )}
@@ -190,14 +200,14 @@ export const ReviewTestCasesModal = ({
                   <div className="flex gap-1">
                     <button
                       onClick={() => setEditingId(isEditing ? null : tc.suggested_id)}
-                      className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                      className={`p-1 ${colors.brand.primary.text600} hover:${colors.brand.primary[50]} ${borderRadius.base} transition-colors`}
                       title={isEditing ? 'Guardar cambios' : 'Editar'}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : tc.suggested_id)}
-                      className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                      className={`p-1 ${colors.gray.text600} hover:${colors.gray[50]} ${borderRadius.base} transition-colors`}
                       title={isExpanded ? 'Ocultar detalles' : 'Ver detalles'}
                     >
                       {isExpanded ? (
@@ -208,7 +218,7 @@ export const ReviewTestCasesModal = ({
                     </button>
                     <button
                       onClick={() => handleDelete(tc.suggested_id)}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                      className={`p-1 ${colors.status.error.text600} hover:${colors.status.error[50]} ${borderRadius.base} transition-colors`}
                       title="Eliminar"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -221,22 +231,22 @@ export const ReviewTestCasesModal = ({
                   <textarea
                     value={tc.description || ''}
                     onChange={(e) => handleEdit(tc.suggested_id, 'description', e.target.value)}
-                    className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px]"
+                    className={`w-full px-2 py-1 ${bodySmall.className} border ${colors.brand.primary.border300} ${borderRadius.base} focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px]`}
                     placeholder="Descripción del test case"
                   />
                 ) : (
-                  <p className="text-xs text-gray-600">
+                  <p className={`${bodySmall.className} ${colors.gray.text600}`}>
                     {tc.description}
                   </p>
                 )}
 
                 {/* Expanded details */}
                 {isExpanded && tc.gherkin_content && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded border border-gray-200">
-                    <p className="text-xs font-medium text-gray-700 mb-2">
+                  <div className={`mt-3 p-3 ${colors.gray[50]} ${borderRadius.base} border ${colors.gray.border200}`}>
+                    <p className={`${bodySmall.className} font-medium ${colors.gray.text700} mb-2`}>
                       Escenarios Gherkin:
                     </p>
-                    <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
+                    <pre className={`${bodySmall.className} ${colors.gray.text800} whitespace-pre-wrap font-mono`}>
                       {tc.gherkin_content}
                     </pre>
                   </div>
@@ -247,8 +257,8 @@ export const ReviewTestCasesModal = ({
         </div>
 
         {/* Info */}
-        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-xs text-yellow-800">
+        <div className={`p-3 ${colors.status.warning[50]} border ${colors.status.warning.border200} ${borderRadius.lg}`}>
+          <p className={`${bodySmall.className} ${colors.status.warning.text800}`}>
             💡 Puedes editar los títulos y descripciones antes de guardar. Los test cases se crearán
             con los escenarios Gherkin generados automáticamente.
           </p>
