@@ -20,9 +20,9 @@ interface Props {
   onClose: () => void;
   onSuccess?: (bug: BugEntity) => void;
 
-  // Mode: 'create' or 'readonly'
-  mode?: 'create' | 'readonly';
-  existingBugId?: string; // If mode='readonly', load this bug
+  // Mode: 'create', 'readonly', or 'edit'
+  mode?: 'create' | 'readonly' | 'edit';
+  existingBugId?: string; // If mode='readonly' or 'edit', load this bug
 
   // Pre-fill data (optional for create mode)
   projectId: string;
@@ -48,6 +48,8 @@ export const BugReportModal: React.FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const isReadonly = mode === 'readonly';
+  const isEditMode = mode === 'edit';
+  const shouldLoadExistingBug = (isReadonly || isEditMode) && existingBugId;
 
   // Form state
   const [title, setTitle] = useState('');
@@ -69,10 +71,10 @@ export const BugReportModal: React.FC<Props> = ({
   const [isLoadingBug, setIsLoadingBug] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Load existing bug in readonly mode
+  // Load existing bug in readonly or edit mode
   useEffect(() => {
-    if (isReadonly && existingBugId && isOpen) {
-      console.log('📖 Loading existing bug:', existingBugId);
+    if (shouldLoadExistingBug && isOpen) {
+      console.log(`📖 Loading existing bug (${mode} mode):`, existingBugId);
       setIsLoadingBug(true);
 
       bugApi.getById(existingBugId)
@@ -264,18 +266,28 @@ export const BugReportModal: React.FC<Props> = ({
       console.log('📤 Sending bug data:', bugData);
       console.log('📸 Evidence files from attachments state:', attachments);
 
-      const createdBug = await bugApi.create(bugData);
+      let resultBug: BugEntity;
 
-      toast.success(`Bug ${createdBug.id} created successfully`);
+      if (isEditMode && existingBugId) {
+        // Update existing bug
+        console.log(`📝 Updating bug ${existingBugId}...`);
+        resultBug = await bugApi.update(existingBugId, bugData);
+        toast.success(`Bug ${resultBug.id} updated successfully`);
+      } else {
+        // Create new bug
+        console.log('📝 Creating new bug...');
+        resultBug = await bugApi.create(bugData);
+        toast.success(`Bug ${resultBug.id} created successfully`);
+      }
 
       if (onSuccess) {
-        onSuccess(createdBug);
+        onSuccess(resultBug);
       }
 
       handleClose();
     } catch (error: any) {
-      console.error('Error creating bug:', error);
-      toast.error(error.response?.data?.detail || 'Failed to create bug report');
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} bug:`, error);
+      toast.error(error.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'create'} bug report`);
     } finally {
       setIsSubmitting(false);
     }
@@ -323,11 +335,13 @@ export const BugReportModal: React.FC<Props> = ({
               </div>
               <div>
                 <h2 className={`${titleTypography.className} ${colors.gray.text900}`}>
-                  {isReadonly ? 'Bug Details' : 'Report Bug'}
+                  {isReadonly ? 'Bug Details' : isEditMode ? 'Update Bug' : 'Report Bug'}
                 </h2>
                 <p className={`${subtitleTypography.className} ${colors.gray.text600} mt-1`}>
                   {isReadonly
                     ? 'View bug report details'
+                    : isEditMode
+                    ? 'Update the bug report information'
                     : 'Document a defect found during testing'
                   }
                 </p>
@@ -712,7 +726,7 @@ export const BugReportModal: React.FC<Props> = ({
             </>
           ) : (
             <>
-              {/* Create mode: Cancel and Create buttons */}
+              {/* Create/Edit mode: Cancel and Create/Update buttons */}
               <Button
                 type="button"
                 variant="secondary"
@@ -731,7 +745,10 @@ export const BugReportModal: React.FC<Props> = ({
                 isLoading={isSubmitting}
                 leftIcon={!isSubmitting ? <Bug size={18} /> : undefined}
               >
-                {isSubmitting ? 'Creating Bug...' : 'Create Bug Report'}
+                {isSubmitting
+                  ? (isEditMode ? 'Updating Bug...' : 'Creating Bug...')
+                  : (isEditMode ? 'Update Bug Report' : 'Create Bug Report')
+                }
               </Button>
             </>
           )}
