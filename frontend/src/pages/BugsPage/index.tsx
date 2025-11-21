@@ -52,6 +52,12 @@ export const BugsPage = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
 
+  // Typography presets
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingMedium = getTypographyPreset('headingMedium');
+  const headingLarge = getTypographyPreset('headingLarge');
+
   // Validate project
   useEffect(() => {
     if (!projectId || !currentProject) {
