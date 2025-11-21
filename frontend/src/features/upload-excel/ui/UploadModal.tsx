@@ -151,7 +151,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
           <div
             className={`
               relative border-2 border-dashed ${borderRadius.lg} p-8 text-center transition-colors
-              ${dragActive ? `${colors.brand.primary.border500} ${colors.brand.primary[50]}` : `${colors.gray.border300} hover:${colors.gray.border400}`}
+              ${dragActive ? `${colors.brand.primary.border500} ${colors.brand.primary[50]}` : `${colors.gray.border300} hover:border-gray-400`}
               ${isActuallyUploading ? 'opacity-50 pointer-events-none' : ''}
             `}
             onDragEnter={handleDrag}
@@ -170,7 +170,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
             <Upload className={`w-12 h-12 mx-auto ${colors.gray.text400} mb-4`} />
             <p className={`${bodySmall.className} ${colors.gray.text600} mb-2`}>
               Arrastra y suelta tu archivo aquí, o{' '}
-              <label htmlFor="file-upload" className={`${colors.brand.primary.text600} hover:${colors.brand.primary.text700} cursor-pointer font-medium`}>
+              <label htmlFor="file-upload" className={`${colors.brand.primary.text600} hover:text-blue-700 cursor-pointer font-medium`}>
                 selecciona un archivo
               </label>
             </p>
@@ -194,7 +194,7 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
             </div>
             <button
               onClick={handleRemoveFile}
-              className={`p-1 hover:${colors.gray[200]} ${borderRadius.base} transition-colors`}
+              className={`p-1 hover:bg-gray-200 ${borderRadius.base} transition-colors`}
             >
               <X className={`w-5 h-5 ${colors.gray.text500}`} />
             </button>

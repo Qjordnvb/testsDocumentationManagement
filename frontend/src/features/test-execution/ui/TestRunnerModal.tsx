@@ -295,7 +295,7 @@ export const TestRunnerModal: React.FC<Props> = ({
                                   onClick={() => markStep(scenarioIdx, step.id, 'passed')}
                                   className={`p-2 ${borderRadius.lg} transition-colors ${
                                     step.status === 'passed' ? `${colors.status.success[100]} ${colors.status.success.text700}` :
-                                    `${colors.gray.text300} hover:${colors.status.success[50]} hover:${colors.status.success.text600}`
+                                    `${colors.gray.text300} hover:bg-green-50 hover:text-green-600`
                                   }`}
                                 >
                                   <CheckCircle2 size={20} />
@@ -304,7 +304,7 @@ export const TestRunnerModal: React.FC<Props> = ({
                                   onClick={() => markStep(scenarioIdx, step.id, 'failed')}
                                   className={`p-2 ${borderRadius.lg} transition-colors ${
                                     step.status === 'failed' ? `${colors.status.error[100]} ${colors.status.error.text700}` :
-                                    `${colors.gray.text300} hover:${colors.status.error[50]} hover:${colors.status.error.text600}`
+                                    `${colors.gray.text300} hover:bg-red-50 hover:text-red-600`
                                   }`}
                                 >
                                   <XCircle size={20} />
@@ -323,13 +323,13 @@ export const TestRunnerModal: React.FC<Props> = ({
                                     <span className="max-w-[200px] truncate">{evidenceMap[step.id].name}</span>
                                     <button
                                       onClick={() => removeEvidence(step.id)}
-                                      className={`${colors.status.error.text600} hover:${colors.status.error[50]} p-1 ${borderRadius.base} ml-2`}
+                                      className={`${colors.status.error.text600} hover:bg-red-50 p-1 ${borderRadius.base} ml-2`}
                                     >
                                       <Trash2 size={14} />
                                     </button>
                                   </div>
                                 ) : (
-                                  <label className={`flex items-center gap-2 cursor-pointer ${colors.status.error[100]} hover:${colors.status.error[200]} ${colors.status.error.text700} px-3 py-2 ${borderRadius.base} text-sm transition-colors`}>
+                                  <label className={`flex items-center gap-2 cursor-pointer ${colors.status.error[100]} hover:bg-red-200 ${colors.status.error.text700} px-3 py-2 ${borderRadius.base} text-sm transition-colors`}>
                                     <Upload size={16} />
                                     Adjuntar Evidencia
                                     <input

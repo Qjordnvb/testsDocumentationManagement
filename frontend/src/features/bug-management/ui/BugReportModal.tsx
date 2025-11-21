@@ -235,7 +235,7 @@ export const BugReportModal: React.FC<Props> = ({
             </div>
             <button
               onClick={handleClose}
-              className={`${colors.gray.text400} hover:${colors.gray.text600} p-2 ${borderRadius.full} hover:bg-white/50 transition-colors`}
+              className={`${colors.gray.text400} hover:text-gray-600 p-2 ${borderRadius.full} hover:bg-white/50 transition-colors`}
             >
               <X size={24} />
             </button>
@@ -322,7 +322,7 @@ export const BugReportModal: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveStep(index)}
-                        className={`px-3 py-2 ${colors.status.error.text600} hover:${colors.status.error[50]} ${borderRadius.lg} transition-colors`}
+                        className={`px-3 py-2 ${colors.status.error.text600} hover:bg-red-50 ${borderRadius.lg} transition-colors`}
                       >
                         ✕
                       </button>
@@ -332,7 +332,7 @@ export const BugReportModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={handleAddStep}
-                  className={`${subtitleTypography.className} ${colors.brand.primary.text600} hover:${colors.brand.primary.text700} font-medium`}
+                  className={`${subtitleTypography.className} ${colors.brand.primary.text600} hover:text-blue-700 font-medium`}
                 >
                   + Add Step
                 </button>

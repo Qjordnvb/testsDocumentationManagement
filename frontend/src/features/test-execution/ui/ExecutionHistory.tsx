@@ -103,7 +103,7 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
         </h4>
         <button
           onClick={loadExecutions}
-          className={`${bodySmall.className} ${colors.brand.primary.text600} hover:${colors.brand.primary.text800}`}
+          className={`${bodySmall.className} ${colors.brand.primary.text600} hover:text-blue-800`}
         >
           🔄 Actualizar
         </button>
@@ -114,7 +114,7 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
           <div
             key={execution.execution_id}
             onClick={() => onSelectExecution?.(execution.execution_id)}
-            className={`border ${colors.gray.border200} ${borderRadius.lg} p-3 hover:${colors.gray[50]} cursor-pointer transition-colors group`}
+            className={`border ${colors.gray.border200} ${borderRadius.lg} p-3 hover:bg-gray-50 cursor-pointer transition-colors group`}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3 flex-1">
@@ -180,7 +180,7 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
 
       {historyData.total > historyData.executions.length && (
         <div className="text-center pt-2">
-          <button className={`${bodySmall.className} ${colors.brand.primary.text600} hover:${colors.brand.primary.text800}`}>
+          <button className={`${bodySmall.className} ${colors.brand.primary.text600} hover:text-blue-800`}>
             Ver más ejecuciones ({historyData.total - historyData.executions.length} restantes)
           </button>
         </div>

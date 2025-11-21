@@ -106,8 +106,8 @@ export const Modal = ({
               <button
                 onClick={onClose}
                 className={`
-                  ${colors.gray.text400} hover:${colors.gray.text600}
-                  transition-colors p-1 ${borderRadius.lg} hover:${colors.gray[100]}
+                  ${colors.gray.text400} hover:text-gray-600
+                  transition-colors p-1 ${borderRadius.lg} hover:bg-gray-100
                 `.replace(/\s+/g, ' ').trim()}
                 aria-label="Close modal"
               >

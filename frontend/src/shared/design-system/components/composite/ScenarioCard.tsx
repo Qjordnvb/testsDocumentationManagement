@@ -162,7 +162,7 @@ export const ScenarioCard = ({
               className={`
                 flex items-center gap-1 px-3 py-1.5 ${borderRadius.md}
                 ${colors.orange[100]} ${colors.orange.text700}
-                hover:${colors.orange[200]} transition-colors text-sm font-medium
+                hover:bg-orange-200 transition-colors text-sm font-medium
               `.replace(/\s+/g, ' ').trim()}
               title="Report Bug for This Scenario"
             >

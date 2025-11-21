@@ -200,14 +200,14 @@ export const ReviewTestCasesModal = ({
                   <div className="flex gap-1">
                     <button
                       onClick={() => setEditingId(isEditing ? null : tc.suggested_id)}
-                      className={`p-1 ${colors.brand.primary.text600} hover:${colors.brand.primary[50]} ${borderRadius.base} transition-colors`}
+                      className={`p-1 ${colors.brand.primary.text600} hover:bg-blue-50 ${borderRadius.base} transition-colors`}
                       title={isEditing ? 'Guardar cambios' : 'Editar'}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : tc.suggested_id)}
-                      className={`p-1 ${colors.gray.text600} hover:${colors.gray[50]} ${borderRadius.base} transition-colors`}
+                      className={`p-1 ${colors.gray.text600} hover:bg-gray-50 ${borderRadius.base} transition-colors`}
                       title={isExpanded ? 'Ocultar detalles' : 'Ver detalles'}
                     >
                       {isExpanded ? (
@@ -218,7 +218,7 @@ export const ReviewTestCasesModal = ({
                     </button>
                     <button
                       onClick={() => handleDelete(tc.suggested_id)}
-                      className={`p-1 ${colors.status.error.text600} hover:${colors.status.error[50]} ${borderRadius.base} transition-colors`}
+                      className={`p-1 ${colors.status.error.text600} hover:bg-red-50 ${borderRadius.base} transition-colors`}
                       title="Eliminar"
                     >
                       <Trash2 className="w-4 h-4" />

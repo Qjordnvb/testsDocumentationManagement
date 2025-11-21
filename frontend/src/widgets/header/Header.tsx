@@ -22,7 +22,7 @@ export const Header = () => {
             // When inside a project - show breadcrumb
             <>
               <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-1`}>
-                <Link to="/" className={`hover:${colors.brand.primary.text600} transition-colors`}>
+                <Link to="/" className={`hover:text-blue-600 transition-colors`}>
                   📁 Todos los Proyectos
                 </Link>
                 <span>›</span>
@@ -53,7 +53,7 @@ export const Header = () => {
         <div className="flex items-center gap-4">
           {/* Notifications */}
           <button
-            className={`p-2 ${borderRadius.lg} hover:${colors.gray[100]} transition-colors relative`}
+            className={`p-2 ${borderRadius.lg} hover:bg-gray-100 transition-colors relative`}
             aria-label="Notifications"
           >
             <span className="text-xl">🔔</span>
@@ -62,7 +62,7 @@ export const Header = () => {
           </button>
 
           {/* User avatar */}
-          <div className={`flex items-center gap-3 p-2 ${borderRadius.lg} hover:${colors.gray[100]} transition-colors cursor-pointer`}>
+          <div className={`flex items-center gap-3 p-2 ${borderRadius.lg} hover:bg-gray-100 transition-colors cursor-pointer`}>
             <div className={`w-10 h-10 bg-gradient-to-r from-primary-blue to-primary-purple ${borderRadius.full} flex items-center justify-center ${colors.white} font-bold`}>
               JD
             </div>

@@ -68,7 +68,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
           return (
             <button
               onClick={handleClick}
-              className={`flex items-center justify-center w-8 h-8 hover:${colors.gray[100]} ${borderRadius.base} transition-colors`}
+              className={`flex items-center justify-center w-8 h-8 hover:bg-gray-100 ${borderRadius.base} transition-colors`}
             >
               {row.getIsExpanded() ? (
                 <ChevronDown className={`w-4 h-4 ${colors.gray.text600}`} />
@@ -259,7 +259,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
             <tbody className={`${colors.white} divide-y ${colors.gray.divider200}`}>
               {table.getRowModel().rows.map((row) => (
                 <React.Fragment key={row.id}>
-                  <tr className={`hover:${colors.gray[50]} transition-colors`}>
+                  <tr className="hover:bg-gray-50 transition-colors">
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-4">
                         {flexRender(

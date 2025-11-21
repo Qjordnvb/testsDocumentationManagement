@@ -308,7 +308,7 @@ export const BugDetailsPage = () => {
         <div className="flex items-start gap-4">
           <button
             onClick={() => navigate(`/projects/${projectId}/bugs`)}
-            className={`p-2 hover:${colors.gray[100]} ${borderRadius.lg} transition-colors`}
+            className={`p-2 hover:bg-gray-100 ${borderRadius.lg} transition-colors`}
           >
             <ArrowLeft size={24} />
           </button>
@@ -334,7 +334,7 @@ export const BugDetailsPage = () => {
           )}
           <button
             onClick={() => toast('Edit functionality coming soon')}
-            className={`px-4 py-2 border ${colors.gray.border300} ${colors.gray.text700} ${borderRadius.lg} hover:${colors.gray[50]} transition-colors flex items-center gap-2`}
+            className={`px-4 py-2 border ${colors.gray.border300} ${colors.gray.text700} ${borderRadius.lg} hover:bg-gray-50 transition-colors flex items-center gap-2`}
           >
             <Edit size={18} />
             Editar

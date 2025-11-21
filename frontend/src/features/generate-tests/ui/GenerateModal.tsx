@@ -236,7 +236,7 @@ export const GenerateModal = ({
                       px-3 py-1.5 ${bodySmall.className} font-medium ${borderRadius.md} border transition-colors
                       ${selectedTestTypes.includes(testType.value)
                         ? `${colors.brand.primary[100]} ${colors.brand.primary.border300} ${colors.brand.primary.text800}`
-                        : `${colors.white} ${colors.gray.border300} ${colors.gray.text700} hover:${colors.gray[50]}`
+                        : `${colors.white} ${colors.gray.border300} ${colors.gray.text700} hover:bg-gray-50`
                       }
                       ${isActuallyGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                     `}
