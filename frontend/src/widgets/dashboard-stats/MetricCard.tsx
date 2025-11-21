@@ -3,6 +3,8 @@
  * Displays a single metric with icon, value, and label
  */
 
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+
 interface MetricCardProps {
   icon: string;
   label: string;
@@ -16,11 +18,11 @@ interface MetricCardProps {
 }
 
 const colorClasses = {
-  blue: 'from-blue-500 to-blue-600',
-  green: 'from-green-500 to-green-600',
-  red: 'from-red-500 to-red-600',
-  purple: 'from-purple-500 to-purple-600',
-  yellow: 'from-yellow-500 to-yellow-600',
+  blue: `from-blue-500 to-blue-600`,
+  green: `from-green-500 to-green-600`,
+  red: `from-red-500 to-red-600`,
+  purple: `from-purple-500 to-purple-600`,
+  yellow: `from-yellow-500 to-yellow-600`,
 };
 
 export const MetricCard = ({
@@ -31,6 +33,9 @@ export const MetricCard = ({
   trend,
   onClick,
 }: MetricCardProps) => {
+  const bodySmall = getTypographyPreset('bodySmall');
+  const headingLarge = getTypographyPreset('headingLarge');
+
   const baseClasses = "metric-card hover:scale-105 transition-transform duration-200";
   const clickableClasses = onClick ? "cursor-pointer hover:shadow-lg" : "";
 
@@ -39,7 +44,7 @@ export const MetricCard = ({
       <div className="flex items-start justify-between">
         {/* Icon */}
         <div
-          className={`w-12 h-12 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center text-2xl text-white shadow-md`}
+          className={`w-12 h-12 ${borderRadius.lg} bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center text-2xl ${colors.white} shadow-md`}
         >
           {icon}
         </div>
@@ -47,8 +52,8 @@ export const MetricCard = ({
         {/* Trend indicator */}
         {trend && (
           <div
-            className={`text-sm font-medium ${
-              trend.isPositive ? 'text-green-600' : 'text-red-600'
+            className={`${bodySmall.className} font-medium ${
+              trend.isPositive ? colors.status.success.text600 : colors.status.error.text600
             }`}
           >
             {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
@@ -58,8 +63,8 @@ export const MetricCard = ({
 
       {/* Value */}
       <div className="mt-4">
-        <p className="text-3xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-600 mt-1">{label}</p>
+        <p className={`${headingLarge.className} font-bold ${colors.gray.text900}`}>{value}</p>
+        <p className={`${bodySmall.className} ${colors.gray.text600} mt-1`}>{label}</p>
       </div>
     </>
   );
