@@ -181,7 +181,7 @@ export const ScenarioCard = ({
 
         {/* Right Side: Actions & Expand Icon */}
         <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-          {/* Bug Button */}
+          {/* Bug Button with dynamic state */}
           {showBugButton && onReportBug && (
             <button
               onClick={(e) => {
@@ -190,13 +190,17 @@ export const ScenarioCard = ({
               }}
               className={`
                 flex items-center gap-1 px-3 py-1.5 ${borderRadius.md}
-                ${colors.orange[100]} ${colors.orange.text700}
-                hover:bg-orange-200 transition-colors text-sm font-medium
+                ${bugCount > 0
+                  ? `${colors.status.error[600]} text-white hover:bg-red-700`
+                  : `${colors.orange[100]} ${colors.orange.text700} hover:bg-orange-200`
+                }
+                transition-all duration-200 text-sm font-medium
+                ${bugCount > 0 ? 'shadow-md' : ''}
               `.replace(/\s+/g, ' ').trim()}
-              title="Report Bug for This Scenario"
+              title={bugCount > 0 ? `${bugCount} bug(s) ya reportado(s). Click para reportar otro` : 'Reportar bug para este scenario'}
             >
               <Bug className="w-4 h-4" />
-              <span>Report Bug</span>
+              <span>{bugCount > 0 ? `+1 Bug (${bugCount} total)` : 'Report Bug'}</span>
             </button>
           )}
 

@@ -48,6 +48,9 @@ export const TestRunnerModal: React.FC<Props> = ({
     steps: any[];
   } | null>(null);
 
+  // Track scenarios with bugs reported (scenarioIndex -> bug count)
+  const [scenarioBugCounts, setScenarioBugCounts] = useState<Record<number, number>>({});
+
   if (!isOpen) return null;
 
   // Mark all steps in a scenario
@@ -244,6 +247,7 @@ export const TestRunnerModal: React.FC<Props> = ({
                     failedSteps={failedSteps}
                     skippedSteps={skippedSteps}
                     totalSteps={scenario.steps.length}
+                    bugCount={scenarioBugCounts[scenarioIdx] || 0}
                     showBugButton={scenario.status === 'failed'}
                     onReportBug={() => {
                       setSelectedScenarioForBug({
@@ -459,6 +463,13 @@ export const TestRunnerModal: React.FC<Props> = ({
             setSelectedScenarioForBug(null);
           }}
           onSuccess={() => {
+            // Update bug count for this scenario
+            if (selectedScenarioForBug) {
+              setScenarioBugCounts(prev => ({
+                ...prev,
+                [selectedScenarioForBug.index]: (prev[selectedScenarioForBug.index] || 0) + 1
+              }));
+            }
             setSelectedScenarioForBug(null);
             toast.success('Bug reportado exitosamente para el scenario: ' + selectedScenarioForBug.name);
           }}
