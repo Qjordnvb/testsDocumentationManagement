@@ -21,8 +21,8 @@ import { useProject } from '@/app/providers/ProjectContext';
 import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
-import {
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+import {
   Bug as BugIcon,
   AlertCircle,
   CheckCircle2,
