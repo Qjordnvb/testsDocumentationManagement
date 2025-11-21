@@ -14,7 +14,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { bugApi } from '@/entities/bug';
 import { useProject } from '@/app/providers/ProjectContext';
-import type { Bug, BugSeverity, BugPriority, BugStatus } from '@/entities/bug';
+import type { Bug, BugSeverity, BugPriority, BugStatus, TestCaseGroup } from '@/entities/bug';
 import {
   Bug as BugIcon,
   Search,
@@ -24,7 +24,11 @@ import {
   Clock,
   XCircle,
   User,
-  Calendar
+  Calendar,
+  List,
+  LayoutGrid,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 export const BugsPage = () => {
@@ -33,8 +37,12 @@ export const BugsPage = () => {
   const navigate = useNavigate();
 
   const [bugs, setBugs] = useState<Bug[]>([]);
+  const [groupedBugs, setGroupedBugs] = useState<TestCaseGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
+  const [expandedTestCases, setExpandedTestCases] = useState<Set<string>>(new Set());
+  const [expandedScenarios, setExpandedScenarios] = useState<Set<string>>(new Set());
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,8 +70,15 @@ export const BugsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await bugApi.getAll({ project_id: projectId });
-      setBugs(data);
+
+      // Load both list and grouped data
+      const [bugsData, groupedData] = await Promise.all([
+        bugApi.getAll({ project_id: projectId }),
+        bugApi.getGrouped(projectId)
+      ]);
+
+      setBugs(bugsData);
+      setGroupedBugs(groupedData.grouped_bugs);
     } catch (err: any) {
       console.error('Error loading bugs:', err);
       setError(err.message || 'Error al cargar bugs');
@@ -71,6 +86,27 @@ export const BugsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Toggle functions for grouped view
+  const toggleTestCase = (testCaseId: string) => {
+    const newExpanded = new Set(expandedTestCases);
+    if (newExpanded.has(testCaseId)) {
+      newExpanded.delete(testCaseId);
+    } else {
+      newExpanded.add(testCaseId);
+    }
+    setExpandedTestCases(newExpanded);
+  };
+
+  const toggleScenario = (key: string) => {
+    const newExpanded = new Set(expandedScenarios);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedScenarios(newExpanded);
   };
 
   // Filter bugs
@@ -247,8 +283,36 @@ export const BugsPage = () => {
           </p>
         </div>
 
-        <div className="text-sm text-gray-600">
-          <p>💡 <span className="font-medium">Tip:</span> Reporta bugs desde las ejecuciones de test</p>
+        <div className="flex items-center gap-4">
+          {/* View Toggle */}
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <List size={16} />
+              <span className="text-sm font-medium">Lista</span>
+            </button>
+            <button
+              onClick={() => setViewMode('grouped')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all ${
+                viewMode === 'grouped'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <LayoutGrid size={16} />
+              <span className="text-sm font-medium">Agrupado</span>
+            </button>
+          </div>
+
+          <div className="text-sm text-gray-600">
+            <p>💡 <span className="font-medium">Tip:</span> Reporta bugs desde las ejecuciones de test</p>
+          </div>
         </div>
       </div>
 
@@ -364,21 +428,24 @@ export const BugsPage = () => {
         </div>
       </div>
 
-      {/* Bugs Table */}
-      {filteredBugs.length === 0 ? (
-        <div className="card text-center py-12">
-          <BugIcon size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron bugs</h3>
-          <p className="text-gray-600">
-            {activeFiltersCount > 0
-              ? 'Intenta ajustar los filtros para ver más resultados'
-              : 'Los bugs reportados desde ejecuciones aparecerán aquí'}
-          </p>
-        </div>
-      ) : (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+      {/* Bugs View - List or Grouped */}
+      {viewMode === 'list' ? (
+        <>
+          {/* List View */}
+          {filteredBugs.length === 0 ? (
+            <div className="card text-center py-12">
+              <BugIcon size={48} className="mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron bugs</h3>
+              <p className="text-gray-600">
+                {activeFiltersCount > 0
+                  ? 'Intenta ajustar los filtros para ver más resultados'
+                  : 'Los bugs reportados desde ejecuciones aparecerán aquí'}
+              </p>
+            </div>
+          ) : (
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -495,6 +562,143 @@ export const BugsPage = () => {
             </table>
           </div>
         </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Grouped View */}
+          {groupedBugs.length === 0 ? (
+            <div className="card text-center py-12">
+              <BugIcon size={48} className="mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron bugs agrupados</h3>
+              <p className="text-gray-600">
+                Los bugs se agruparán automáticamente por Test Case y Scenario cuando sean reportados
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {groupedBugs.map((testCaseGroup) => {
+                const isExpanded = expandedTestCases.has(testCaseGroup.test_case_id);
+
+                return (
+                  <div key={testCaseGroup.test_case_id} className="card overflow-hidden">
+                    {/* Test Case Header */}
+                    <div
+                      onClick={() => toggleTestCase(testCaseGroup.test_case_id)}
+                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        {isExpanded ? (
+                          <ChevronDown size={20} className="text-blue-600 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight size={20} className="text-blue-600 flex-shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 text-base">
+                            {testCaseGroup.test_case_title}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            <span className="font-mono text-blue-600">{testCaseGroup.test_case_id}</span>
+                            {' • '}
+                            {testCaseGroup.scenarios.length} scenario(s) {' • '}
+                            {testCaseGroup.total_bugs} bug(s) total
+                          </p>
+                        </div>
+                      </div>
+                      <div className="px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-bold">
+                        {testCaseGroup.total_bugs} Bugs
+                      </div>
+                    </div>
+
+                    {/* Scenarios (Expandable) */}
+                    {isExpanded && (
+                      <div className="p-4 space-y-3 bg-gray-50">
+                        {testCaseGroup.scenarios.map((scenarioGroup) => {
+                          const scenarioKey = `${testCaseGroup.test_case_id}-${scenarioGroup.scenario_name}`;
+                          const isScenarioExpanded = expandedScenarios.has(scenarioKey);
+
+                          return (
+                            <div key={scenarioKey} className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                              {/* Scenario Header */}
+                              <div
+                                onClick={() => toggleScenario(scenarioKey)}
+                                className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 transition-colors bg-gradient-to-r from-purple-50 to-pink-50"
+                              >
+                                <div className="flex items-center gap-2 flex-1">
+                                  {isScenarioExpanded ? (
+                                    <ChevronDown size={18} className="text-purple-600 flex-shrink-0" />
+                                  ) : (
+                                    <ChevronRight size={18} className="text-purple-600 flex-shrink-0" />
+                                  )}
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-800 text-sm">
+                                      {scenarioGroup.scenario_name}
+                                    </h4>
+                                  </div>
+                                </div>
+                                <div className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+                                  {scenarioGroup.bug_count} Bug(s)
+                                </div>
+                              </div>
+
+                              {/* Bugs List (Expandable) */}
+                              {isScenarioExpanded && (
+                                <div className="p-3 space-y-2 bg-gray-50 border-t border-gray-200">
+                                  {scenarioGroup.bugs.map((bug) => (
+                                    <div
+                                      key={bug.id}
+                                      onClick={() => handleBugClick(bug.id)}
+                                      className="p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        {getStatusIcon(bug.status)}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-sm font-mono font-medium text-blue-600">
+                                              {bug.id}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getSeverityBadgeClass(bug.severity)}`}>
+                                              {bug.severity}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(bug.status)}`}>
+                                              {bug.status}
+                                            </span>
+                                          </div>
+                                          <p className="text-sm font-medium text-gray-900 mt-1">
+                                            {bug.title}
+                                          </p>
+                                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                            {bug.description}
+                                          </p>
+                                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                            <div className="flex items-center gap-1">
+                                              <Calendar size={12} />
+                                              {formatDate(bug.reported_date)}
+                                            </div>
+                                            {bug.assigned_to && (
+                                              <div className="flex items-center gap-1">
+                                                <User size={12} />
+                                                {bug.assigned_to}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Summary Stats */}

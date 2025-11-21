@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage, ChevronDown, ChevronRight, Bug } from 'lucide-react';
+import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage, ChevronDown, ChevronRight, Bug, ChevronsDown, ChevronsUp } from 'lucide-react';
 import { useTestRunner } from '../model/useTestRunner';
 import { parseGherkinContent } from '@/shared/lib/gherkinParser';
 import { apiService } from '@/shared/api/apiClient';
@@ -39,8 +39,43 @@ export const TestRunnerModal: React.FC<Props> = ({
   const [showBugPrompt, setShowBugPrompt] = useState(false);
   const [showBugModal, setShowBugModal] = useState(false);
   const [savedExecutionId, setSavedExecutionId] = useState<number | null>(null);
+  const [selectedScenarioForBug, setSelectedScenarioForBug] = useState<{
+    index: number;
+    name: string;
+    steps: any[];
+  } | null>(null);
 
   if (!isOpen) return null;
+
+  // Expand/Collapse All function
+  const handleExpandCollapseAll = () => {
+    const allExpanded = expandedScenarios.size === scenarios.length;
+    if (allExpanded) {
+      // Collapse all
+      scenarios.forEach((_, idx) => {
+        if (expandedScenarios.has(idx)) {
+          toggleScenario(idx);
+        }
+      });
+    } else {
+      // Expand all
+      scenarios.forEach((_, idx) => {
+        if (!expandedScenarios.has(idx)) {
+          toggleScenario(idx);
+        }
+      });
+    }
+  };
+
+  // Mark all steps in a scenario
+  const handleMarkAllStepsInScenario = (scenarioIdx: number, status: 'passed' | 'failed') => {
+    const scenario = scenarios[scenarioIdx];
+    scenario.steps.forEach((step: any) => {
+      if (step.status !== 'skipped') {
+        markStep(scenarioIdx, step.id, status);
+      }
+    });
+  };
 
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -191,6 +226,17 @@ export const TestRunnerModal: React.FC<Props> = ({
                 <Pause size={18} fill="currentColor" /> Pausar
               </button>
             )}
+            <button
+              onClick={handleExpandCollapseAll}
+              className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-medium transition-all border border-purple-200"
+              title={expandedScenarios.size === scenarios.length ? "Collapse All" : "Expand All"}
+            >
+              {expandedScenarios.size === scenarios.length ? (
+                <><ChevronsUp size={18} /> Collapse All</>
+              ) : (
+                <><ChevronsDown size={18} /> Expand All</>
+              )}
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -217,34 +263,87 @@ export const TestRunnerModal: React.FC<Props> = ({
               const failedSteps = scenario.steps.filter((s: any) => s.status === 'failed').length;
 
               return (
-                <div key={scenarioIdx} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                  {/* Scenario Header (Clickable) */}
-                  <div
-                    onClick={() => toggleScenario(scenarioIdx)}
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      {isExpanded ? (
-                        <ChevronDown size={20} className="text-gray-500 flex-shrink-0" />
-                      ) : (
-                        <ChevronRight size={20} className="text-gray-500 flex-shrink-0" />
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-800 text-base">{scenario.scenarioName}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {scenario.steps.length} steps •
-                          <span className="text-green-600 ml-1">{passedSteps} passed</span> •
-                          <span className="text-red-600 ml-1">{failedSteps} failed</span>
-                        </p>
+                <div
+                  key={scenarioIdx}
+                  className={`rounded-lg border shadow-sm overflow-hidden transition-all ${
+                    scenario.status === 'passed' ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' :
+                    scenario.status === 'failed' ? 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300' :
+                    scenario.status === 'skipped' ? 'bg-gradient-to-br from-gray-100 to-gray-200 border-gray-400' :
+                    'bg-white border-gray-200'
+                  }`}
+                >
+                  {/* Scenario Header */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div
+                        onClick={() => toggleScenario(scenarioIdx)}
+                        className="flex items-center gap-3 flex-1 cursor-pointer hover:opacity-80"
+                      >
+                        {isExpanded ? (
+                          <ChevronDown size={20} className="text-gray-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight size={20} className="text-gray-500 flex-shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-800 text-base">{scenario.scenarioName}</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {scenario.steps.length} steps •
+                            <span className="text-green-600 ml-1">{passedSteps} passed</span> •
+                            <span className="text-red-600 ml-1">{failedSteps} failed</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        scenario.status === 'passed' ? 'bg-green-100 text-green-700' :
+                        scenario.status === 'failed' ? 'bg-red-100 text-red-700' :
+                        scenario.status === 'skipped' ? 'bg-gray-100 text-gray-600' :
+                        'bg-blue-50 text-blue-600'
+                      }`}>
+                        {scenario.status.toUpperCase()}
                       </div>
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      scenario.status === 'passed' ? 'bg-green-100 text-green-700' :
-                      scenario.status === 'failed' ? 'bg-red-100 text-red-700' :
-                      scenario.status === 'skipped' ? 'bg-gray-100 text-gray-600' :
-                      'bg-blue-50 text-blue-600'
-                    }`}>
-                      {scenario.status.toUpperCase()}
+
+                    {/* Action Buttons Row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAllStepsInScenario(scenarioIdx, 'passed');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-medium transition-colors"
+                        title="Mark all steps as passed"
+                      >
+                        <CheckCircle2 size={14} />
+                        Mark All Passed
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAllStepsInScenario(scenarioIdx, 'failed');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors"
+                        title="Mark all steps as failed"
+                      >
+                        <XCircle size={14} />
+                        Mark All Failed
+                      </button>
+                      {scenario.status === 'failed' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedScenarioForBug({
+                              index: scenarioIdx,
+                              name: scenario.scenarioName,
+                              steps: scenario.steps
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg text-xs font-medium transition-colors ml-auto"
+                          title="Report bug for this scenario"
+                        >
+                          <Bug size={14} />
+                          Report Bug
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -398,7 +497,7 @@ export const TestRunnerModal: React.FC<Props> = ({
         variant="warning"
       />
 
-      {/* Bug Report Modal */}
+      {/* Bug Report Modal (All Scenarios) */}
       {showBugModal && savedExecutionId && (
         <BugReportModal
           isOpen={showBugModal}
@@ -439,6 +538,48 @@ export const TestRunnerModal: React.FC<Props> = ({
             evidence_count: Object.keys(evidenceMap).length,
             evidence_files: []
           }}
+        />
+      )}
+
+      {/* Bug Report Modal (Specific Scenario) */}
+      {selectedScenarioForBug && (
+        <BugReportModal
+          isOpen={!!selectedScenarioForBug}
+          onClose={() => {
+            setSelectedScenarioForBug(null);
+          }}
+          onSuccess={() => {
+            setSelectedScenarioForBug(null);
+            toast.success('Bug reportado exitosamente para el scenario: ' + selectedScenarioForBug.name);
+          }}
+          projectId={projectId}
+          testCaseId={testCaseId}
+          testCaseTitle={testCaseTitle}
+          userStoryId={userStoryId}
+          scenarioName={selectedScenarioForBug.name}
+          executionDetails={savedExecutionId ? {
+            execution_id: savedExecutionId,
+            test_case_id: testCaseId,
+            executed_by: 'QA Tester',
+            execution_date: new Date().toISOString(),
+            status: 'FAILED',
+            environment: 'QA',
+            version: '',
+            execution_time_minutes: elapsedSeconds / 60,
+            total_steps: selectedScenarioForBug.steps.length,
+            passed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'passed').length,
+            failed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'failed').length,
+            step_results: selectedScenarioForBug.steps.map((step: any) => ({
+              step_index: step.id,
+              keyword: step.keyword,
+              text: step.text,
+              status: step.status.toUpperCase(),
+              scenario_name: selectedScenarioForBug.name,
+              evidence_file: evidenceMap[step.id] ? null : null
+            })),
+            evidence_count: selectedScenarioForBug.steps.filter(s => evidenceMap[s.id]).length,
+            evidence_files: []
+          } : undefined}
         />
       )}
     </div>
