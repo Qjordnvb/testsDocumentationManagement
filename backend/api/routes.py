@@ -468,6 +468,66 @@ async def get_user_story(story_id: str, db: Session = Depends(get_db)):
     }
 
 
+@router.put("/user-stories/{story_id}")
+async def update_user_story(
+    story_id: str,
+    updates: dict,
+    db: Session = Depends(get_db)
+):
+    """Update user story (including acceptance criteria)"""
+    story = db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="User story not found")
+
+    # Update fields if provided
+    if "title" in updates:
+        story.title = updates["title"]
+    if "description" in updates:
+        story.description = updates["description"]
+    if "priority" in updates:
+        story.priority = updates["priority"]
+    if "status" in updates:
+        story.status = updates["status"]
+    if "epic" in updates:
+        story.epic = updates["epic"]
+    if "sprint" in updates:
+        story.sprint = updates["sprint"]
+    if "story_points" in updates:
+        story.story_points = updates["story_points"]
+    if "assigned_to" in updates:
+        story.assigned_to = updates["assigned_to"]
+
+    # Update acceptance criteria if provided
+    if "acceptance_criteria" in updates:
+        criteria = updates["acceptance_criteria"]
+        story.acceptance_criteria = json.dumps(criteria) if criteria else None
+        story.total_criteria = len(criteria) if criteria else 0
+        story.completed_criteria = sum(1 for c in criteria if c.get("completed", False)) if criteria else 0
+        total = len(criteria) if criteria else 0
+        story.completion_percentage = (story.completed_criteria / total * 100) if total > 0 else 0.0
+
+    story.updated_date = datetime.now()
+    db.commit()
+    db.refresh(story)
+
+    return {
+        "id": story.id,
+        "title": story.title,
+        "description": story.description,
+        "priority": story.priority.value if story.priority else None,
+        "status": story.status.value if story.status else None,
+        "epic": story.epic,
+        "sprint": story.sprint,
+        "story_points": story.story_points,
+        "assigned_to": story.assigned_to,
+        "acceptance_criteria": json.loads(story.acceptance_criteria) if story.acceptance_criteria else [],
+        "total_criteria": story.total_criteria,
+        "completed_criteria": story.completed_criteria,
+        "completion_percentage": story.completion_percentage,
+        "updated_date": story.updated_date.isoformat() if story.updated_date else None
+    }
+
+
 # ==================== Test Case Generation ====================
 @router.post("/generate-test-cases/{story_id}")
 async def generate_test_cases(

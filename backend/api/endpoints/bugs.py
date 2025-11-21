@@ -178,6 +178,7 @@ async def get_bug_by_id(
         raise HTTPException(status_code=404, detail=f"Bug {bug_id} not found")
 
     import json
+    screenshots_list = json.loads(bug.screenshots) if bug.screenshots else []
     return {
         "id": bug.id,
         "title": bug.title,
@@ -196,7 +197,8 @@ async def get_bug_by_id(
         "user_story_id": bug.user_story_id,
         "test_case_id": bug.test_case_id,
         "scenario_name": bug.scenario_name,  # NEW
-        "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
+        "screenshots": screenshots_list,  # Backend field name
+        "attachments": screenshots_list,  # Frontend expects this
         "logs": bug.logs,
         "notes": bug.notes,
         "workaround": bug.workaround,
@@ -389,6 +391,7 @@ async def update_bug(
 
     # Return updated bug
     import json
+    screenshots_list = json.loads(bug.screenshots) if bug.screenshots else []
     return {
         "id": bug.id,
         "title": bug.title,
@@ -407,7 +410,8 @@ async def update_bug(
         "user_story_id": bug.user_story_id,
         "test_case_id": bug.test_case_id,
         "scenario_name": bug.scenario_name,
-        "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
+        "screenshots": screenshots_list,  # Backend field name
+        "attachments": screenshots_list,  # Frontend expects this
         "logs": bug.logs,
         "notes": bug.notes,
         "workaround": bug.workaround,
