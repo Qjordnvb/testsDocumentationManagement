@@ -67,29 +67,49 @@ export const BugReportModal: React.FC<Props> = ({
       // Extract failed steps for "Steps to Reproduce"
       const failedSteps = executionDetails.step_results.filter(s => s.status === 'FAILED');
       if (failedSteps.length > 0) {
-        const steps = failedSteps.map((step, idx) =>
-          `${idx + 1}. ${step.keyword} ${step.text}`
+        const steps = failedSteps.map((step) =>
+          `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
         );
         setStepsToReproduce(steps.length > 0 ? steps : ['']);
       }
 
-      // Suggest title based on test case
-      if (testCaseTitle && !title) {
-        setTitle(`Bug in: ${testCaseTitle}`);
+      // Suggest title based on scenario name and test case
+      if (!title) {
+        if (scenarioName && testCaseTitle) {
+          setTitle(`Bug in Scenario: ${scenarioName}`);
+        } else if (testCaseTitle) {
+          setTitle(`Bug in: ${testCaseTitle}`);
+        } else if (scenarioName) {
+          setTitle(`Bug in: ${scenarioName}`);
+        }
       }
 
-      // Pre-fill description with execution context
+      // Pre-fill description with comprehensive execution context
       if (!description) {
-        setDescription(
-          `Bug found during test execution #${executionDetails.execution_id}\n\n` +
-          `Test Case: ${testCaseId}\n` +
-          `Executed by: ${executionDetails.executed_by}\n` +
-          `Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n\n` +
-          `Failed steps: ${failedSteps.length}/${executionDetails.total_steps}`
-        );
+        let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
+
+        if (scenarioName) {
+          descriptionText += `📋 Scenario: ${scenarioName}\n`;
+        }
+        if (testCaseId) {
+          descriptionText += `🧪 Test Case: ${testCaseId}\n`;
+        }
+        descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
+        descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
+        descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
+        if (executionDetails.version) {
+          descriptionText += `📦 Version: ${executionDetails.version}\n`;
+        }
+        descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
+
+        if (failedSteps.length > 0 && failedSteps[0].actual_result) {
+          descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
+        }
+
+        setDescription(descriptionText);
       }
     }
-  }, [executionDetails, isOpen, testCaseId, testCaseTitle, title, description]);
+  }, [executionDetails, isOpen, testCaseId, testCaseTitle, scenarioName, title, description]);
 
   const handleAddStep = () => {
     setStepsToReproduce([...stepsToReproduce, '']);
@@ -251,9 +271,15 @@ export const BugReportModal: React.FC<Props> = ({
                 <div className="flex items-start gap-3">
                   <AlertCircle size={20} className={`${colors.brand.primary.text600} mt-0.5 flex-shrink-0`} />
                   <div className={subtitleTypography.className}>
-                    <p className={`font-medium ${colors.brand.primary.text900}`}>Pre-filled from Execution #{executionDetails.execution_id}</p>
-                    <p className={`${colors.brand.primary.text700} mt-1`}>
-                      Test Case: {testCaseId} • Environment: {executionDetails.environment}
+                    <p className={`font-medium ${colors.brand.primary.text900} mb-1`}>Pre-filled from Execution #{executionDetails.execution_id}</p>
+                    {scenarioName && (
+                      <p className={`${colors.brand.primary.text900} font-semibold mb-1`}>
+                        📋 Scenario: {scenarioName}
+                      </p>
+                    )}
+                    <p className={`${colors.brand.primary.text700}`}>
+                      {testCaseId && `Test Case: ${testCaseId} • `}
+                      Environment: {executionDetails.environment}
                       {executionDetails.version && ` • Version: ${executionDetails.version}`}
                     </p>
                   </div>
