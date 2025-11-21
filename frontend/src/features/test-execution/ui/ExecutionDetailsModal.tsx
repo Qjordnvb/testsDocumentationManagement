@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Clock, User, Image, AlertCircle, Bug } from 'lucide-react';
+import { X, Calendar, Clock, User, Image, AlertCircle } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
 import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-execution';
 import { BugReportModal } from '@/features/bug-management/ui';
@@ -338,22 +338,8 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t bg-white flex justify-between items-center gap-3">
-              {/* Left: Bug Report Button */}
-              <div>
-                {projectId && execution?.failed_steps > 0 && (
-                  <Button
-                    variant="danger"
-                    size="md"
-                    onClick={() => setShowBugReportModal(true)}
-                    leftIcon={<Bug size={18} />}
-                  >
-                    🐛 Reportar Bug Basado en Esta Ejecución
-                  </Button>
-                )}
-              </div>
-
-              {/* Right: Close Button */}
+            <div className="p-4 border-t bg-white flex justify-end items-center gap-3">
+              {/* Close Button */}
               <Button variant="ghost" size="md" onClick={onClose}>
                 Cerrar
               </Button>
