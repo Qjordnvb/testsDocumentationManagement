@@ -1,49 +1,79 @@
 /**
  * Card Component - Design System
  * Reusable container with consistent styling
+ *
+ * Now uses centralized design tokens from @/shared/design-system/tokens
+ * Supports status-based styling for scenario cards
  */
 
 import type { ReactNode, HTMLAttributes } from 'react';
+import {
+  getComponentSpacing,
+  getComponentShadow,
+  getShadowTransition,
+  getStatusClasses,
+  borderRadius,
+} from '@/shared/design-system/tokens';
+import type { ExecutionStatus } from '@/shared/design-system/tokens';
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   variant?: 'default' | 'bordered' | 'elevated';
   padding?: 'none' | 'sm' | 'md' | 'lg';
   hover?: boolean;
+  status?: ExecutionStatus; // NEW: Status-based styling
 }
-
-const variantClasses = {
-  default: 'bg-white shadow-md',
-  bordered: 'bg-white border-2 border-gray-200',
-  elevated: 'bg-white shadow-xl',
-};
-
-const paddingClasses = {
-  none: '',
-  sm: 'p-4',
-  md: 'p-6',
-  lg: 'p-8',
-};
 
 export const Card = ({
   children,
   variant = 'default',
   padding = 'md',
   hover = true,
+  status,
   className = '',
   ...props
 }: CardProps) => {
+  // Get design tokens
+  const paddingMap = {
+    none: 'cardSmall',
+    sm: 'cardSmall',
+    md: 'cardMedium',
+    lg: 'cardLarge',
+  };
+  const spacing = getComponentSpacing(padding === 'none' ? 'cardSmall' : paddingMap[padding]);
+
+  const shadowVariantMap = {
+    default: 'card',
+    bordered: 'cardBordered',
+    elevated: 'cardElevated',
+  };
+  const shadow = getComponentShadow(shadowVariantMap[variant]);
+  const transition = getShadowTransition('default');
+
+  // Get status classes if status is provided
+  const statusClasses = status ? getStatusClasses(status) : null;
+
+  // Variant classes
+  const variantClasses = {
+    default: statusClasses ? statusClasses.background : 'bg-white',
+    bordered: `bg-white border-2 ${statusClasses ? statusClasses.border : 'border-gray-200'}`,
+    elevated: statusClasses ? statusClasses.background : 'bg-white',
+  };
+
+  const combinedClasses = `
+    ${borderRadius.xl}
+    transition-all duration-200
+    ${variantClasses[variant]}
+    ${padding !== 'none' ? spacing.padding : ''}
+    ${shadow.base}
+    ${hover && shadow.hover ? `hover:${shadow.hover}` : ''}
+    ${transition}
+    ${statusClasses && variant === 'bordered' ? 'border' : ''}
+    ${className}
+  `.replace(/\s+/g, ' ').trim();
+
   return (
-    <div
-      className={`
-        rounded-xl transition-all duration-200
-        ${variantClasses[variant]}
-        ${paddingClasses[padding]}
-        ${hover ? 'hover:shadow-lg' : ''}
-        ${className}
-      `}
-      {...props}
-    >
+    <div className={combinedClasses} {...props}>
       {children}
     </div>
   );

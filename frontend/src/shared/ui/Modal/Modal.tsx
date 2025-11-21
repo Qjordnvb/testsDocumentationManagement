@@ -1,11 +1,22 @@
 /**
  * Modal Component - Design System
  * Reusable modal dialog with backdrop and animations
+ *
+ * Now uses centralized design tokens from @/shared/design-system/tokens
  */
 
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '../Button';
+import {
+  getComponentSpacing,
+  getComponentShadow,
+  getModalTypography,
+  containerWidth,
+  borderRadius,
+  colors,
+  gap,
+} from '@/shared/design-system/tokens';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -17,14 +28,6 @@ export interface ModalProps {
   showCloseButton?: boolean;
 }
 
-const sizeClasses = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
-  full: 'max-w-7xl',
-};
-
 export const Modal = ({
   isOpen,
   onClose,
@@ -34,6 +37,21 @@ export const Modal = ({
   size = 'md',
   showCloseButton = true,
 }: ModalProps) => {
+  // Get design tokens
+  const headerSpacing = getComponentSpacing('modalHeader');
+  const bodySpacing = getComponentSpacing('modalBody');
+  const footerSpacing = getComponentSpacing('modalFooter');
+  const shadow = getComponentShadow('modal');
+  const titleTypography = getModalTypography('modalTitle');
+
+  const sizeMap = {
+    sm: containerWidth.md,
+    md: containerWidth.lg,
+    lg: containerWidth['2xl'],
+    xl: containerWidth['4xl'],
+    full: containerWidth['7xl'],
+  };
+
   // Close on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -67,23 +85,30 @@ export const Modal = ({
 
       {/* Modal */}
       <div
-        className={`relative bg-white rounded-xl shadow-2xl ${sizeClasses[size]} w-full mx-4 max-h-[90vh] flex flex-col animate-fade-in-up`}
+        className={`
+          relative bg-white ${borderRadius.xl} ${shadow.base}
+          ${sizeMap[size]} w-full mx-4 max-h-[90vh]
+          flex flex-col animate-fade-in-up
+        `.replace(/\s+/g, ' ').trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className={`flex items-center justify-between ${headerSpacing.padding} border-b ${colors.gray.border200}`}>
             {title && (
-              <h2 id="modal-title" className="text-xl font-bold text-gray-900">
+              <h2 id="modal-title" className={`${titleTypography.className} ${colors.gray.text900}`}>
                 {title}
               </h2>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                className={`
+                  ${colors.gray.text400} hover:${colors.gray.text600}
+                  transition-colors p-1 ${borderRadius.lg} hover:${colors.gray[100]}
+                `.replace(/\s+/g, ' ').trim()}
                 aria-label="Close modal"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -95,13 +120,17 @@ export const Modal = ({
         )}
 
         {/* Body */}
-        <div className="px-6 py-4 overflow-y-auto flex-1">
+        <div className={`${bodySpacing.padding} overflow-y-auto flex-1`}>
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
+          <div className={`
+            ${footerSpacing.padding} ${footerSpacing.gap}
+            border-t ${colors.gray.border200}
+            flex items-center justify-end
+          `.replace(/\s+/g, ' ').trim()}>
             {footer}
           </div>
         )}
