@@ -282,7 +282,7 @@ export const BugDetailsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Cargando detalles del bug...</div>
+        <div className={`${body.className} ${colors.gray.text600}`}>Cargando detalles del bug...</div>
       </div>
     );
   }
@@ -290,10 +290,10 @@ export const BugDetailsPage = () => {
   if (error || !bug) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="text-red-600">Error: {error || 'Bug no encontrado'}</div>
+        <div className={`${body.className} ${colors.status.error.text600}`}>Error: {error || 'Bug no encontrado'}</div>
         <button
           onClick={() => navigate(`/projects/${projectId}/bugs`)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className={`px-4 py-2 bg-blue-600 ${colors.white} ${borderRadius.lg} hover:bg-blue-700 transition-colors`}
         >
           Volver a Bugs
         </button>
@@ -308,16 +308,16 @@ export const BugDetailsPage = () => {
         <div className="flex items-start gap-4">
           <button
             onClick={() => navigate(`/projects/${projectId}/bugs`)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`p-2 hover:${colors.gray[100]} ${borderRadius.lg} transition-colors`}
           >
             <ArrowLeft size={24} />
           </button>
           <div>
             <div className="flex items-center gap-3 mb-2">
               {getStatusIcon(bug.status)}
-              <h1 className="text-3xl font-bold text-gray-900">{bug.title}</h1>
+              <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900}`}>{bug.title}</h1>
             </div>
-            <p className="text-sm text-gray-600 font-mono">{bug.id}</p>
+            <p className={`${bodySmall.className} ${colors.gray.text600} font-mono`}>{bug.id}</p>
           </div>
         </div>
 
@@ -326,7 +326,7 @@ export const BugDetailsPage = () => {
           {testCase && (
             <button
               onClick={handleRetest}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              className={`px-4 py-2 bg-green-600 ${colors.white} ${borderRadius.lg} hover:bg-green-700 transition-colors flex items-center gap-2`}
             >
               <PlayCircle size={18} />
               Re-ejecutar Test
@@ -334,7 +334,7 @@ export const BugDetailsPage = () => {
           )}
           <button
             onClick={() => toast('Edit functionality coming soon')}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className={`px-4 py-2 border ${colors.gray.border300} ${colors.gray.text700} ${borderRadius.lg} hover:${colors.gray[50]} transition-colors flex items-center gap-2`}
           >
             <Edit size={18} />
             Editar
