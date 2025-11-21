@@ -122,21 +122,21 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
             <div className="flex items-center gap-2" title={`${completed} de ${criteria.length} criterios completados (${percentage.toFixed(0)}%)`}>
               {/* Contador con color dinámico */}
               <span className={`${bodySmall.className} font-semibold ${
-                completed === 0 ? colors.gray.text400 :
-                percentage === 100 ? colors.status.success.text600 :
-                colors.brand.primary.text600
+                completed === 0 ? 'text-gray-400' :
+                percentage === 100 ? 'text-green-600' :
+                'text-blue-600'
               }`}>
                 {completed}/{criteria.length}
               </span>
 
               {/* Barra de progreso con mejor visualización */}
               {criteria.length > 0 && (
-                <div className={`w-24 h-2.5 ${colors.gray[200]} ${borderRadius.full} overflow-hidden border border-gray-300`}>
+                <div className="w-24 h-2.5 bg-gray-200 rounded-full overflow-hidden border border-gray-300">
                   <div
                     className={`h-full transition-all duration-300 ${
-                      percentage === 100 ? colors.status.success[600] :
-                      percentage > 0 ? colors.brand.primary[600] :
-                      colors.gray[300]
+                      percentage === 100 ? 'bg-green-500' :
+                      percentage > 0 ? 'bg-blue-500' :
+                      'bg-gray-300'
                     }`}
                     style={{
                       width: `${percentage}%`,

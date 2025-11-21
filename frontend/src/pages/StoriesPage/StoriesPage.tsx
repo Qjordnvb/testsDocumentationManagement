@@ -89,6 +89,18 @@ export const StoriesPage = () => {
     navigate(`/projects/${projectId}/tests?story=${storyId}`);
   };
 
+  // Handle update story (for checkboxes)
+  const handleUpdateStory = async (storyId: string, updates: Partial<UserStory>) => {
+    try {
+      await storyApi.update(storyId, updates);
+      // Reload stories to reflect changes
+      await loadStories();
+    } catch (error: any) {
+      console.error('Error updating story:', error);
+      throw error;
+    }
+  };
+
   // Handle upload success
   const handleUploadSuccess = () => {
     loadStories();
@@ -179,6 +191,7 @@ export const StoriesPage = () => {
           stories={stories}
           isLoading={isLoading}
           onGenerateTests={handleGenerateTests}
+          onUpdateStory={handleUpdateStory}
           onRefresh={loadStories}
         />
       ) : (
