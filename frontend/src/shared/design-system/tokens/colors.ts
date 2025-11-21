@@ -12,6 +12,10 @@
 // ============================================================================
 
 export const colors = {
+  // White (commonly used for text and backgrounds)
+  white: 'bg-white',
+  textWhite: 'text-white',
+
   // Brand Colors
   brand: {
     primary: {
@@ -21,12 +25,20 @@ export const colors = {
       500: 'bg-blue-500',
       600: 'bg-blue-600',
       700: 'bg-blue-700',
+      800: 'bg-blue-800',
+      900: 'bg-blue-900',
       text50: 'text-blue-50',
       text100: 'text-blue-100',
       text500: 'text-blue-500',
       text600: 'text-blue-600',
       text700: 'text-blue-700',
+      text800: 'text-blue-800',
+      text900: 'text-blue-900',
       border: 'border-blue-300',
+      border200: 'border-blue-200',
+      border300: 'border-blue-300',
+      border500: 'border-blue-500',
+      border600: 'border-blue-600',
       gradient: 'bg-gradient-to-r from-blue-600 to-purple-600',
     },
     secondary: {
@@ -51,10 +63,14 @@ export const colors = {
       100: 'bg-green-100',
       600: 'bg-green-600',
       700: 'bg-green-700',
+      800: 'bg-green-800',
+      900: 'bg-green-900',
       text50: 'text-green-50',
       text100: 'text-green-100',
       text600: 'text-green-600',
       text700: 'text-green-700',
+      text800: 'text-green-800',
+      text900: 'text-green-900',
       border200: 'border-green-200',
       border300: 'border-green-300',
       gradient: 'bg-gradient-to-br from-green-50 to-emerald-50',
@@ -62,12 +78,18 @@ export const colors = {
     error: {
       50: 'bg-red-50',
       100: 'bg-red-100',
+      500: 'bg-red-500',
       600: 'bg-red-600',
       700: 'bg-red-700',
+      800: 'bg-red-800',
+      900: 'bg-red-900',
       text50: 'text-red-50',
       text100: 'text-red-100',
+      text500: 'text-red-500',
       text600: 'text-red-600',
       text700: 'text-red-700',
+      text800: 'text-red-800',
+      text900: 'text-red-900',
       border200: 'border-red-200',
       border300: 'border-red-300',
       gradient: 'bg-gradient-to-br from-red-50 to-rose-50',
@@ -77,10 +99,14 @@ export const colors = {
       100: 'bg-yellow-100',
       600: 'bg-yellow-600',
       700: 'bg-yellow-700',
+      800: 'bg-yellow-800',
+      900: 'bg-yellow-900',
       text50: 'text-yellow-50',
       text100: 'text-yellow-100',
       text600: 'text-yellow-600',
       text700: 'text-yellow-700',
+      text800: 'text-yellow-800',
+      text900: 'text-yellow-900',
       border200: 'border-yellow-200',
       border300: 'border-yellow-300',
       gradient: 'bg-gradient-to-br from-yellow-50 to-amber-50',
@@ -90,10 +116,14 @@ export const colors = {
       100: 'bg-blue-100',
       600: 'bg-blue-600',
       700: 'bg-blue-700',
+      800: 'bg-blue-800',
+      900: 'bg-blue-900',
       text50: 'text-blue-50',
       text100: 'text-blue-100',
       text600: 'text-blue-600',
       text700: 'text-blue-700',
+      text800: 'text-blue-800',
+      text900: 'text-blue-900',
       border200: 'border-blue-200',
       border300: 'border-blue-300',
     },
@@ -125,6 +155,7 @@ export const colors = {
     border200: 'border-gray-200',
     border300: 'border-gray-300',
     border400: 'border-gray-400',
+    divider200: 'divide-gray-200',
     gradientLight: 'bg-gradient-to-br from-gray-100 to-gray-200',
   },
 
@@ -154,6 +185,10 @@ export interface StatusClasses {
   text: string;
   badge: string;
   stepCard: string;
+  // Legacy properties for backward compatibility
+  iconClass: string;
+  bgClass: string;
+  textClass: string;
 }
 
 const executionStatusMap: Record<ExecutionStatus, StatusClasses> = {
@@ -164,6 +199,9 @@ const executionStatusMap: Record<ExecutionStatus, StatusClasses> = {
     text: 'text-green-700',
     badge: 'bg-green-100 text-green-700',
     stepCard: 'bg-green-50/50 border-green-200',
+    iconClass: 'text-green-600',
+    bgClass: 'bg-green-100',
+    textClass: 'text-green-700',
   },
   failed: {
     background: 'bg-gradient-to-br from-red-50 to-rose-50',
@@ -172,6 +210,9 @@ const executionStatusMap: Record<ExecutionStatus, StatusClasses> = {
     text: 'text-red-700',
     badge: 'bg-red-100 text-red-700',
     stepCard: 'bg-red-50/50 border-red-200',
+    iconClass: 'text-red-600',
+    bgClass: 'bg-red-100',
+    textClass: 'text-red-700',
   },
   skipped: {
     background: 'bg-gradient-to-br from-gray-100 to-gray-200',
@@ -180,6 +221,9 @@ const executionStatusMap: Record<ExecutionStatus, StatusClasses> = {
     text: 'text-gray-600',
     badge: 'bg-gray-100 text-gray-600',
     stepCard: 'bg-gray-100 border-gray-300',
+    iconClass: 'text-gray-400',
+    bgClass: 'bg-gray-100',
+    textClass: 'text-gray-600',
   },
   pending: {
     background: 'bg-white',
@@ -188,6 +232,9 @@ const executionStatusMap: Record<ExecutionStatus, StatusClasses> = {
     text: 'text-gray-600',
     badge: 'bg-blue-50 text-blue-600',
     stepCard: 'bg-white border-gray-200',
+    iconClass: 'text-blue-600',
+    bgClass: 'bg-blue-50',
+    textClass: 'text-blue-600',
   },
   blocked: {
     background: 'bg-gradient-to-br from-yellow-50 to-amber-50',
@@ -196,6 +243,9 @@ const executionStatusMap: Record<ExecutionStatus, StatusClasses> = {
     text: 'text-yellow-700',
     badge: 'bg-yellow-100 text-yellow-700',
     stepCard: 'bg-yellow-50/50 border-yellow-200',
+    iconClass: 'text-yellow-600',
+    bgClass: 'bg-yellow-100',
+    textClass: 'text-yellow-700',
   },
 };
 
@@ -300,9 +350,3 @@ const badgeVariantMap: Record<BadgeVariant, string> = {
 export const getBadgeVariantClasses = (variant: BadgeVariant): string => {
   return badgeVariantMap[variant];
 };
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-export type { StatusClasses };
