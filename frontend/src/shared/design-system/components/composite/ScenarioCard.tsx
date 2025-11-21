@@ -197,10 +197,10 @@ export const ScenarioCard = ({
                 transition-all duration-200 text-sm font-medium
                 ${bugCount > 0 ? 'shadow-md' : ''}
               `.replace(/\s+/g, ' ').trim()}
-              title={bugCount > 0 ? `${bugCount} bug(s) ya reportado(s). Click para reportar otro` : 'Reportar bug para este scenario'}
+              title={bugCount > 0 ? `${bugCount} bug(s) ya reportado(s). Click para ver detalles` : 'Reportar bug para este scenario'}
             >
               <Bug className="w-4 h-4" />
-              <span>{bugCount > 0 ? `+1 Bug (${bugCount} total)` : 'Report Bug'}</span>
+              <span>{bugCount > 0 ? `View Bug (${bugCount})` : 'Report Bug'}</span>
             </button>
           )}
 
