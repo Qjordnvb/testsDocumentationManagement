@@ -100,6 +100,9 @@ export interface CreateBugDTO {
   // Assignment
   reported_by: string;
   assigned_to?: string;
+
+  // Evidence
+  screenshots?: string[];
 }
 
 export interface UpdateBugDTO {

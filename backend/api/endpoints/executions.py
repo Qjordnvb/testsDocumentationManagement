@@ -199,6 +199,9 @@ async def get_test_case_executions(
     # Format response
     result = []
     for ex in executions:
+        bug_ids_list = ex.bug_ids.split(",") if ex.bug_ids else []
+        print(f"[DEBUG] Execution {ex.id}: bug_ids raw = '{ex.bug_ids}', parsed = {bug_ids_list}")
+
         result.append({
             "execution_id": ex.id,
             "executed_by": ex.executed_by,
@@ -211,7 +214,8 @@ async def get_test_case_executions(
             "failed_steps": ex.failed_steps,
             "total_steps": ex.total_steps,
             "evidence_count": len(json.loads(ex.evidence_files)) if ex.evidence_files else 0,
-            "notes": ex.notes
+            "notes": ex.notes,
+            "bug_ids": bug_ids_list
         })
 
     return {
@@ -219,6 +223,61 @@ async def get_test_case_executions(
         "test_case_title": test_case.title,
         "executions": result,
         "total": len(result)
+    }
+
+
+@router.put("/test-executions/{execution_id}/link-bugs")
+async def link_bugs_to_execution(
+    execution_id: int,
+    payload: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Link bugs that were created during test execution to the saved execution.
+    This is called after saving an execution to associate bugs that were reported
+    during the test run (with execution_id: 0) to the real execution_id.
+    """
+    from backend.database.models import BugReportDB
+
+    test_case_id = payload.get("test_case_id")
+    scenarios = payload.get("scenarios", [])
+
+    print(f"[DEBUG] Linking bugs for execution {execution_id}, test_case: {test_case_id}, scenarios: {scenarios}")
+
+    # Find execution
+    execution = db.query(TestExecutionDB).filter(TestExecutionDB.id == execution_id).first()
+    if not execution:
+        raise HTTPException(404, f"Execution {execution_id} not found")
+
+    # Find bugs for this test case and scenarios that don't have an execution_id yet (or have 0)
+    bugs_to_link = db.query(BugReportDB).filter(
+        BugReportDB.test_case_id == test_case_id,
+        BugReportDB.scenario_name.in_(scenarios),
+        (BugReportDB.execution_id == None) | (BugReportDB.execution_id == 0)
+    ).all()
+
+    print(f"[DEBUG] Found {len(bugs_to_link)} bugs to link")
+
+    # Update each bug with the execution_id
+    linked_bug_ids = []
+    for bug in bugs_to_link:
+        bug.execution_id = execution_id
+        linked_bug_ids.append(bug.id)
+        print(f"   → Linked bug {bug.id} to execution {execution_id}")
+
+    # Update execution's bug_ids field
+    if linked_bug_ids:
+        existing_bugs = execution.bug_ids.split(",") if execution.bug_ids else []
+        all_bugs = list(set(existing_bugs + linked_bug_ids))  # Remove duplicates
+        execution.bug_ids = ",".join(all_bugs)
+        print(f"   ✅ Updated execution {execution_id} bug_ids: {execution.bug_ids}")
+
+    db.commit()
+
+    return {
+        "message": f"Linked {len(linked_bug_ids)} bugs to execution {execution_id}",
+        "linked_bugs": linked_bug_ids,
+        "execution_bug_ids": execution.bug_ids.split(",") if execution.bug_ids else []
     }
 
 

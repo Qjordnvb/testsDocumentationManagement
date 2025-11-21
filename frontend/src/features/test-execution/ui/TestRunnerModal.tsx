@@ -9,6 +9,7 @@ import { ScenarioList, ScenarioCard, StepExecutionItem } from '@/shared/design-s
 import { Button } from '@/shared/ui/Button';
 import { colors, borderRadius } from '@/shared/design-system/tokens';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 interface Props {
   isOpen: boolean;
@@ -72,6 +73,31 @@ export const TestRunnerModal: React.FC<Props> = ({
   const handleFileChange = (stepId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       addEvidence(stepId, e.target.files[0]);
+    }
+  };
+
+  const linkBugsToExecution = async (executionId: number) => {
+    try {
+      // Get bug IDs from scenarioBugCounts
+      const bugIds = Object.values(scenarioBugCounts).flat();
+
+      if (bugIds.length === 0) {
+        console.log('[TestRunnerModal] No bugs to link');
+        return;
+      }
+
+      console.log(`[TestRunnerModal] Linking ${bugIds.length} bugs to execution ${executionId}`);
+
+      // Call backend to link bugs to execution
+      await axios.put(`/api/v1/test-executions/${executionId}/link-bugs`, {
+        test_case_id: testCaseId,
+        scenarios: scenarios.map(s => s.scenarioName)
+      });
+
+      console.log(`[TestRunnerModal] Successfully linked bugs to execution ${executionId}`);
+    } catch (error) {
+      console.error('[TestRunnerModal] Error linking bugs to execution:', error);
+      // Non-critical error, don't block the flow
     }
   };
 
@@ -146,6 +172,11 @@ export const TestRunnerModal: React.FC<Props> = ({
       // Save execution ID for bug reporting
       if (response && response.execution_id) {
         setSavedExecutionId(response.execution_id);
+
+        // Link bugs to this execution
+        // When bugs are reported during execution, they have execution_id: 0
+        // Now we need to update them with the real execution_id
+        await linkBugsToExecution(response.execution_id);
       }
 
       toast.success("Ejecución guardada exitosamente");
@@ -478,8 +509,8 @@ export const TestRunnerModal: React.FC<Props> = ({
           testCaseTitle={testCaseTitle}
           userStoryId={userStoryId}
           scenarioName={selectedScenarioForBug.name}
-          executionDetails={savedExecutionId ? {
-            execution_id: savedExecutionId,
+          executionDetails={{
+            execution_id: savedExecutionId || 0, // 0 indicates unsaved execution
             test_case_id: testCaseId,
             executed_by: 'QA Tester',
             execution_date: new Date().toISOString(),
@@ -501,7 +532,7 @@ export const TestRunnerModal: React.FC<Props> = ({
             evidence_count: selectedScenarioForBug.steps.filter(s => evidenceMap[s.id]).length,
             evidence_files: [],
             bug_ids: []
-          } : undefined}
+          }}
         />
       )}
     </div>

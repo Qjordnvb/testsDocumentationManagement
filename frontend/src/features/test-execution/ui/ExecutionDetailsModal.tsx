@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, Clock, User, Image, AlertCircle } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
+import { bugApi } from '@/entities/bug';
 import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-execution';
 import { BugReportModal } from '@/features/bug-management/ui';
 import { ScenarioList, ScenarioCard, StepExecutionItem } from '@/shared/design-system/components/composite';
@@ -42,6 +43,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
   const [selectedScenarioForBug, setSelectedScenarioForBug] = useState<ScenarioGroup | null>(null);
+  const [scenarioBugs, setScenarioBugs] = useState<Record<string, string[]>>({}); // scenarioName -> [bugId1, bugId2, ...]
 
   useEffect(() => {
     if (isOpen && executionId) {
@@ -54,11 +56,40 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
       setLoading(true);
       const data = await apiService.getExecutionDetails(executionId);
       setExecution(data);
+
+      // Load bugs for this execution to check which scenarios have bugs
+      if (data.bug_ids && data.bug_ids.length > 0 && projectId) {
+        await loadScenarioBugs(data.bug_ids);
+      }
     } catch (err: any) {
       console.error('Error loading execution details:', err);
       toast.error('Error al cargar detalles de ejecución');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadScenarioBugs = async (bugIds: string[]) => {
+    try {
+      // Fetch each bug to get scenario_name
+      const bugPromises = bugIds.map(bugId => bugApi.getById(bugId));
+      const bugs = await Promise.all(bugPromises);
+
+      // Group bugs by scenario_name
+      const grouped: Record<string, string[]> = {};
+      bugs.forEach((bug) => {
+        if (bug.scenario_name) {
+          if (!grouped[bug.scenario_name]) {
+            grouped[bug.scenario_name] = [];
+          }
+          grouped[bug.scenario_name].push(bug.id);
+        }
+      });
+
+      setScenarioBugs(grouped);
+    } catch (err) {
+      console.error('Error loading scenario bugs:', err);
+      // Non-critical error, just log it
     }
   };
 
@@ -244,20 +275,23 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                 showExpandCollapseAll
                 defaultAllExpanded={true}
               >
-                {scenarioGroups.map((scenario, scenarioIdx) => (
-                  <ScenarioCard
-                    key={scenarioIdx}
-                    scenarioName={scenario.scenarioName}
-                    status={scenario.status}
-                    passedSteps={scenario.passedSteps}
-                    failedSteps={scenario.failedSteps}
-                    skippedSteps={scenario.skippedSteps}
-                    totalSteps={scenario.steps.length}
-                    bugCount={execution?.bug_ids?.length || 0}
-                    bugIds={execution?.bug_ids || []}
-                    showBugButton={!!projectId}
-                    onReportBug={() => setSelectedScenarioForBug(scenario)}
-                  >
+                {scenarioGroups.map((scenario, scenarioIdx) => {
+                  const scenarioBugIds = scenarioBugs[scenario.scenarioName] || [];
+
+                  return (
+                    <ScenarioCard
+                      key={scenarioIdx}
+                      scenarioName={scenario.scenarioName}
+                      status={scenario.status}
+                      passedSteps={scenario.passedSteps}
+                      failedSteps={scenario.failedSteps}
+                      skippedSteps={scenario.skippedSteps}
+                      totalSteps={scenario.steps.length}
+                      bugCount={scenarioBugIds.length}
+                      bugIds={scenarioBugIds}
+                      showBugButton={!!projectId}
+                      onReportBug={() => setSelectedScenarioForBug(scenario)}
+                    >
                     {/* Steps within scenario */}
                     <div className="space-y-3">
                       {scenario.steps.map((step, stepIdx) => {
@@ -317,7 +351,8 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                       })}
                     </div>
                   </ScenarioCard>
-                ))}
+                  );
+                })}
               </ScenarioList>
 
               {execution.failure_reason && (
@@ -372,31 +407,55 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
 
 
       {/* Bug Report Modal (Specific Scenario) */}
-      {projectId && execution && selectedScenarioForBug && (
-        <BugReportModal
-          isOpen={!!selectedScenarioForBug}
-          onClose={() => setSelectedScenarioForBug(null)}
-          onSuccess={(bug) => {
-            toast.success(`Bug ${bug.id} creado exitosamente para el scenario: ${selectedScenarioForBug.scenarioName}`);
-            setSelectedScenarioForBug(null);
-            if (onBugReported) {
-              onBugReported();
-            }
-          }}
-          projectId={projectId}
-          testCaseId={execution.test_case_id}
-          testCaseTitle={testCaseTitle}
-          userStoryId={userStoryId}
-          scenarioName={selectedScenarioForBug.scenarioName}
-          executionDetails={{
-            ...execution,
-            total_steps: selectedScenarioForBug.steps.length,
-            passed_steps: selectedScenarioForBug.passedSteps,
-            failed_steps: selectedScenarioForBug.failedSteps,
-            step_results: selectedScenarioForBug.steps,
-          }}
-        />
-      )}
+      {projectId && execution && selectedScenarioForBug && (() => {
+        const executionDetailsData = {
+          execution_id: execution.execution_id,
+          test_case_id: execution.test_case_id,
+          executed_by: execution.executed_by,
+          execution_date: execution.execution_date,
+          status: execution.status,
+          environment: execution.environment,
+          version: execution.version,
+          execution_time_minutes: execution.execution_time_minutes || 0,
+          evidence_count: execution.evidence_count || 0,
+          total_steps: selectedScenarioForBug.steps.length,
+          passed_steps: selectedScenarioForBug.passedSteps,
+          failed_steps: selectedScenarioForBug.failedSteps,
+          step_results: selectedScenarioForBug.steps,
+        };
+
+        console.log('🚀 ExecutionDetailsModal - Passing executionDetails:', executionDetailsData);
+
+        return (
+          <BugReportModal
+            isOpen={!!selectedScenarioForBug}
+            onClose={() => setSelectedScenarioForBug(null)}
+            onSuccess={(bug) => {
+              toast.success(`Bug ${bug.id} creado exitosamente para el scenario: ${selectedScenarioForBug.scenarioName}`);
+
+              // Update scenarioBugs state to reflect the new bug
+              setScenarioBugs(prev => ({
+                ...prev,
+                [selectedScenarioForBug.scenarioName]: [
+                  ...(prev[selectedScenarioForBug.scenarioName] || []),
+                  bug.id
+                ]
+              }));
+
+              setSelectedScenarioForBug(null);
+              if (onBugReported) {
+                onBugReported();
+              }
+            }}
+            projectId={projectId}
+            testCaseId={execution.test_case_id}
+            testCaseTitle={testCaseTitle}
+            userStoryId={userStoryId}
+            scenarioName={selectedScenarioForBug.scenarioName}
+            executionDetails={executionDetailsData}
+          />
+        );
+      })()}
     </div>
   );
 };

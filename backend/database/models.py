@@ -163,6 +163,7 @@ class BugReportDB(Base):
     user_story_id = Column(String, ForeignKey("user_stories.id"), nullable=True)
     test_case_id = Column(String, nullable=True)
     scenario_name = Column(String, nullable=True)  # Specific scenario that failed
+    execution_id = Column(Integer, nullable=True)  # Test execution where bug was found
 
     # Evidence (stored as JSON array)
     screenshots = Column(Text, nullable=True)  # JSON array of file paths
