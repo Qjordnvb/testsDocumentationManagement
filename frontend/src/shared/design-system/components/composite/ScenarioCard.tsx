@@ -32,6 +32,10 @@ export interface ScenarioCardProps {
   skippedSteps: number;
   totalSteps: number;
 
+  // Bugs
+  bugCount?: number;
+  bugIds?: string[];
+
   // Expandable Content
   children: ReactNode; // Step execution items
   defaultExpanded?: boolean;
@@ -53,6 +57,8 @@ export const ScenarioCard = ({
   failedSteps,
   skippedSteps,
   totalSteps,
+  bugCount = 0,
+  bugIds = [],
   children,
   defaultExpanded = false,
   onReportBug,
@@ -97,10 +103,28 @@ export const ScenarioCard = ({
       >
         <div className="flex-1 min-w-0">
           {/* Scenario Name */}
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h3 className={`${titleTypography.className} ${statusClasses.text} truncate`}>
               {scenarioName}
             </h3>
+
+            {/* Bug Count Badge */}
+            {bugCount > 0 && (
+              <span
+                className={`
+                  flex items-center gap-1 px-2 py-0.5 ${borderRadius.md}
+                  ${colors.status.error[100]} ${colors.status.error.text700}
+                  ${metaTypography.className} font-semibold
+                  border ${colors.status.error.border200}
+                  shadow-sm
+                `.replace(/\s+/g, ' ').trim()}
+                title={`${bugCount} bug(s) reported: ${bugIds.join(', ')}`}
+              >
+                <Bug className="w-3.5 h-3.5" />
+                <span>{bugCount} Bug{bugCount > 1 ? 's' : ''}</span>
+              </span>
+            )}
+
             {tags.length > 0 && (
               <div className="flex gap-1 flex-shrink-0">
                 {tags.map((tag, index) => (
