@@ -28,6 +28,8 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
       setLoading(true);
       setError(null);
       const data = await apiService.getTestCaseExecutions(testCaseId);
+      console.log('📊 Execution history loaded:', data);
+      console.log('📊 First execution bug_ids:', data.executions[0]?.bug_ids);
       setHistoryData(data);
     } catch (err: any) {
       console.error('Error loading execution history:', err);

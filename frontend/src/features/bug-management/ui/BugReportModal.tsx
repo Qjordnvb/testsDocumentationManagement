@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Bug } from 'lucide-react';
+import { X, AlertCircle, Bug, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { bugApi } from '@/entities/bug';
 import type { CreateBugDTO, BugSeverity, BugPriority, BugType, Bug as BugEntity } from '@/entities/bug';
 import type { ExecutionDetails } from '@/entities/test-execution';
@@ -19,7 +20,11 @@ interface Props {
   onClose: () => void;
   onSuccess?: (bug: BugEntity) => void;
 
-  // Pre-fill data (optional)
+  // Mode: 'create' or 'readonly'
+  mode?: 'create' | 'readonly';
+  existingBugId?: string; // If mode='readonly', load this bug
+
+  // Pre-fill data (optional for create mode)
   projectId: string;
   executionDetails?: ExecutionDetails;
   testCaseId?: string;
@@ -32,6 +37,8 @@ export const BugReportModal: React.FC<Props> = ({
   isOpen,
   onClose,
   onSuccess,
+  mode = 'create',
+  existingBugId,
   projectId,
   executionDetails,
   testCaseId,
@@ -39,6 +46,9 @@ export const BugReportModal: React.FC<Props> = ({
   userStoryId,
   scenarioName,
 }) => {
+  const navigate = useNavigate();
+  const isReadonly = mode === 'readonly';
+
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -55,11 +65,57 @@ export const BugReportModal: React.FC<Props> = ({
   const [assignedTo, setAssignedTo] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingBug, setIsLoadingBug] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Pre-fill data when execution details are provided
+  // Load existing bug in readonly mode
   useEffect(() => {
-    if (executionDetails && isOpen) {
+    if (isReadonly && existingBugId && isOpen) {
+      console.log('📖 Loading existing bug:', existingBugId);
+      setIsLoadingBug(true);
+
+      bugApi.getById(existingBugId)
+        .then((bug) => {
+          console.log('✅ Bug loaded:', bug);
+
+          // Populate all fields with bug data
+          setTitle(bug.title);
+          setDescription(bug.description);
+          setStepsToReproduce(bug.steps_to_reproduce || ['']);
+          setExpectedBehavior(bug.expected_behavior);
+          setActualBehavior(bug.actual_behavior);
+          setSeverity(bug.severity);
+          setPriority(bug.priority);
+          setBugType(bug.bug_type);
+          setEnvironment(bug.environment);
+          setBrowser(bug.browser || '');
+          setOs(bug.os || '');
+          setVersion(bug.version || '');
+          setAssignedTo(bug.assigned_to || '');
+        })
+        .catch((error) => {
+          console.error('❌ Error loading bug:', error);
+          toast.error('Error al cargar el bug');
+        })
+        .finally(() => {
+          setIsLoadingBug(false);
+        });
+    }
+  }, [isReadonly, existingBugId, isOpen]);
+
+  // Pre-fill data when execution details are provided (create mode)
+  useEffect(() => {
+    console.log('🔍 BugReportModal useEffect - Props:', {
+      isOpen,
+      mode,
+      hasExecutionDetails: !!executionDetails,
+      scenarioName,
+      testCaseTitle,
+      testCaseId,
+      executionDetails
+    });
+
+    if (executionDetails && isOpen && mode === 'create') {
       // Auto-fill environment and version from execution
       setEnvironment(executionDetails.environment || 'QA');
       setVersion(executionDetails.version || '');
@@ -71,45 +127,43 @@ export const BugReportModal: React.FC<Props> = ({
           `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
         );
         setStepsToReproduce(steps.length > 0 ? steps : ['']);
+      } else {
+        setStepsToReproduce(['']);
       }
 
-      // Suggest title based on scenario name and test case
-      if (!title) {
-        if (scenarioName && testCaseTitle) {
-          setTitle(`Bug in Scenario: ${scenarioName}`);
-        } else if (testCaseTitle) {
-          setTitle(`Bug in: ${testCaseTitle}`);
-        } else if (scenarioName) {
-          setTitle(`Bug in: ${scenarioName}`);
-        }
+      // Suggest title based on scenario name and test case (ALWAYS)
+      if (scenarioName && testCaseTitle) {
+        setTitle(`Bug in Scenario: ${scenarioName}`);
+      } else if (testCaseTitle) {
+        setTitle(`Bug in: ${testCaseTitle}`);
+      } else if (scenarioName) {
+        setTitle(`Bug in: ${scenarioName}`);
       }
 
-      // Pre-fill description with comprehensive execution context
-      if (!description) {
-        let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
+      // Pre-fill description with comprehensive execution context (ALWAYS)
+      let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
 
-        if (scenarioName) {
-          descriptionText += `📋 Scenario: ${scenarioName}\n`;
-        }
-        if (testCaseId) {
-          descriptionText += `🧪 Test Case: ${testCaseId}\n`;
-        }
-        descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
-        descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
-        descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
-        if (executionDetails.version) {
-          descriptionText += `📦 Version: ${executionDetails.version}\n`;
-        }
-        descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
-
-        if (failedSteps.length > 0 && failedSteps[0].actual_result) {
-          descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
-        }
-
-        setDescription(descriptionText);
+      if (scenarioName) {
+        descriptionText += `📋 Scenario: ${scenarioName}\n`;
       }
+      if (testCaseId) {
+        descriptionText += `🧪 Test Case: ${testCaseId}\n`;
+      }
+      descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
+      descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
+      descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
+      if (executionDetails.version) {
+        descriptionText += `📦 Version: ${executionDetails.version}\n`;
+      }
+      descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
+
+      if (failedSteps.length > 0 && failedSteps[0].actual_result) {
+        descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
+      }
+
+      setDescription(descriptionText);
     }
-  }, [executionDetails, isOpen, testCaseId, testCaseTitle, scenarioName, title, description]);
+  }, [executionDetails, isOpen, scenarioName]);
 
   const handleAddStep = () => {
     setStepsToReproduce([...stepsToReproduce, '']);
@@ -168,6 +222,16 @@ export const BugReportModal: React.FC<Props> = ({
     try {
       const validSteps = stepsToReproduce.filter(s => s.trim());
 
+      // Extract evidence files from step results
+      const evidenceFiles: string[] = [];
+      if (executionDetails?.step_results) {
+        executionDetails.step_results.forEach(step => {
+          if (step.evidence_file) {
+            evidenceFiles.push(step.evidence_file);
+          }
+        });
+      }
+
       const bugData: CreateBugDTO = {
         title: title.trim(),
         description: description.trim(),
@@ -185,10 +249,14 @@ export const BugReportModal: React.FC<Props> = ({
         user_story_id: userStoryId,
         test_case_id: testCaseId,
         scenario_name: scenarioName,
-        execution_id: executionDetails?.execution_id,
+        execution_id: executionDetails?.execution_id && executionDetails.execution_id > 0 ? executionDetails.execution_id : undefined,
         reported_by: 'QA Tester', // TODO: Get from auth context
         assigned_to: assignedTo.trim() || undefined,
+        screenshots: evidenceFiles.length > 0 ? evidenceFiles : undefined,
       };
+
+      console.log('📤 Sending bug data:', bugData);
+      console.log('📸 Evidence files:', evidenceFiles);
 
       const createdBug = await bugApi.create(bugData);
 
@@ -247,9 +315,14 @@ export const BugReportModal: React.FC<Props> = ({
                 <Bug size={24} className={colors.status.error.text600} />
               </div>
               <div>
-                <h2 className={`${titleTypography.className} ${colors.gray.text900}`}>Report Bug</h2>
+                <h2 className={`${titleTypography.className} ${colors.gray.text900}`}>
+                  {isReadonly ? 'Bug Details' : 'Report Bug'}
+                </h2>
                 <p className={`${subtitleTypography.className} ${colors.gray.text600} mt-1`}>
-                  Document a defect found during testing
+                  {isReadonly
+                    ? 'View bug report details'
+                    : 'Document a defect found during testing'
+                  }
                 </p>
               </div>
             </div>
@@ -260,6 +333,23 @@ export const BugReportModal: React.FC<Props> = ({
               <X size={24} />
             </button>
           </div>
+
+          {/* Edit Button (Readonly mode only) */}
+          {isReadonly && existingBugId && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/bugs/${existingBugId}`);
+                  handleClose();
+                }}
+                className={`flex items-center gap-2 px-4 py-2 ${colors.brand.primary.bg} ${colors.white} ${borderRadius.lg} hover:bg-blue-700 transition-colors`}
+              >
+                <ExternalLink size={16} />
+                Edit in Bug Details Page
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Form */}
@@ -296,9 +386,10 @@ export const BugReportModal: React.FC<Props> = ({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={isReadonly}
                 className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                   errors.title ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
-                }`}
+                } ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="Brief summary of the bug (e.g., 'Login button not working on mobile')"
               />
               {errors.title && (
@@ -314,10 +405,11 @@ export const BugReportModal: React.FC<Props> = ({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={isReadonly}
                 rows={4}
                 className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                   errors.description ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
-                }`}
+                } ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="Detailed description of the issue..."
               />
               {errors.description && (
@@ -338,13 +430,14 @@ export const BugReportModal: React.FC<Props> = ({
                         type="text"
                         value={step}
                         onChange={(e) => handleStepChange(index, e.target.value)}
+                        disabled={isReadonly}
                         className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                           errors.stepsToReproduce ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
-                        }`}
+                        } ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         placeholder={`Step ${index + 1}`}
                       />
                     </div>
-                    {stepsToReproduce.length > 1 && (
+                    {!isReadonly && stepsToReproduce.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveStep(index)}
@@ -355,13 +448,15 @@ export const BugReportModal: React.FC<Props> = ({
                     )}
                   </div>
                 ))}
-                <button
-                  type="button"
-                  onClick={handleAddStep}
-                  className={`${subtitleTypography.className} ${colors.brand.primary.text600} hover:text-blue-700 font-medium`}
-                >
-                  + Add Step
-                </button>
+                {!isReadonly && (
+                  <button
+                    type="button"
+                    onClick={handleAddStep}
+                    className={`${subtitleTypography.className} ${colors.brand.primary.text600} hover:text-blue-700 font-medium`}
+                  >
+                    + Add Step
+                  </button>
+                )}
               </div>
               {errors.stepsToReproduce && (
                 <p className={`${colors.status.error.text600} ${subtitleTypography.className} mt-1`}>{errors.stepsToReproduce}</p>
@@ -377,10 +472,11 @@ export const BugReportModal: React.FC<Props> = ({
                 <textarea
                   value={expectedBehavior}
                   onChange={(e) => setExpectedBehavior(e.target.value)}
+                  disabled={isReadonly}
                   rows={3}
                   className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                     errors.expectedBehavior ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
-                  }`}
+                  } ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="What should happen?"
                 />
                 {errors.expectedBehavior && (
@@ -395,10 +491,11 @@ export const BugReportModal: React.FC<Props> = ({
                 <textarea
                   value={actualBehavior}
                   onChange={(e) => setActualBehavior(e.target.value)}
+                  disabled={isReadonly}
                   rows={3}
                   className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                     errors.actualBehavior ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
-                  }`}
+                  } ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="What actually happens?"
                 />
                 {errors.actualBehavior && (
@@ -416,7 +513,8 @@ export const BugReportModal: React.FC<Props> = ({
                 <select
                   value={severity}
                   onChange={(e) => setSeverity(e.target.value as BugSeverity)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  disabled={isReadonly}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 >
                   <option value="Critical">🔴 Critical - System crash, data loss</option>
                   <option value="High">🟠 High - Major functionality broken</option>
@@ -432,7 +530,8 @@ export const BugReportModal: React.FC<Props> = ({
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as BugPriority)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  disabled={isReadonly}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 >
                   <option value="Urgent">⚡ Urgent - Fix immediately</option>
                   <option value="High">🔥 High - Fix in current sprint</option>
@@ -450,7 +549,8 @@ export const BugReportModal: React.FC<Props> = ({
               <select
                 value={bugType}
                 onChange={(e) => setBugType(e.target.value as BugType)}
-                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                disabled={isReadonly}
+                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               >
                 <option value="Functional">Functional - Feature not working</option>
                 <option value="UI/UX">UI/UX - Visual or layout issue</option>
@@ -473,7 +573,8 @@ export const BugReportModal: React.FC<Props> = ({
                   type="text"
                   value={environment}
                   onChange={(e) => setEnvironment(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  disabled={isReadonly}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., QA, Staging, Production"
                 />
               </div>
@@ -486,7 +587,8 @@ export const BugReportModal: React.FC<Props> = ({
                   type="text"
                   value={version}
                   onChange={(e) => setVersion(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  disabled={isReadonly}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., 1.2.3"
                 />
               </div>
@@ -502,7 +604,8 @@ export const BugReportModal: React.FC<Props> = ({
                   type="text"
                   value={browser}
                   onChange={(e) => setBrowser(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  disabled={isReadonly}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., Chrome 120, Firefox 121"
                 />
               </div>
@@ -515,7 +618,8 @@ export const BugReportModal: React.FC<Props> = ({
                   type="text"
                   value={os}
                   onChange={(e) => setOs(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  disabled={isReadonly}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., Windows 11, macOS 14"
                 />
               </div>
@@ -530,7 +634,8 @@ export const BugReportModal: React.FC<Props> = ({
                 type="text"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                disabled={isReadonly}
+                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${isReadonly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="Email or name of assignee"
               />
             </div>
