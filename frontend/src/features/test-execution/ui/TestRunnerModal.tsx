@@ -52,6 +52,10 @@ export const TestRunnerModal: React.FC<Props> = ({
   // Track scenarios with bugs reported (scenarioIndex -> bug count)
   const [scenarioBugCounts, setScenarioBugCounts] = useState<Record<number, number>>({});
 
+  // Track uploaded evidence paths (stepId -> file_path)
+  const [uploadedEvidencePaths, setUploadedEvidencePaths] = useState<Record<number, string>>({});
+  const [allUploadedFiles, setAllUploadedFiles] = useState<string[]>([]);
+
   if (!isOpen) return null;
 
   // Mark all steps in a scenario
@@ -126,6 +130,14 @@ export const TestRunnerModal: React.FC<Props> = ({
           console.error(`Error uploading evidence for step ${stepId}:`, uploadError);
         }
       }
+
+      // Save uploaded paths to state for bug reporting
+      setUploadedEvidencePaths(stepEvidencePaths);
+      setAllUploadedFiles(allUploadedPaths);
+      console.log('[TestRunnerModal] Saved evidence paths to state:', {
+        stepPaths: stepEvidencePaths,
+        allPaths: allUploadedPaths
+      });
 
       // 2. Build step results (flatten all scenarios but keep scenario name)
       const allStepResults: any[] = [];
@@ -476,11 +488,11 @@ export const TestRunnerModal: React.FC<Props> = ({
                 text: step.text,
                 status: step.status.toUpperCase(),
                 scenario_name: scenario.scenarioName,
-                evidence_file: undefined
+                evidence_file: uploadedEvidencePaths[step.id] || undefined
               }))
             ),
-            evidence_count: Object.keys(evidenceMap).length,
-            evidence_files: [],
+            evidence_count: allUploadedFiles.length,
+            evidence_files: allUploadedFiles,
             bug_ids: []
           }}
         />
@@ -527,10 +539,12 @@ export const TestRunnerModal: React.FC<Props> = ({
               text: step.text,
               status: step.status.toUpperCase(),
               scenario_name: selectedScenarioForBug.name,
-              evidence_file: undefined
+              evidence_file: uploadedEvidencePaths[step.id] || undefined
             })),
-            evidence_count: selectedScenarioForBug.steps.filter(s => evidenceMap[s.id]).length,
-            evidence_files: [],
+            evidence_count: selectedScenarioForBug.steps.filter(s => uploadedEvidencePaths[s.id]).length,
+            evidence_files: selectedScenarioForBug.steps
+              .filter(s => uploadedEvidencePaths[s.id])
+              .map(s => uploadedEvidencePaths[s.id]),
             bug_ids: []
           }}
         />
