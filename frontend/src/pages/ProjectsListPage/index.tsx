@@ -10,6 +10,7 @@ import { projectApi } from '@/entities/project';
 import { useProject } from '@/app/providers/ProjectContext';
 import { CreateProjectModal } from '@/features/project-management';
 import type { Project } from '@/entities/project';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const ProjectsListPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -52,12 +53,17 @@ export const ProjectsListPage = () => {
     setShowCreateModal(true);
   };
 
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingMedium = getTypographyPreset('headingMedium');
+  const headingLarge = getTypographyPreset('headingLarge');
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center animate-fade-in-up">
           <div className="animate-spin text-6xl mb-4">⚙️</div>
-          <p className="text-gray-600 text-lg">Cargando proyectos...</p>
+          <p className={`${colors.gray.text600} ${body.className}`}>Cargando proyectos...</p>
         </div>
       </div>
     );
@@ -68,8 +74,8 @@ export const ProjectsListPage = () => {
       <div className="flex items-center justify-center h-full">
         <div className="card max-w-md text-center animate-fade-in-up">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Error al cargar proyectos</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-2`}>Error al cargar proyectos</h2>
+          <p className={`${colors.gray.text600} ${body.className} mb-6`}>{error}</p>
           <button
             onClick={loadProjects}
             className="btn btn-primary flex items-center gap-2 mx-auto"
@@ -100,10 +106,10 @@ export const ProjectsListPage = () => {
         {projects.length === 0 ? (
           <div className="card text-center py-16 animate-fade-in-up">
             <div className="text-7xl mb-6">📁</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            <h2 className={`${headingLarge.className} font-bold ${colors.gray.text900} mb-3`}>
               No hay proyectos todavía
             </h2>
-            <p className="text-gray-600 mb-8 text-lg">
+            <p className={`${colors.gray.text600} mb-8 ${body.className}`}>
               Crea tu primer proyecto para empezar a gestionar test cases
             </p>
             <button
@@ -125,20 +131,20 @@ export const ProjectsListPage = () => {
                 {/* Project Header */}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900 mb-1 truncate">
+                    <h3 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-1 truncate`}>
                       {project.name}
                     </h3>
-                    <p className="text-xs text-gray-500 font-mono">
+                    <p className={`${bodySmall.className} ${colors.gray.text500} font-mono`}>
                       {project.id}
                     </p>
                   </div>
                   <span
-                    className={`ml-2 px-3 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
+                    className={`ml-2 px-3 py-1 ${bodySmall.className} font-semibold ${borderRadius.full} flex-shrink-0 ${
                       project.status === 'active'
-                        ? 'bg-green-100 text-green-800'
+                        ? `${colors.status.success[100]} ${colors.status.success.text800}`
                         : project.status === 'archived'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-blue-100 text-blue-800'
+                        ? `${colors.gray[100]} ${colors.gray.text800}`
+                        : `${colors.brand.primary[100]} ${colors.brand.primary.text800}`
                     }`}
                   >
                     {project.status}
@@ -146,38 +152,38 @@ export const ProjectsListPage = () => {
                 </div>
 
                 {/* Project Description */}
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[40px]">
+                <p className={`${colors.gray.text600} ${bodySmall.className} mb-4 line-clamp-2 min-h-[40px]`}>
                   {project.description || 'Sin descripción'}
                 </p>
 
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-3 gap-4 mb-4 text-center bg-gray-50 rounded-lg p-3">
+                <div className={`grid grid-cols-3 gap-4 mb-4 text-center ${colors.gray[50]} ${borderRadius.lg} p-3`}>
                   <div>
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className={`${headingLarge.className} font-bold ${colors.brand.primary.text600}`}>
                       {project.total_user_stories}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Stories</p>
+                    <p className={`${bodySmall.className} ${colors.gray.text500} mt-1`}>Stories</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className={`${headingLarge.className} font-bold ${colors.status.success.text600}`}>
                       {project.total_test_cases}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Tests</p>
+                    <p className={`${bodySmall.className} ${colors.gray.text500} mt-1`}>Tests</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-purple-600">
+                    <p className={`${headingLarge.className} font-bold ${colors.brand.secondary.text600}`}>
                       {project.test_coverage.toFixed(0)}%
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Coverage</p>
+                    <p className={`${bodySmall.className} ${colors.gray.text500} mt-1`}>Coverage</p>
                   </div>
                 </div>
 
                 {/* Project Footer */}
-                <div className="pt-4 border-t border-gray-200 flex justify-between items-center text-sm">
-                  <span className="text-gray-600 truncate">
+                <div className={`pt-4 border-t ${colors.gray.border200} flex justify-between items-center ${bodySmall.className}`}>
+                  <span className={`${colors.gray.text600} truncate`}>
                     {project.client || 'Sin cliente'}
                   </span>
-                  <span className="text-gray-500 flex items-center gap-1 flex-shrink-0 ml-2">
+                  <span className={`${colors.gray.text500} flex items-center gap-1 flex-shrink-0 ml-2`}>
                     <span className="font-semibold">{project.total_bugs}</span>
                     <span>🐛</span>
                   </span>
