@@ -4,40 +4,45 @@
 
 import { useProject } from '@/app/providers/ProjectContext';
 import { Link } from 'react-router-dom';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const Header = () => {
   const { currentProject } = useProject();
 
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingMedium = getTypographyPreset('headingMedium');
+
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+    <header className={`${colors.white} shadow-sm border-b ${colors.gray.border200} px-6 py-4`}>
       <div className="flex items-center justify-between">
         {/* Project name with breadcrumb */}
         <div>
           {currentProject ? (
             // When inside a project - show breadcrumb
             <>
-              <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                <Link to="/" className="hover:text-primary-blue transition-colors">
+              <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-1`}>
+                <Link to="/" className={`hover:${colors.brand.primary.text600} transition-colors`}>
                   📁 Todos los Proyectos
                 </Link>
                 <span>›</span>
-                <span className="text-gray-900 font-medium">{currentProject.name}</span>
+                <span className={`${colors.gray.text900} font-medium`}>{currentProject.name}</span>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900}`}>
                 {currentProject.name}
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className={`${bodySmall.className} ${colors.gray.text600}`}>
                 {currentProject.id} • QA Documentation Management
               </p>
             </>
           ) : (
             // When in projects list - clear title
             <>
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} flex items-center gap-2`}>
                 <span>📁</span>
                 <span>Mis Proyectos QA</span>
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className={`${bodySmall.className} ${colors.gray.text600}`}>
                 Gestiona todos tus proyectos de testing
               </p>
             </>
@@ -48,24 +53,24 @@ export const Header = () => {
         <div className="flex items-center gap-4">
           {/* Notifications */}
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+            className={`p-2 ${borderRadius.lg} hover:${colors.gray[100]} transition-colors relative`}
             aria-label="Notifications"
           >
             <span className="text-xl">🔔</span>
             {/* Notification badge */}
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className={`absolute top-1 right-1 w-2 h-2 ${colors.status.error[500]} ${borderRadius.full}`}></span>
           </button>
 
           {/* User avatar */}
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-            <div className="w-10 h-10 bg-gradient-to-r from-primary-blue to-primary-purple rounded-full flex items-center justify-center text-white font-bold">
+          <div className={`flex items-center gap-3 p-2 ${borderRadius.lg} hover:${colors.gray[100]} transition-colors cursor-pointer`}>
+            <div className={`w-10 h-10 bg-gradient-to-r from-primary-blue to-primary-purple ${borderRadius.full} flex items-center justify-center ${colors.white} font-bold`}>
               JD
             </div>
-            <div className="text-sm">
-              <p className="font-medium text-gray-900">Jordan</p>
-              <p className="text-gray-600">QA Engineer</p>
+            <div className={bodySmall.className}>
+              <p className={`font-medium ${colors.gray.text900}`}>Jordan</p>
+              <p className={colors.gray.text600}>QA Engineer</p>
             </div>
-            <span className="text-gray-400">▼</span>
+            <span className={colors.gray.text400}>▼</span>
           </div>
         </div>
       </div>

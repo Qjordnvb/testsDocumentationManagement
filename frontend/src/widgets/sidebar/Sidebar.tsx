@@ -8,6 +8,7 @@ import { useAppStore } from '@/app/providers/appStore';
 import { useState, useEffect } from 'react';
 import { projectApi } from '@/entities/project';
 import type { Project } from '@/entities/project';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 interface NavItem {
   path: string;
@@ -68,9 +69,12 @@ export const Sidebar = () => {
     setCurrentProject(project);
   };
 
+  const bodySmall = getTypographyPreset('bodySmall');
+  const headingMedium = getTypographyPreset('headingMedium');
+
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-primary-blue to-primary-purple text-white transition-all duration-300 ${
+      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-primary-blue to-primary-purple ${colors.white} transition-all duration-300 ${
         sidebarCollapsed ? 'w-20' : 'w-64'
       }`}
     >
@@ -78,13 +82,13 @@ export const Sidebar = () => {
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         {!sidebarCollapsed && (
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">🎯 QA Flow</h1>
+            <h1 className={`${headingMedium.className} font-bold`}>🎯 QA Flow</h1>
             {projectId && currentProject ? (
-              <p className="text-xs text-white/70 mt-1 truncate">
+              <p className={`${bodySmall.className} text-white/70 mt-1 truncate`}>
                 {currentProject.name}
               </p>
             ) : (
-              <p className="text-xs text-white/70 mt-1">
+              <p className={`${bodySmall.className} text-white/70 mt-1`}>
                 Todos los Proyectos
               </p>
             )}
@@ -93,7 +97,7 @@ export const Sidebar = () => {
         {sidebarCollapsed && <span className="text-2xl">🎯</span>}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          className={`p-2 ${borderRadius.lg} hover:bg-white/10 transition-colors`}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {sidebarCollapsed ? '→' : '←'}
@@ -149,7 +153,7 @@ export const Sidebar = () => {
           {!sidebarCollapsed ? (
             <>
               <div className="p-4 border-b border-white/10">
-                <h3 className="text-sm font-semibold text-white/70 uppercase tracking-wider">
+                <h3 className={`${bodySmall.className} font-semibold text-white/70 uppercase tracking-wider`}>
                   Mis Proyectos
                 </h3>
               </div>
@@ -159,18 +163,18 @@ export const Sidebar = () => {
                     key={project.id}
                     to={`/projects/${project.id}/dashboard`}
                     onClick={() => handleProjectClick(project)}
-                    className="block p-3 rounded-lg hover:bg-white/10 transition-colors group"
+                    className={`block p-3 ${borderRadius.lg} hover:bg-white/10 transition-colors group`}
                   >
-                    <div className="font-medium text-white group-hover:text-white/90 truncate">
+                    <div className={`font-medium ${colors.white} group-hover:text-white/90 truncate`}>
                       {project.name}
                     </div>
-                    <div className="text-xs text-white/50 mt-0.5 truncate">
+                    <div className={`${bodySmall.className} text-white/50 mt-0.5 truncate`}>
                       {project.id} • {project.total_test_cases} tests
                     </div>
                   </Link>
                 ))}
                 {allProjects.length === 0 && (
-                  <div className="text-center py-8 text-white/50 text-sm">
+                  <div className={`text-center py-8 text-white/50 ${bodySmall.className}`}>
                     No hay proyectos
                   </div>
                 )}
