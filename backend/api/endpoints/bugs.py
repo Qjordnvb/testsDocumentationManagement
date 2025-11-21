@@ -85,6 +85,7 @@ async def create_bug_report(
         version=bug.version,
         user_story_id=bug.user_story_id,
         test_case_id=bug.test_case_id,
+        scenario_name=bug.scenario_name,  # NEW
         screenshots=screenshots_str,
         logs=bug.logs,
         notes=bug.notes,
@@ -144,6 +145,7 @@ async def get_bugs(
             "version": bug.version,
             "user_story_id": bug.user_story_id,
             "test_case_id": bug.test_case_id,
+            "scenario_name": bug.scenario_name,  # NEW
             "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
             "logs": bug.logs,
             "notes": bug.notes,
@@ -193,6 +195,7 @@ async def get_bug_by_id(
         "version": bug.version,
         "user_story_id": bug.user_story_id,
         "test_case_id": bug.test_case_id,
+        "scenario_name": bug.scenario_name,  # NEW
         "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
         "logs": bug.logs,
         "notes": bug.notes,
@@ -279,6 +282,7 @@ async def create_bug(
         version=bug.version,
         user_story_id=bug.user_story_id,
         test_case_id=bug.test_case_id,
+        scenario_name=bug.scenario_name,
         screenshots=screenshots_str,
         logs=bug.logs,
         notes=bug.notes,
@@ -315,6 +319,7 @@ async def create_bug(
         "version": db_bug.version,
         "user_story_id": db_bug.user_story_id,
         "test_case_id": db_bug.test_case_id,
+        "scenario_name": db_bug.scenario_name,
         "screenshots": json.loads(db_bug.screenshots) if db_bug.screenshots else [],
         "logs": db_bug.logs,
         "notes": db_bug.notes,
@@ -347,6 +352,7 @@ async def update_bug(
         "title", "description", "steps_to_reproduce", "expected_behavior", "actual_behavior",
         "severity", "priority", "bug_type", "status",
         "environment", "browser", "os", "version",
+        "scenario_name",
         "screenshots", "logs", "notes", "workaround", "root_cause", "fix_description",
         "assigned_to", "verified_by",
         "assigned_date", "fixed_date", "verified_date", "closed_date"
@@ -400,6 +406,7 @@ async def update_bug(
         "version": bug.version,
         "user_story_id": bug.user_story_id,
         "test_case_id": bug.test_case_id,
+        "scenario_name": bug.scenario_name,
         "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
         "logs": bug.logs,
         "notes": bug.notes,
@@ -446,3 +453,124 @@ async def delete_bug(
         "message": f"Bug {bug_id} deleted successfully",
         "deleted_id": bug_id
     }
+
+@router.get("/bugs/grouped")
+async def get_bugs_grouped(
+    project_id: str = Query(..., description="Filter bugs by project"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get bugs grouped by test case and scenario
+
+    Returns hierarchical structure:
+    {
+      "grouped_bugs": [
+        {
+          "test_case_id": "TC-001",
+          "test_case_title": "Login functionality",
+          "scenarios": [
+            {
+              "scenario_name": "Valid user login",
+              "bugs": [...]
+            }
+          ]
+        }
+      ]
+    }
+    """
+    print(f"📊 GET /bugs/grouped - project_id: {project_id}")
+
+    # Validate project exists
+    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Query all bugs for the project
+    bugs = db.query(BugReportDB).filter(
+        BugReportDB.project_id == project_id
+    ).all()
+
+    print(f"✅ Found {len(bugs)} bugs for project {project_id}")
+
+    # Group bugs by test_case_id and scenario_name
+    from collections import defaultdict
+    import json
+
+    # Structure: {test_case_id: {scenario_name: [bugs]}}
+    test_case_groups = defaultdict(lambda: defaultdict(list))
+
+    for bug in bugs:
+        test_case_id = bug.test_case_id or "NO_TEST_CASE"
+        scenario_name = bug.scenario_name or "No Scenario"
+
+        bug_data = {
+            "id": bug.id,
+            "title": bug.title,
+            "description": bug.description,
+            "steps_to_reproduce": bug.steps_to_reproduce.split('\n') if bug.steps_to_reproduce else [],
+            "expected_behavior": bug.expected_behavior,
+            "actual_behavior": bug.actual_behavior,
+            "severity": bug.severity.value if bug.severity else "Medium",
+            "priority": bug.priority.value if bug.priority else "Medium",
+            "bug_type": bug.bug_type.value if bug.bug_type else "Functional",
+            "status": bug.status.value if bug.status else "New",
+            "environment": bug.environment,
+            "browser": bug.browser,
+            "os": bug.os,
+            "version": bug.version,
+            "user_story_id": bug.user_story_id,
+            "test_case_id": bug.test_case_id,
+            "scenario_name": bug.scenario_name,
+            "screenshots": json.loads(bug.screenshots) if bug.screenshots else [],
+            "logs": bug.logs,
+            "notes": bug.notes,
+            "workaround": bug.workaround,
+            "root_cause": bug.root_cause,
+            "fix_description": bug.fix_description,
+            "reported_by": bug.reported_by,
+            "assigned_to": bug.assigned_to,
+            "verified_by": bug.verified_by,
+            "reported_date": bug.reported_date.isoformat() if bug.reported_date else None,
+            "assigned_date": bug.assigned_date.isoformat() if bug.assigned_date else None,
+            "fixed_date": bug.fixed_date.isoformat() if bug.fixed_date else None,
+            "verified_date": bug.verified_date.isoformat() if bug.verified_date else None,
+            "closed_date": bug.closed_date.isoformat() if bug.closed_date else None,
+            "document_path": bug.document_path,
+        }
+
+        test_case_groups[test_case_id][scenario_name].append(bug_data)
+
+    # Build final structure with test case details
+    grouped_bugs = []
+    for test_case_id, scenarios_dict in test_case_groups.items():
+        # Get test case title
+        test_case_title = "Unknown Test Case"
+        if test_case_id != "NO_TEST_CASE":
+            test_case = db.query(TestCaseDB).filter(TestCaseDB.id == test_case_id).first()
+            if test_case:
+                test_case_title = test_case.title
+
+        scenarios = []
+        for scenario_name, bugs_list in scenarios_dict.items():
+            scenarios.append({
+                "scenario_name": scenario_name,
+                "bug_count": len(bugs_list),
+                "bugs": bugs_list
+            })
+
+        # Sort scenarios by name
+        scenarios.sort(key=lambda x: x["scenario_name"])
+
+        grouped_bugs.append({
+            "test_case_id": test_case_id,
+            "test_case_title": test_case_title,
+            "total_bugs": sum(s["bug_count"] for s in scenarios),
+            "scenarios": scenarios
+        })
+
+    # Sort by test case ID
+    grouped_bugs.sort(key=lambda x: x["test_case_id"])
+
+    print(f"📊 Grouped into {len(grouped_bugs)} test cases")
+
+    return {"grouped_bugs": grouped_bugs}

@@ -16,6 +16,7 @@ interface Props {
   testCaseId?: string;
   testCaseTitle?: string;
   userStoryId?: string;
+  scenarioName?: string;
 }
 
 export const BugReportModal: React.FC<Props> = ({
@@ -27,6 +28,7 @@ export const BugReportModal: React.FC<Props> = ({
   testCaseId,
   testCaseTitle,
   userStoryId,
+  scenarioName,
 }) => {
   // Form state
   const [title, setTitle] = useState('');
@@ -153,6 +155,7 @@ export const BugReportModal: React.FC<Props> = ({
         project_id: projectId,
         user_story_id: userStoryId,
         test_case_id: testCaseId,
+        scenario_name: scenarioName,
         execution_id: executionDetails?.execution_id,
         reported_by: 'QA Tester', // TODO: Get from auth context
         assigned_to: assignedTo.trim() || undefined,

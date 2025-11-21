@@ -50,6 +50,7 @@ export interface Bug {
   project_id: string;
   user_story_id?: string;
   test_case_id?: string;
+  scenario_name?: string;
   execution_id?: number;
 
   // Assignment
@@ -93,6 +94,7 @@ export interface CreateBugDTO {
   project_id: string;
   user_story_id?: string;
   test_case_id?: string;
+  scenario_name?: string;
   execution_id?: number;
 
   // Assignment
