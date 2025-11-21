@@ -426,6 +426,10 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
 
         console.log('🚀 ExecutionDetailsModal - Passing executionDetails:', executionDetailsData);
 
+        // Check if this scenario already has bugs
+        const existingBugsForScenario = scenarioBugs[selectedScenarioForBug.scenarioName] || [];
+        const hasExistingBugs = existingBugsForScenario.length > 0;
+
         return (
           <BugReportModal
             isOpen={!!selectedScenarioForBug}
@@ -447,6 +451,8 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                 onBugReported();
               }
             }}
+            mode={hasExistingBugs ? 'readonly' : 'create'}
+            existingBugId={hasExistingBugs ? existingBugsForScenario[0] : undefined}
             projectId={projectId}
             testCaseId={execution.test_case_id}
             testCaseTitle={testCaseTitle}

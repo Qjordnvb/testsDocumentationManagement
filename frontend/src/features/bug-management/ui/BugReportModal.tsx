@@ -63,6 +63,7 @@ export const BugReportModal: React.FC<Props> = ({
   const [os, setOs] = useState('');
   const [version, setVersion] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
+  const [attachments, setAttachments] = useState<string[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBug, setIsLoadingBug] = useState(false);
@@ -92,6 +93,8 @@ export const BugReportModal: React.FC<Props> = ({
           setOs(bug.os || '');
           setVersion(bug.version || '');
           setAssignedTo(bug.assigned_to || '');
+          // Load attachments/screenshots
+          setAttachments(bug.attachments || bug.screenshots || []);
         })
         .catch((error) => {
           console.error('❌ Error loading bug:', error);
@@ -162,6 +165,18 @@ export const BugReportModal: React.FC<Props> = ({
       }
 
       setDescription(descriptionText);
+
+      // Extract and populate evidence files/attachments from step results
+      const evidenceFiles: string[] = [];
+      if (executionDetails.step_results) {
+        executionDetails.step_results.forEach(step => {
+          if (step.evidence_file) {
+            evidenceFiles.push(step.evidence_file);
+          }
+        });
+      }
+      setAttachments(evidenceFiles);
+      console.log('📸 Pre-populated attachments:', evidenceFiles);
     }
   }, [executionDetails, isOpen, scenarioName]);
 
@@ -290,6 +305,7 @@ export const BugReportModal: React.FC<Props> = ({
     setOs('');
     setVersion('');
     setAssignedTo('');
+    setAttachments([]);
     setErrors({});
 
     onClose();
@@ -343,7 +359,7 @@ export const BugReportModal: React.FC<Props> = ({
                   navigate(`/bugs/${existingBugId}`);
                   handleClose();
                 }}
-                className={`flex items-center gap-2 px-4 py-2 ${colors.brand.primary.bg} ${colors.white} ${borderRadius.lg} hover:bg-blue-700 transition-colors`}
+                className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white ${borderRadius.lg} hover:bg-blue-700 transition-colors`}
               >
                 <ExternalLink size={16} />
                 Edit in Bug Details Page
@@ -354,9 +370,18 @@ export const BugReportModal: React.FC<Props> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6 max-w-3xl mx-auto">
-            {/* Context Info (if from execution) */}
-            {executionDetails && (
+          {/* Loading State */}
+          {isLoadingBug ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading bug details...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6 max-w-3xl mx-auto">
+              {/* Context Info (if from execution) */}
+              {executionDetails && (
               <div className={`${colors.brand.primary[50]} border ${colors.brand.primary.border200} ${borderRadius.lg} p-4`}>
                 <div className="flex items-start gap-3">
                   <AlertCircle size={20} className={`${colors.brand.primary.text600} mt-0.5 flex-shrink-0`} />
@@ -639,7 +664,32 @@ export const BugReportModal: React.FC<Props> = ({
                 placeholder="Email or name of assignee"
               />
             </div>
+
+            {/* Evidence/Attachments - Display only */}
+            {attachments.length > 0 && (
+              <div>
+                <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
+                  Evidence / Screenshots ({attachments.length})
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {attachments.map((attachment, index) => (
+                    <div key={index} className={`relative ${borderRadius.lg} overflow-hidden border ${colors.gray.border300}`}>
+                      <img
+                        src={attachment.startsWith('http') ? attachment : `/api/v1/evidence/${attachment}`}
+                        alt={`Evidence ${index + 1}`}
+                        className="w-full h-40 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(attachment.startsWith('http') ? attachment : `/api/v1/evidence/${attachment}`, '_blank')}
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1">
+                        Evidence {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+          )}
         </form>
 
         {/* Footer */}
