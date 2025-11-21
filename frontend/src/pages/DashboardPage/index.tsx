@@ -10,6 +10,7 @@ import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
 import { UploadModal } from '@/features/upload-excel';
 import { useProject } from '@/app/providers/ProjectContext';
 import { projectApi, type ProjectStats } from '@/entities/project';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -19,6 +20,12 @@ export const Dashboard = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
+  // Typography presets
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingMedium = getTypographyPreset('headingMedium');
+  const headingLarge = getTypographyPreset('headingLarge');
 
   // Validate project
   useEffect(() => {
@@ -151,7 +158,7 @@ export const Dashboard = () => {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">⚙️</div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className={`${body.className} ${colors.gray.text600}`}>Loading dashboard...</p>
         </div>
       </div>
     );
@@ -162,8 +169,8 @@ export const Dashboard = () => {
       <div className="flex items-center justify-center h-full">
         <div className="card max-w-md text-center">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Error Loading Dashboard</h2>
-          <p className="text-gray-600 mb-4">{statsError}</p>
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-2`}>Error Loading Dashboard</h2>
+          <p className={`${body.className} ${colors.gray.text600} mb-4`}>{statsError}</p>
           <button
             onClick={handleRefresh}
             className="btn btn-primary"
@@ -180,10 +187,10 @@ export const Dashboard = () => {
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900}`}>
             {currentProject?.name || 'Dashboard'}
           </h1>
-          <p className="text-gray-600 mt-2">Overview of your project metrics</p>
+          <p className={`${body.className} ${colors.gray.text600} mt-2`}>Overview of your project metrics</p>
         </div>
         <button
           onClick={() => navigate('/')}
@@ -229,14 +236,14 @@ export const Dashboard = () => {
       {/* Stories by status */}
       {stats?.stories_by_status && Object.keys(stats.stories_by_status).length > 0 && (
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-4`}>
             Stories by Status
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {Object.entries(stats.stories_by_status).map(([status, count]) => (
               <div key={status} className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{count}</p>
-                <p className="text-sm text-gray-600">{status}</p>
+                <p className={`${headingMedium.className} font-bold ${colors.gray.text900}`}>{count}</p>
+                <p className={`${bodySmall.className} ${colors.gray.text600}`}>{status}</p>
               </div>
             ))}
           </div>
@@ -245,7 +252,7 @@ export const Dashboard = () => {
 
       {/* Quick actions */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
+        <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-4`}>
           🎯 Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -275,10 +282,10 @@ export const Dashboard = () => {
 
       {/* Reports Section */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
+        <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-4`}>
           📊 Reports & Downloads
         </h2>
-        <p className="text-gray-600 mb-4">Generate comprehensive reports for your team</p>
+        <p className={`${body.className} ${colors.gray.text600} mb-4`}>Generate comprehensive reports for your team</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={handleDownloadBugSummary}
@@ -288,7 +295,7 @@ export const Dashboard = () => {
           >
             <span>🐛</span>
             <span>Bug Summary Report</span>
-            <span className="text-xs opacity-75">(for Dev Team)</span>
+            <span className={`${bodySmall.className} opacity-75`}>(for Dev Team)</span>
           </button>
           <button
             onClick={handleDownloadTestExecutionReport}
@@ -298,7 +305,7 @@ export const Dashboard = () => {
           >
             <span>✅</span>
             <span>Test Execution Report</span>
-            <span className="text-xs opacity-75">(for QA Manager)</span>
+            <span className={`${bodySmall.className} opacity-75`}>(for QA Manager)</span>
           </button>
         </div>
       </div>
@@ -312,7 +319,7 @@ export const Dashboard = () => {
 
       {/* Last update timestamp */}
       {stats?.timestamp && (
-        <p className="text-sm text-gray-500 text-center">
+        <p className={`${bodySmall.className} ${colors.gray.text500} text-center`}>
           Last updated: {new Date(stats.timestamp).toLocaleString()}
         </p>
       )}
