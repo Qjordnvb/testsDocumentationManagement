@@ -8,6 +8,7 @@ import { FileText, Download, Bug, CheckCircle, FileCheck, Loader2, AlertCircle }
 import { useProject } from '@/app/providers/ProjectContext';
 import { apiService } from '@/shared/api/apiClient';
 import toast from 'react-hot-toast';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const ReportsPage = () => {
   const { currentProject } = useProject();
@@ -18,13 +19,19 @@ export const ReportsPage = () => {
     testPlanDocx: false,
   });
 
+  // Typography presets
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingMedium = getTypographyPreset('headingMedium');
+  const headingLarge = getTypographyPreset('headingLarge');
+
   if (!currentProject) {
     return (
       <div className="card flex items-center justify-center py-16">
         <div className="text-center">
-          <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
-          <h2 className="text-xl font-bold text-gray-700 mb-2">No hay proyecto seleccionado</h2>
-          <p className="text-gray-500">Selecciona un proyecto para ver los reportes disponibles</p>
+          <AlertCircle size={48} className={`mx-auto ${colors.gray.text400} mb-4`} />
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text700} mb-2`}>No hay proyecto seleccionado</h2>
+          <p className={`${body.className} ${colors.gray.text500}`}>Selecciona un proyecto para ver los reportes disponibles</p>
         </div>
       </div>
     );
@@ -89,17 +96,17 @@ export const ReportsPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <FileText size={32} className="text-blue-600" />
+          <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900} flex items-center gap-3`}>
+            <FileText size={32} className={colors.brand.primary} />
             Reportes y Documentación
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className={`${body.className} ${colors.gray.text600} mt-2`}>
             Genera y descarga reportes de bugs, ejecuciones de tests y documentación del plan de pruebas
           </p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-gray-500">Proyecto actual</p>
-          <p className="font-bold text-gray-800">{currentProject.name}</p>
+          <p className={`${bodySmall.className} ${colors.gray.text500}`}>Proyecto actual</p>
+          <p className={`font-bold ${colors.gray.text800}`}>{currentProject.name}</p>
         </div>
       </div>
 
@@ -108,24 +115,24 @@ export const ReportsPage = () => {
         {/* Bug Summary Report */}
         <div className="card hover:shadow-lg transition-shadow">
           <div className="flex items-start gap-4">
-            <div className="bg-red-100 p-3 rounded-lg">
-              <Bug size={32} className="text-red-600" />
+            <div className={`${colors.status.error[100]} p-3 ${borderRadius.lg}`}>
+              <Bug size={32} className={colors.status.error.text600} />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Bug Summary Report</h3>
-              <p className="text-gray-600 text-sm mb-4">
+              <h3 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-2`}>Bug Summary Report</h3>
+              <p className={`${bodySmall.className} ${colors.gray.text600} mb-4`}>
                 Reporte completo de todos los bugs del proyecto, incluyendo severidad, prioridad,
                 estado, asignación y estadísticas detalladas.
               </p>
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
-                <span className="bg-gray-100 px-2 py-1 rounded">Word (.docx)</span>
+              <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-4`}>
+                <span className={`${colors.gray[100]} px-2 py-1 ${borderRadius.base}`}>Word (.docx)</span>
                 <span>•</span>
                 <span>Incluye tablas y gráficos</span>
               </div>
               <button
                 onClick={handleDownloadBugSummary}
                 disabled={loadingStates.bugSummary}
-                className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {loadingStates.bugSummary ? (
                   <>
@@ -146,24 +153,24 @@ export const ReportsPage = () => {
         {/* Test Execution Summary */}
         <div className="card hover:shadow-lg transition-shadow">
           <div className="flex items-start gap-4">
-            <div className="bg-green-100 p-3 rounded-lg">
-              <CheckCircle size={32} className="text-green-600" />
+            <div className={`${colors.status.success[100]} p-3 ${borderRadius.lg}`}>
+              <CheckCircle size={32} className={colors.status.success.text600} />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Test Execution Summary</h3>
-              <p className="text-gray-600 text-sm mb-4">
+              <h3 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-2`}>Test Execution Summary</h3>
+              <p className={`${bodySmall.className} ${colors.gray.text600} mb-4`}>
                 Resumen de todas las ejecuciones de pruebas, incluyendo resultados, evidencia,
                 tiempo de ejecución y estadísticas de cobertura.
               </p>
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
-                <span className="bg-gray-100 px-2 py-1 rounded">Word (.docx)</span>
+              <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-4`}>
+                <span className={`${colors.gray[100]} px-2 py-1 ${borderRadius.base}`}>Word (.docx)</span>
                 <span>•</span>
                 <span>Incluye métricas detalladas</span>
               </div>
               <button
                 onClick={handleDownloadTestExecutionSummary}
                 disabled={loadingStates.testExecution}
-                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {loadingStates.testExecution ? (
                   <>
@@ -184,17 +191,17 @@ export const ReportsPage = () => {
         {/* Test Plan Document */}
         <div className="card hover:shadow-lg transition-shadow lg:col-span-2">
           <div className="flex items-start gap-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <FileCheck size={32} className="text-blue-600" />
+            <div className={`${colors.brand.secondary} p-3 ${borderRadius.lg}`}>
+              <FileCheck size={32} className={colors.brand.primary} />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Test Plan Document</h3>
-              <p className="text-gray-600 text-sm mb-4">
+              <h3 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-2`}>Test Plan Document</h3>
+              <p className={`${bodySmall.className} ${colors.gray.text600} mb-4`}>
                 Documento completo del plan de pruebas, incluyendo user stories, criterios de aceptación,
                 test cases con escenarios Gherkin, estrategia de testing y cronograma.
               </p>
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
-                <span className="bg-gray-100 px-2 py-1 rounded">PDF o Word</span>
+              <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-4`}>
+                <span className={`${colors.gray[100]} px-2 py-1 ${borderRadius.base}`}>PDF o Word</span>
                 <span>•</span>
                 <span>Documento profesional completo</span>
               </div>
@@ -202,7 +209,7 @@ export const ReportsPage = () => {
                 <button
                   onClick={() => handleDownloadTestPlan('pdf')}
                   disabled={loadingStates.testPlanPdf}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {loadingStates.testPlanPdf ? (
                     <>
@@ -219,7 +226,7 @@ export const ReportsPage = () => {
                 <button
                   onClick={() => handleDownloadTestPlan('docx')}
                   disabled={loadingStates.testPlanDocx}
-                  className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {loadingStates.testPlanDocx ? (
                     <>
@@ -240,12 +247,12 @@ export const ReportsPage = () => {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className={`${colors.status.info[50]} border ${colors.status.info.border200} ${borderRadius.lg} p-4`}>
         <div className="flex items-start gap-3">
-          <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-gray-700">
-            <p className="font-semibold text-blue-900 mb-1">Información sobre los reportes</p>
-            <ul className="space-y-1 text-gray-600">
+          <AlertCircle size={20} className={`${colors.brand.primary} flex-shrink-0 mt-0.5`} />
+          <div className={bodySmall.className}>
+            <p className={`font-semibold ${colors.status.info.text900} mb-1`}>Información sobre los reportes</p>
+            <ul className={`space-y-1 ${colors.gray.text600}`}>
               <li>• Los reportes se generan con la información actual del proyecto</li>
               <li>• Los archivos Word (.docx) incluyen tablas formateadas y son editables</li>
               <li>• Los archivos PDF incluyen diseño profesional para presentaciones</li>
