@@ -41,6 +41,7 @@ export interface ExecutionSummary {
   total_steps: number;
   evidence_count: number;
   notes?: string;
+  bug_ids?: string[];  // Associated bug IDs
 }
 
 export interface ExecutionDetails extends ExecutionSummary {

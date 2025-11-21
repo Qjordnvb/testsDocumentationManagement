@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, User, CheckCircle2, XCircle, Circle, Paperclip, Calendar } from 'lucide-react';
+import { Clock, User, CheckCircle2, XCircle, Circle, Paperclip, Calendar, Bug } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
 import type { ExecutionHistoryResponse } from '@/entities/test-execution';
 import {
@@ -154,12 +154,23 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
                   {' / '}
                   <span className={colors.gray.text500}>{execution.total_steps}</span>
                 </div>
-                {execution.evidence_count > 0 && (
-                  <span className={`${bodySmall.className} ${colors.brand.primary.text600} flex items-center gap-1`}>
-                    <Paperclip size={12} />
-                    {execution.evidence_count}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {execution.evidence_count > 0 && (
+                    <span className={`${bodySmall.className} ${colors.brand.primary.text600} flex items-center gap-1`}>
+                      <Paperclip size={12} />
+                      {execution.evidence_count}
+                    </span>
+                  )}
+                  {execution.bug_ids && execution.bug_ids.length > 0 && (
+                    <span
+                      className={`${bodySmall.className} ${colors.status.error.text600} flex items-center gap-1 font-semibold`}
+                      title={`Bugs: ${execution.bug_ids.join(', ')}`}
+                    >
+                      <Bug size={12} />
+                      {execution.bug_ids.length}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
