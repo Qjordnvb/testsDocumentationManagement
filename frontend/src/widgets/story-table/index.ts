@@ -3,3 +3,4 @@
  */
 
 export { StoryTable } from './StoryTable';
+export { UserStoryCard } from './UserStoryCard';
