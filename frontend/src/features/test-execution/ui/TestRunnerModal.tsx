@@ -549,20 +549,25 @@ export const TestRunnerModal: React.FC<Props> = ({
               setSelectedScenarioForBug(null);
             }}
             onSuccess={(bug) => {
-              // Update scenarioBugs state to reflect the new bug
+              // Update scenarioBugs state to reflect the new/updated bug
               if (selectedScenarioForBug && bug) {
-                setScenarioBugs(prev => ({
-                  ...prev,
-                  [selectedScenarioForBug.name]: [
-                    ...(prev[selectedScenarioForBug.name] || []),
-                    bug.id
-                  ]
-                }));
+                setScenarioBugs(prev => {
+                  const existingBugs = prev[selectedScenarioForBug.name] || [];
+                  // If bug already exists in list, don't duplicate it
+                  if (existingBugs.includes(bug.id)) {
+                    return prev;
+                  }
+                  return {
+                    ...prev,
+                    [selectedScenarioForBug.name]: [...existingBugs, bug.id]
+                  };
+                });
               }
               setSelectedScenarioForBug(null);
-              toast.success(`Bug ${bug.id} reportado exitosamente para el scenario: ${selectedScenarioForBug.name}`);
+              const action = hasExistingBugs ? 'actualizado' : 'reportado';
+              toast.success(`Bug ${bug.id} ${action} exitosamente para el scenario: ${selectedScenarioForBug.name}`);
             }}
-            mode={hasExistingBugs ? 'readonly' : 'create'}
+            mode={hasExistingBugs ? 'edit' : 'create'}
             existingBugId={hasExistingBugs ? existingBugsForScenario[0] : undefined}
           projectId={projectId}
           testCaseId={testCaseId}
