@@ -41,7 +41,6 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
   const [execution, setExecution] = useState<ExecutionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
-  const [showBugReportModal, setShowBugReportModal] = useState(false);
   const [selectedScenarioForBug, setSelectedScenarioForBug] = useState<ScenarioGroup | null>(null);
 
   useEffect(() => {
@@ -254,7 +253,9 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                     failedSteps={scenario.failedSteps}
                     skippedSteps={scenario.skippedSteps}
                     totalSteps={scenario.steps.length}
-                    showBugButton={scenario.failedSteps > 0 && !!projectId}
+                    bugCount={execution?.bug_ids?.length || 0}
+                    bugIds={execution?.bug_ids || []}
+                    showBugButton={!!projectId}
                     onReportBug={() => setSelectedScenarioForBug(scenario)}
                   >
                     {/* Steps within scenario */}
@@ -369,25 +370,6 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Bug Report Modal (All Scenarios) */}
-      {projectId && execution && (
-        <BugReportModal
-          isOpen={showBugReportModal}
-          onClose={() => setShowBugReportModal(false)}
-          onSuccess={(bug) => {
-            toast.success(`Bug ${bug.id} creado exitosamente`);
-            setShowBugReportModal(false);
-            if (onBugReported) {
-              onBugReported();
-            }
-          }}
-          projectId={projectId}
-          executionDetails={execution}
-          testCaseId={execution.test_case_id}
-          testCaseTitle={testCaseTitle}
-          userStoryId={userStoryId}
-        />
-      )}
 
       {/* Bug Report Modal (Specific Scenario) */}
       {projectId && execution && selectedScenarioForBug && (
