@@ -17,6 +17,7 @@ import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 import { TestCaseFormModal } from '@/features/test-case-management/ui';
 import { TestRunnerModal, ExecutionHistory, ExecutionDetailsModal } from '@/features/test-execution/ui';
 import { ChevronDown, ChevronRight, FileCheck, Trash2, Eye, Search, Filter, PlayCircle, History } from 'lucide-react';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 interface TestSuite {
   userStory: UserStory | null;

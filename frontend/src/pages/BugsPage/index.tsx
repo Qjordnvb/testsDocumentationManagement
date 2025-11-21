@@ -16,6 +16,7 @@ import { bugApi } from '@/entities/bug';
 import { useProject } from '@/app/providers/ProjectContext';
 import type { Bug, BugSeverity, BugPriority, BugStatus, TestCaseGroup } from '@/entities/bug';
 import {
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
   Bug as BugIcon,
   Search,
   Filter,

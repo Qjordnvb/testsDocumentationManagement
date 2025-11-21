@@ -22,6 +22,7 @@ import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
 import {
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
   Bug as BugIcon,
   AlertCircle,
   CheckCircle2,
@@ -50,6 +51,12 @@ export const BugDetailsPage = () => {
   // Test Runner Modal state
   const [showTestRunner, setShowTestRunner] = useState(false);
   const [gherkinContent, setGherkinContent] = useState<string>('');
+
+  // Typography presets
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingMedium = getTypographyPreset('headingMedium');
+  const headingLarge = getTypographyPreset('headingLarge');
 
   // Validate project
   useEffect(() => {
