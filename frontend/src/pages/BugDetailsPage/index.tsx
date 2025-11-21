@@ -22,6 +22,7 @@ import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
 import { EditBugModal } from '@/features/bug-management/ui';
+import { Button } from '@/shared/ui/Button';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
   Bug as BugIcon,
@@ -296,12 +297,13 @@ export const BugDetailsPage = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className={`${body.className} ${colors.status.error.text600}`}>Error: {error || 'Bug no encontrado'}</div>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={() => navigate(`/projects/${projectId}/bugs`)}
-          className={`px-4 py-2 bg-blue-600 ${colors.white} ${borderRadius.lg} hover:bg-blue-700 transition-colors`}
         >
           Volver a Bugs
-        </button>
+        </Button>
       </div>
     );
   }
@@ -329,21 +331,23 @@ export const BugDetailsPage = () => {
         {/* Action buttons */}
         <div className="flex items-center gap-3">
           {testCase && (
-            <button
+            <Button
+              variant="success"
+              size="md"
               onClick={handleRetest}
-              className={`px-4 py-2 bg-green-600 ${colors.white} ${borderRadius.lg} hover:bg-green-700 transition-colors flex items-center gap-2`}
+              leftIcon={<PlayCircle size={18} />}
             >
-              <PlayCircle size={18} />
               Re-ejecutar Test
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="md"
             onClick={() => setShowEditModal(true)}
-            className={`px-4 py-2 border ${colors.gray.border300} ${colors.gray.text700} ${borderRadius.lg} hover:bg-gray-50 transition-colors flex items-center gap-2`}
+            leftIcon={<Edit size={18} />}
           >
-            <Edit size={18} />
             Editar
-          </button>
+          </Button>
         </div>
       </div>
 

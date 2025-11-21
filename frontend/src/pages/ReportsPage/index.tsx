@@ -4,10 +4,11 @@
  */
 
 import { useState } from 'react';
-import { FileText, Download, Bug, CheckCircle, FileCheck, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Download, Bug, CheckCircle, FileCheck, AlertCircle } from 'lucide-react';
 import { useProject } from '@/app/providers/ProjectContext';
 import { apiService } from '@/shared/api/apiClient';
 import toast from 'react-hot-toast';
+import { Button } from '@/shared/ui/Button';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const ReportsPage = () => {
@@ -129,23 +130,17 @@ export const ReportsPage = () => {
                 <span>•</span>
                 <span>Incluye tablas y gráficos</span>
               </div>
-              <button
+              <Button
+                variant="danger"
+                size="md"
                 onClick={handleDownloadBugSummary}
                 disabled={loadingStates.bugSummary}
-                className={`w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                isLoading={loadingStates.bugSummary}
+                leftIcon={!loadingStates.bugSummary ? <Download size={18} /> : undefined}
+                className="w-full"
               >
-                {loadingStates.bugSummary ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Generando reporte...
-                  </>
-                ) : (
-                  <>
-                    <Download size={18} />
-                    Descargar Reporte de Bugs
-                  </>
-                )}
-              </button>
+                {loadingStates.bugSummary ? 'Generando reporte...' : 'Descargar Reporte de Bugs'}
+              </Button>
             </div>
           </div>
         </div>
@@ -167,23 +162,17 @@ export const ReportsPage = () => {
                 <span>•</span>
                 <span>Incluye métricas detalladas</span>
               </div>
-              <button
+              <Button
+                variant="success"
+                size="md"
                 onClick={handleDownloadTestExecutionSummary}
                 disabled={loadingStates.testExecution}
-                className={`w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                isLoading={loadingStates.testExecution}
+                leftIcon={!loadingStates.testExecution ? <Download size={18} /> : undefined}
+                className="w-full"
               >
-                {loadingStates.testExecution ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Generando reporte...
-                  </>
-                ) : (
-                  <>
-                    <Download size={18} />
-                    Descargar Reporte de Ejecuciones
-                  </>
-                )}
-              </button>
+                {loadingStates.testExecution ? 'Generando reporte...' : 'Descargar Reporte de Ejecuciones'}
+              </Button>
             </div>
           </div>
         </div>
@@ -206,40 +195,28 @@ export const ReportsPage = () => {
                 <span>Documento profesional completo</span>
               </div>
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="primary"
+                  size="md"
                   onClick={() => handleDownloadTestPlan('pdf')}
                   disabled={loadingStates.testPlanPdf}
-                  className={`flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                  isLoading={loadingStates.testPlanPdf}
+                  leftIcon={!loadingStates.testPlanPdf ? <Download size={18} /> : undefined}
+                  className="flex-1"
                 >
-                  {loadingStates.testPlanPdf ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Generando PDF...
-                    </>
-                  ) : (
-                    <>
-                      <Download size={18} />
-                      Descargar PDF
-                    </>
-                  )}
-                </button>
-                <button
+                  {loadingStates.testPlanPdf ? 'Generando PDF...' : 'Descargar PDF'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={() => handleDownloadTestPlan('docx')}
                   disabled={loadingStates.testPlanDocx}
-                  className={`flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 ${colors.white} px-4 py-2.5 ${borderRadius.lg} font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                  isLoading={loadingStates.testPlanDocx}
+                  leftIcon={!loadingStates.testPlanDocx ? <Download size={18} /> : undefined}
+                  className="flex-1"
                 >
-                  {loadingStates.testPlanDocx ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Generando Word...
-                    </>
-                  ) : (
-                    <>
-                      <Download size={18} />
-                      Descargar Word
-                    </>
-                  )}
-                </button>
+                  {loadingStates.testPlanDocx ? 'Generando Word...' : 'Descargar Word'}
+                </Button>
               </div>
             </div>
           </div>
