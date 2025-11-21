@@ -128,6 +128,7 @@ async def generate_bug_summary_report(
             version=bug_db.version,
             user_story_id=bug_db.user_story_id,
             test_case_id=bug_db.test_case_id,
+            scenario_name=bug_db.scenario_name,
             screenshots=json.loads(bug_db.screenshots) if bug_db.screenshots else [],
             logs=bug_db.logs,
             notes=bug_db.notes,
@@ -170,11 +171,13 @@ async def generate_test_execution_report(
 ):
     """
     Generate Test Execution Summary Report for QA Manager
-    Returns a Word document with execution statistics and details
+    Returns a Word document with execution statistics and details grouped by Test Case and Scenario
     """
     from docx import Document
     from docx.shared import Pt, RGBColor, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    import json
+    from collections import defaultdict
 
     # Validate project exists
     project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
@@ -211,7 +214,14 @@ async def generate_test_execution_report(
 
     # Test case status (latest execution)
     test_case_latest_status = {}
+    test_case_info = {}  # Store test case info for later use
     for tc in test_cases:
+        test_case_info[tc.id] = {
+            'title': tc.title,
+            'type': tc.test_type,
+            'priority': tc.priority
+        }
+
         # Get latest execution for this test case
         latest = db.query(TestExecutionDB).filter(
             TestExecutionDB.test_case_id == tc.id
@@ -221,6 +231,42 @@ async def generate_test_execution_report(
             test_case_latest_status[tc.id] = latest.status
         else:
             test_case_latest_status[tc.id] = 'NOT_RUN'
+
+    # Group executions by Test Case and Scenario
+    grouped_executions = defaultdict(lambda: defaultdict(list))
+
+    for execution in executions:
+        test_case_id = execution.test_case_id
+
+        # Parse step_results to extract scenario information
+        if execution.step_results:
+            try:
+                step_results = json.loads(execution.step_results)
+
+                # Group steps by scenario
+                scenario_steps = defaultdict(list)
+                for step in step_results:
+                    scenario_name = step.get('scenario', 'Default Scenario')
+                    scenario_steps[scenario_name].append(step)
+
+                # Create execution record for each scenario
+                for scenario_name, steps in scenario_steps.items():
+                    grouped_executions[test_case_id][scenario_name].append({
+                        'execution': execution,
+                        'steps': steps
+                    })
+            except json.JSONDecodeError:
+                # Fallback if JSON parsing fails
+                grouped_executions[test_case_id]['Default Scenario'].append({
+                    'execution': execution,
+                    'steps': []
+                })
+        else:
+            # No step results, add to default scenario
+            grouped_executions[test_case_id]['Default Scenario'].append({
+                'execution': execution,
+                'steps': []
+            })
 
     # Create document
     doc = Document()
@@ -273,50 +319,76 @@ async def generate_test_execution_report(
         else:
             pass_rate_para.runs[0].font.color.rgb = RGBColor(255, 0, 0)  # Red
 
-    # Test Case Details
-    doc.add_heading("Test Case Details", level=1)
+    # Detailed Execution Results (Grouped by Test Case and Scenario)
+    doc.add_heading("Execution Results by Test Case and Scenario", level=1)
 
-    test_table = doc.add_table(rows=1, cols=5)
-    test_table.style = "Light Grid Accent 1"
+    if not grouped_executions:
+        doc.add_paragraph("No execution results to display.")
+    else:
+        for test_case_id in sorted(grouped_executions.keys()):
+            # Test Case heading
+            tc_info = test_case_info.get(test_case_id, {'title': 'Unknown', 'type': 'N/A', 'priority': 'N/A'})
+            doc.add_heading(f"Test Case: {test_case_id} - {tc_info['title']}", level=2)
 
-    # Header
-    header_cells = test_table.rows[0].cells
-    headers = ["Test ID", "Title", "Type", "Priority", "Latest Status"]
-    for i, header in enumerate(headers):
-        header_cells[i].text = header
-        header_cells[i].paragraphs[0].runs[0].font.bold = True
+            scenarios = grouped_executions[test_case_id]
 
-    # Add test cases
-    for tc in test_cases:
-        row_cells = test_table.add_row().cells
-        row_cells[0].text = tc.id
-        row_cells[1].text = tc.title[:40] + "..." if len(tc.title) > 40 else tc.title
-        row_cells[2].text = tc.test_type
-        row_cells[3].text = tc.priority
-        row_cells[4].text = test_case_latest_status.get(tc.id, 'NOT_RUN')
+            for scenario_name in sorted(scenarios.keys()):
+                scenario_executions = scenarios[scenario_name]
 
-    # Recent Executions
-    doc.add_heading("Recent Executions (Last 20)", level=1)
+                # Scenario subheading
+                scenario_heading = doc.add_heading(f"Scenario: {scenario_name}", level=3)
+                scenario_heading.paragraph_format.left_indent = Inches(0.25)
 
-    exec_table = doc.add_table(rows=1, cols=6)
-    exec_table.style = "Light Grid Accent 1"
+                # Scenario execution count
+                doc.add_paragraph(f"({len(scenario_executions)} execution{'s' if len(scenario_executions) > 1 else ''})")
 
-    # Header
-    header_cells = exec_table.rows[0].cells
-    headers = ["Date", "Test ID", "Executed By", "Status", "Duration (min)", "Pass/Fail/Total"]
-    for i, header in enumerate(headers):
-        header_cells[i].text = header
-        header_cells[i].paragraphs[0].runs[0].font.bold = True
+                # Create table for this scenario's executions
+                table = doc.add_table(rows=1, cols=7)
+                table.style = "Light Grid Accent 1"
 
-    # Add recent executions (last 20)
-    for execution in executions[:20]:
-        row_cells = exec_table.add_row().cells
-        row_cells[0].text = execution.execution_date.strftime('%Y-%m-%d %H:%M')
-        row_cells[1].text = execution.test_case_id
-        row_cells[2].text = execution.executed_by
-        row_cells[3].text = execution.status
-        row_cells[4].text = str(execution.execution_time_minutes or 0)
-        row_cells[5].text = f"{execution.passed_steps}/{execution.failed_steps}/{execution.total_steps}"
+                # Header row
+                headers = ["Date", "Executed By", "Status", "Duration (min)", "Passed", "Failed", "Total Steps"]
+                header_cells = table.rows[0].cells
+                for i, header in enumerate(headers):
+                    header_cells[i].text = header
+                    header_cells[i].paragraphs[0].runs[0].font.bold = True
+
+                # Add executions for this scenario
+                for exec_data in scenario_executions:
+                    execution = exec_data['execution']
+                    steps = exec_data['steps']
+
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = execution.execution_date.strftime('%Y-%m-%d %H:%M')
+                    row_cells[1].text = execution.executed_by
+                    row_cells[2].text = execution.status
+
+                    # Color code status
+                    status_run = row_cells[2].paragraphs[0].runs[0]
+                    if execution.status == 'PASSED':
+                        status_run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+                    elif execution.status == 'FAILED':
+                        status_run.font.color.rgb = RGBColor(255, 0, 0)  # Red
+                    elif execution.status == 'BLOCKED':
+                        status_run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+                    status_run.font.bold = True
+
+                    row_cells[3].text = f"{execution.execution_time_minutes:.1f}" if execution.execution_time_minutes else "0.0"
+
+                    # Calculate scenario-specific step counts
+                    if steps:
+                        scenario_passed = sum(1 for s in steps if s.get('status') == 'PASSED')
+                        scenario_failed = sum(1 for s in steps if s.get('status') == 'FAILED')
+                        scenario_total = len(steps)
+                        row_cells[4].text = str(scenario_passed)
+                        row_cells[5].text = str(scenario_failed)
+                        row_cells[6].text = str(scenario_total)
+                    else:
+                        row_cells[4].text = str(execution.passed_steps)
+                        row_cells[5].text = str(execution.failed_steps)
+                        row_cells[6].text = str(execution.total_steps)
+
+                doc.add_paragraph()  # Add spacing between scenarios
 
     # Footer
     doc.add_paragraph()
