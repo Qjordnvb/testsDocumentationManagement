@@ -12,6 +12,11 @@ import { ReviewTestCasesModal } from './ReviewTestCasesModal';
 import { Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { UserStory } from '@/entities/user-story';
 import type { SuggestedTestCase } from '../api/generateTests';
+import {
+  colors,
+  borderRadius,
+  getTypographyPreset,
+} from '@/shared/design-system/tokens';
 
 interface GenerateModalProps {
   isOpen: boolean;
@@ -125,15 +130,18 @@ export const GenerateModal = ({
     onClose();
   };
 
+  // Get design tokens
+  const bodySmall = getTypographyPreset('bodySmall');
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Generar Test Cases con IA">
       <div className="space-y-4">
         {/* Story info */}
-        <div className="p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-sm font-medium text-gray-900 mb-1">{story.title}</h3>
-          <p className="text-xs text-gray-600 line-clamp-2">{story.description}</p>
+        <div className={`p-4 ${colors.gray[50]} ${borderRadius.lg}`}>
+          <h3 className={`${bodySmall.className} font-medium ${colors.gray.text900} mb-1`}>{story.title}</h3>
+          <p className={`${bodySmall.className} ${colors.gray.text600} line-clamp-2`}>{story.description}</p>
           {story.acceptance_criteria && story.acceptance_criteria.length > 0 && (
-            <p className="text-xs text-gray-500 mt-2">
+            <p className={`${bodySmall.className} ${colors.gray.text500} mt-2`}>
               {story.acceptance_criteria.length} criterios de aceptación
             </p>
           )}
@@ -145,8 +153,8 @@ export const GenerateModal = ({
             {/* AI toggle */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium text-gray-900">
+                <Sparkles className={`w-5 h-5 ${colors.brand.secondary.text600}`} />
+                <span className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>
                   Usar IA (Gemini)
                 </span>
               </div>
@@ -156,13 +164,13 @@ export const GenerateModal = ({
                 aria-checked={useAi}
                 onClick={() => setUseAi(!useAi)}
                 className={`
-                  relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                  ${useAi ? 'bg-blue-600' : 'bg-gray-200'}
+                  relative inline-flex h-6 w-11 items-center ${borderRadius.full} transition-colors
+                  ${useAi ? colors.brand.primary[600] : colors.gray[200]}
                 `}
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                    inline-block h-4 w-4 transform ${borderRadius.full} ${colors.white} transition-transform
                     ${useAi ? 'translate-x-6' : 'translate-x-1'}
                   `}
                 />
@@ -171,7 +179,7 @@ export const GenerateModal = ({
 
             {/* Number of test cases */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className={`block ${bodySmall.className} font-medium ${colors.gray.text700} mb-2`}>
                 Número de test cases: {numTestCases}
               </label>
               <input
@@ -180,10 +188,10 @@ export const GenerateModal = ({
                 max="10"
                 value={numTestCases}
                 onChange={(e) => setNumTestCases(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                className={`w-full h-2 ${colors.gray[200]} ${borderRadius.lg} appearance-none cursor-pointer`}
                 disabled={isActuallyGenerating}
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className={`flex justify-between ${bodySmall.className} ${colors.gray.text500} mt-1`}>
                 <span>1</span>
                 <span>5</span>
                 <span>10</span>
@@ -192,7 +200,7 @@ export const GenerateModal = ({
 
             {/* Scenarios per test */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className={`block ${bodySmall.className} font-medium ${colors.gray.text700} mb-2`}>
                 Escenarios por test case: {scenariosPerTest}
               </label>
               <input
@@ -201,10 +209,10 @@ export const GenerateModal = ({
                 max="10"
                 value={scenariosPerTest}
                 onChange={(e) => setScenariosPerTest(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                className={`w-full h-2 ${colors.gray[200]} ${borderRadius.lg} appearance-none cursor-pointer`}
                 disabled={isActuallyGenerating}
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className={`flex justify-between ${bodySmall.className} ${colors.gray.text500} mt-1`}>
                 <span>1</span>
                 <span>5</span>
                 <span>10</span>
@@ -213,7 +221,7 @@ export const GenerateModal = ({
 
             {/* Test types */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className={`block ${bodySmall.className} font-medium ${colors.gray.text700} mb-2`}>
                 Tipos de test (selecciona al menos 1)
               </label>
               <div className="flex flex-wrap gap-2">
@@ -223,10 +231,10 @@ export const GenerateModal = ({
                     type="button"
                     onClick={() => handleTestTypeToggle(testType.value)}
                     className={`
-                      px-3 py-1.5 text-sm font-medium rounded-md border transition-colors
+                      px-3 py-1.5 ${bodySmall.className} font-medium ${borderRadius.md} border transition-colors
                       ${selectedTestTypes.includes(testType.value)
-                        ? 'bg-blue-100 border-blue-300 text-blue-800'
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        ? `${colors.brand.primary[100]} ${colors.brand.primary.border300} ${colors.brand.primary.text800}`
+                        : `${colors.white} ${colors.gray.border300} ${colors.gray.text700} hover:bg-gray-50`
                       }
                       ${isActuallyGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                     `}
@@ -239,8 +247,8 @@ export const GenerateModal = ({
             </div>
 
             {/* Info box */}
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800">
+            <div className={`p-3 ${colors.brand.primary[50]} border ${colors.brand.primary.border200} ${borderRadius.lg}`}>
+              <p className={`${bodySmall.className} ${colors.brand.primary.text800}`}>
                 La IA generará sugerencias de test cases en formato Gherkin (Given-When-Then).
                 Podrás revisar y editar antes de guardar.
               </p>
@@ -251,16 +259,16 @@ export const GenerateModal = ({
         {/* Generation in progress */}
         {isActuallyGenerating && (
           <div className="flex flex-col items-center justify-center py-8 px-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
-            <p className="text-sm font-medium text-gray-900">Generando test cases con IA...</p>
-            <p className="text-sm text-gray-600 mt-2">
+            <div className={`animate-spin ${borderRadius.full} h-12 w-12 border-b-2 ${colors.brand.primary.border600} mb-4`} />
+            <p className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>Generando test cases con IA...</p>
+            <p className={`${bodySmall.className} ${colors.gray.text600} mt-2`}>
               Gemini está creando <strong>{numTestCases * scenariosPerTest} escenarios</strong>
             </p>
-            <p className="text-sm text-gray-600">
+            <p className={`${bodySmall.className} ${colors.gray.text600}`}>
               ({numTestCases} test cases × {scenariosPerTest} escenarios cada uno)
             </p>
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg max-w-md">
-              <p className="text-xs text-yellow-800 text-center">
+            <div className={`mt-4 p-3 ${colors.status.warning[50]} border ${colors.status.warning.border200} ${borderRadius.lg} max-w-md`}>
+              <p className={`${bodySmall.className} ${colors.status.warning.text800} text-center`}>
                 ⏱️ Esto puede tomar hasta <strong>2 minutos</strong> para grandes cantidades de escenarios.
                 Por favor, espera sin cerrar esta ventana.
               </p>
@@ -271,13 +279,13 @@ export const GenerateModal = ({
         {/* Success result */}
         {!isActuallyGenerating && suggestedTests.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className={`flex items-start gap-3 p-4 ${colors.status.success[50]} border ${colors.status.success.border200} ${borderRadius.lg}`}>
+              <CheckCircle2 className={`w-5 h-5 ${colors.status.success.text600} flex-shrink-0 mt-0.5`} />
               <div>
-                <p className="text-sm font-medium text-green-900">
+                <p className={`${bodySmall.className} font-medium ${colors.status.success.text900}`}>
                   Sugerencias generadas exitosamente
                 </p>
-                <p className="text-xs text-green-700 mt-1">
+                <p className={`${bodySmall.className} ${colors.status.success.text700} mt-1`}>
                   {suggestedTests.length} test case{suggestedTests.length !== 1 ? 's' : ''} sugerido{suggestedTests.length !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -286,20 +294,20 @@ export const GenerateModal = ({
             {/* Suggested tests preview */}
             <div className="max-h-60 overflow-y-auto space-y-2">
               {suggestedTests.map((test, index) => (
-                <div key={test.suggested_id} className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div key={test.suggested_id} className={`p-3 ${colors.gray[50]} ${borderRadius.base} border ${colors.gray.border200}`}>
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <h4 className="text-sm font-medium text-gray-900">
+                    <h4 className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>
                       {index + 1}. {test.title}
                     </h4>
-                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">
+                    <span className={`px-2 py-0.5 ${bodySmall.className} font-medium ${borderRadius.base} ${colors.brand.primary[100]} ${colors.brand.primary.text800}`}>
                       {test.test_type}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 line-clamp-2">
+                  <p className={`${bodySmall.className} ${colors.gray.text600} line-clamp-2`}>
                     {test.description}
                   </p>
                   {test.scenarios_count && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className={`${bodySmall.className} ${colors.gray.text500} mt-1`}>
                       {test.scenarios_count} escenario{test.scenarios_count !== 1 ? 's' : ''}
                     </p>
                   )}
@@ -308,8 +316,8 @@ export const GenerateModal = ({
             </div>
 
             {/* Next step message */}
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-xs text-yellow-800">
+            <div className={`p-3 ${colors.status.warning[50]} border ${colors.status.warning.border200} ${borderRadius.lg}`}>
+              <p className={`${bodySmall.className} ${colors.status.warning.text800}`}>
                 💡 Estas son sugerencias. Podrás revisar y editar antes de guardar.
               </p>
             </div>
@@ -318,9 +326,9 @@ export const GenerateModal = ({
 
         {/* Error message */}
         {generationError && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">{generationError}</p>
+          <div className={`flex items-start gap-2 p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+            <AlertCircle className={`w-5 h-5 ${colors.status.error.text600} flex-shrink-0 mt-0.5`} />
+            <p className={`${bodySmall.className} ${colors.status.error.text800}`}>{generationError}</p>
           </div>
         )}
 

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage, ChevronDown, ChevronRight, Bug, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage } from 'lucide-react';
 import { useTestRunner } from '../model/useTestRunner';
 import { parseGherkinContent } from '@/shared/lib/gherkinParser';
 import { apiService } from '@/shared/api/apiClient';
 import { ConfirmModal } from '@/shared/ui';
 import { BugReportModal } from '@/features/bug-management/ui/BugReportModal';
+import { ScenarioList, ScenarioCard, StepExecutionItem } from '@/shared/design-system/components/composite';
+import { Button } from '@/shared/ui/Button';
+import { colors, borderRadius } from '@/shared/design-system/tokens';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -31,7 +34,7 @@ export const TestRunnerModal: React.FC<Props> = ({
 
   const {
     scenarios, isRunning, elapsedSeconds, executionStatus, evidenceMap,
-    expandedScenarios, startExecution, pauseExecution, toggleScenario, markStep, addEvidence, removeEvidence
+    startExecution, pauseExecution, markStep, addEvidence, removeEvidence
   } = useTestRunner(parsedFeature.scenarios);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -45,27 +48,10 @@ export const TestRunnerModal: React.FC<Props> = ({
     steps: any[];
   } | null>(null);
 
-  if (!isOpen) return null;
+  // Track scenarios with bugs reported (scenarioIndex -> bug count)
+  const [scenarioBugCounts, setScenarioBugCounts] = useState<Record<number, number>>({});
 
-  // Expand/Collapse All function
-  const handleExpandCollapseAll = () => {
-    const allExpanded = expandedScenarios.size === scenarios.length;
-    if (allExpanded) {
-      // Collapse all
-      scenarios.forEach((_, idx) => {
-        if (expandedScenarios.has(idx)) {
-          toggleScenario(idx);
-        }
-      });
-    } else {
-      // Expand all
-      scenarios.forEach((_, idx) => {
-        if (!expandedScenarios.has(idx)) {
-          toggleScenario(idx);
-        }
-      });
-    }
-  };
+  if (!isOpen) return null;
 
   // Mark all steps in a scenario
   const handleMarkAllStepsInScenario = (scenarioIdx: number, status: 'passed' | 'failed') => {
@@ -209,260 +195,187 @@ export const TestRunnerModal: React.FC<Props> = ({
         </div>
 
         {/* Controls */}
-        <div className="px-6 py-3 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
+        <div className={`px-6 py-3 border-b ${colors.gray.border100} bg-white flex justify-between items-center shadow-sm`}>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
-              <Clock size={18} className="text-blue-600" />
-              <span className="font-mono text-xl font-bold text-blue-700 w-16 text-center">
+            <div className={`flex items-center gap-2 ${colors.brand.primary[50]} px-4 py-2 ${borderRadius.lg} border ${colors.brand.primary.border}`}>
+              <Clock size={18} className={colors.brand.primary.text600} />
+              <span className={`font-mono text-xl font-bold ${colors.brand.primary.text700} w-16 text-center`}>
                 {formatTime(elapsedSeconds)}
               </span>
             </div>
             {!isRunning ? (
-              <button onClick={startExecution} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow active:scale-95">
-                <Play size={18} fill="currentColor" /> Iniciar
-              </button>
+              <Button variant="success" size="md" onClick={startExecution} leftIcon={<Play size={18} fill="currentColor" />}>
+                Iniciar
+              </Button>
             ) : (
-              <button onClick={pauseExecution} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow active:scale-95">
-                <Pause size={18} fill="currentColor" /> Pausar
-              </button>
+              <Button variant="warning" size="md" onClick={pauseExecution} leftIcon={<Pause size={18} fill="currentColor" />}>
+                Pausar
+              </Button>
             )}
-            <button
-              onClick={handleExpandCollapseAll}
-              className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-medium transition-all border border-purple-200"
-              title={expandedScenarios.size === scenarios.length ? "Collapse All" : "Expand All"}
-            >
-              {expandedScenarios.size === scenarios.length ? (
-                <><ChevronsUp size={18} /> Collapse All</>
-              ) : (
-                <><ChevronsDown size={18} /> Expand All</>
-              )}
-            </button>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-600">
-              <span className="text-green-600 font-bold">{passedScenarios}</span> passed •
-              <span className="text-red-600 font-bold ml-1">{failedScenarios}</span> failed
+              <span className={`${colors.status.success.text600} font-bold`}>{passedScenarios}</span> passed •
+              <span className={`${colors.status.error.text600} font-bold ml-1`}>{failedScenarios}</span> failed
             </div>
-            <div className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 ${
-              executionStatus === 'PASSED' ? 'bg-green-100 text-green-700' :
-              executionStatus === 'FAILED' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-600'
+            <div className={`px-3 py-1 ${borderRadius.full} text-sm font-bold flex items-center gap-2 ${
+              executionStatus === 'PASSED' ? `${colors.status.success[100]} ${colors.status.success.text700}` :
+              executionStatus === 'FAILED' ? `${colors.status.error[100]} ${colors.status.error.text700}` :
+              `${colors.gray[100]} ${colors.gray.text600}`
             }`}>
               {executionStatus}
             </div>
           </div>
         </div>
 
-        {/* Scenarios List */}
+        {/* Scenarios List - Using Composite Components */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-          <div className="space-y-4 max-w-4xl mx-auto">
-            {scenarios.map((scenario, scenarioIdx) => {
-              const isExpanded = expandedScenarios.has(scenarioIdx);
-              const passedSteps = scenario.steps.filter((s: any) => s.status === 'passed').length;
-              const failedSteps = scenario.steps.filter((s: any) => s.status === 'failed').length;
+          <div className="max-w-4xl mx-auto">
+            <ScenarioList showExpandCollapseAll defaultAllExpanded={false}>
+              {scenarios.map((scenario, scenarioIdx) => {
+                const passedSteps = scenario.steps.filter((s: any) => s.status === 'passed').length;
+                const failedSteps = scenario.steps.filter((s: any) => s.status === 'failed').length;
+                const skippedSteps = scenario.steps.filter((s: any) => s.status === 'skipped').length;
 
-              return (
-                <div
-                  key={scenarioIdx}
-                  className={`rounded-lg border shadow-sm overflow-hidden transition-all ${
-                    scenario.status === 'passed' ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' :
-                    scenario.status === 'failed' ? 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300' :
-                    scenario.status === 'skipped' ? 'bg-gradient-to-br from-gray-100 to-gray-200 border-gray-400' :
-                    'bg-white border-gray-200'
-                  }`}
-                >
-                  {/* Scenario Header */}
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div
-                        onClick={() => toggleScenario(scenarioIdx)}
-                        className="flex items-center gap-3 flex-1 cursor-pointer hover:opacity-80"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown size={20} className="text-gray-500 flex-shrink-0" />
-                        ) : (
-                          <ChevronRight size={20} className="text-gray-500 flex-shrink-0" />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-800 text-base">{scenario.scenarioName}</h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {scenario.steps.length} steps •
-                            <span className="text-green-600 ml-1">{passedSteps} passed</span> •
-                            <span className="text-red-600 ml-1">{failedSteps} failed</span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        scenario.status === 'passed' ? 'bg-green-100 text-green-700' :
-                        scenario.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        scenario.status === 'skipped' ? 'bg-gray-100 text-gray-600' :
-                        'bg-blue-50 text-blue-600'
-                      }`}>
-                        {scenario.status.toUpperCase()}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons Row */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAllStepsInScenario(scenarioIdx, 'passed');
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-medium transition-colors"
-                        title="Mark all steps as passed"
-                      >
-                        <CheckCircle2 size={14} />
-                        Mark All Passed
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAllStepsInScenario(scenarioIdx, 'failed');
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors"
-                        title="Mark all steps as failed"
-                      >
-                        <XCircle size={14} />
-                        Mark All Failed
-                      </button>
-                      {scenario.status === 'failed' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedScenarioForBug({
-                              index: scenarioIdx,
-                              name: scenario.scenarioName,
-                              steps: scenario.steps
-                            });
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg text-xs font-medium transition-colors ml-auto"
-                          title="Report bug for this scenario"
+                return (
+                  <ScenarioCard
+                    key={scenarioIdx}
+                    scenarioName={scenario.scenarioName}
+                    status={scenario.status as any}
+                    passedSteps={passedSteps}
+                    failedSteps={failedSteps}
+                    skippedSteps={skippedSteps}
+                    totalSteps={scenario.steps.length}
+                    bugCount={scenarioBugCounts[scenarioIdx] || 0}
+                    showBugButton={scenario.status === 'failed'}
+                    onReportBug={() => {
+                      setSelectedScenarioForBug({
+                        index: scenarioIdx,
+                        name: scenario.scenarioName,
+                        steps: scenario.steps
+                      });
+                    }}
+                  >
+                    {/* Steps within scenario */}
+                    <div className="space-y-3">
+                      {/* Action Buttons Row */}
+                      <div className="flex items-center gap-2 flex-wrap mb-3 pb-3 border-b border-gray-200">
+                        <Button
+                          variant="success"
+                          size="sm"
+                          onClick={() => handleMarkAllStepsInScenario(scenarioIdx, 'passed')}
+                          leftIcon={<CheckCircle2 size={14} />}
                         >
-                          <Bug size={14} />
-                          Report Bug
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                          Mark All Passed
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleMarkAllStepsInScenario(scenarioIdx, 'failed')}
+                          leftIcon={<XCircle size={14} />}
+                        >
+                          Mark All Failed
+                        </Button>
+                      </div>
 
-                  {/* Scenario Steps (Expandable) */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-100 bg-gray-50">
-                      <div className="p-4 space-y-3">
-                        {scenario.steps.map((step: any, stepIdx: number) => (
-                          <div
-                            key={step.id}
-                            className={`flex flex-col p-3 rounded-lg border transition-all ${
-                              step.status === 'passed' ? 'bg-green-50/50 border-green-200' :
-                              step.status === 'failed' ? 'bg-red-50/50 border-red-200 shadow-sm' :
-                              step.status === 'skipped' ? 'bg-gray-100 border-gray-300' :
-                              'bg-white border-gray-200'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="mt-1.5 text-xs font-bold text-gray-400 w-6 text-right">
-                                {stepIdx + 1}
-                              </div>
-                              <div className="flex-1 pt-1">
-                                <div className="flex gap-2 text-sm">
-                                  <span className="font-bold text-purple-700">{step.keyword}</span>
-                                  <span className={`font-medium ${
-                                    step.status === 'skipped' ? 'text-gray-400 line-through' : 'text-gray-800'
-                                  }`}>
-                                    {step.text}
-                                  </span>
-                                </div>
-                              </div>
-                              {step.status !== 'skipped' && (
-                                <div className="flex gap-1">
-                                  <button
-                                    onClick={() => markStep(scenarioIdx, step.id, 'passed')}
-                                    className={`p-2 rounded-lg transition-colors ${
-                                      step.status === 'passed' ? 'bg-green-100 text-green-700' :
-                                      'text-gray-300 hover:bg-green-50 hover:text-green-600'
-                                    }`}
-                                  >
-                                    <CheckCircle2 size={20} />
-                                  </button>
-                                  <button
-                                    onClick={() => markStep(scenarioIdx, step.id, 'failed')}
-                                    className={`p-2 rounded-lg transition-colors ${
-                                      step.status === 'failed' ? 'bg-red-100 text-red-700' :
-                                      'text-gray-300 hover:bg-red-50 hover:text-red-600'
-                                    }`}
-                                  >
-                                    <XCircle size={20} />
-                                  </button>
-                                </div>
-                              )}
+                      {/* Steps */}
+                      {scenario.steps.map((step: any, stepIdx: number) => (
+                        <div key={step.id} className="flex flex-col gap-2">
+                          {/* Step Item with Action Buttons */}
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1">
+                              <StepExecutionItem
+                                keyword={step.keyword}
+                                text={step.text}
+                                status={step.status === 'pending' ? 'pending' : step.status}
+                                stepNumber={stepIdx + 1}
+                              />
                             </div>
-
-                            {/* Evidence Area (Only for failed steps) */}
-                            {step.status === 'failed' && (
-                              <div className="mt-3 ml-9 pl-4 border-l-2 border-red-200">
-                                <div className="flex items-center gap-3">
-                                  {evidenceMap[step.id] ? (
-                                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded border border-gray-200 text-sm text-gray-700">
-                                      <FileImage size={16} className="text-blue-500" />
-                                      <span className="max-w-[200px] truncate">{evidenceMap[step.id].name}</span>
-                                      <button
-                                        onClick={() => removeEvidence(step.id)}
-                                        className="text-red-500 hover:bg-red-50 p-1 rounded ml-2"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <label className="flex items-center gap-2 cursor-pointer bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded text-sm transition-colors">
-                                      <Upload size={16} />
-                                      Adjuntar Evidencia
-                                      <input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*,video/*,.log,.txt"
-                                        onChange={(e) => handleFileChange(step.id, e)}
-                                      />
-                                    </label>
-                                  )}
-                                  <div className="text-xs text-gray-500 flex items-center gap-1 italic">
-                                    <AlertCircle size={12} />
-                                    Puedes continuar ejecutando los siguientes steps
-                                  </div>
-                                </div>
+                            {/* Mark Buttons */}
+                            {step.status !== 'skipped' && (
+                              <div className="flex gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => markStep(scenarioIdx, step.id, 'passed')}
+                                  className={`p-2 ${borderRadius.lg} transition-colors ${
+                                    step.status === 'passed' ? `${colors.status.success[100]} ${colors.status.success.text700}` :
+                                    `${colors.gray.text300} hover:bg-green-50 hover:text-green-600`
+                                  }`}
+                                >
+                                  <CheckCircle2 size={20} />
+                                </button>
+                                <button
+                                  onClick={() => markStep(scenarioIdx, step.id, 'failed')}
+                                  className={`p-2 ${borderRadius.lg} transition-colors ${
+                                    step.status === 'failed' ? `${colors.status.error[100]} ${colors.status.error.text700}` :
+                                    `${colors.gray.text300} hover:bg-red-50 hover:text-red-600`
+                                  }`}
+                                >
+                                  <XCircle size={20} />
+                                </button>
                               </div>
                             )}
                           </div>
-                        ))}
-                      </div>
+
+                          {/* Evidence Area (Only for failed steps) */}
+                          {step.status === 'failed' && (
+                            <div className={`ml-9 pl-4 border-l-2 ${colors.status.error.border200}`}>
+                              <div className="flex items-center gap-3">
+                                {evidenceMap[step.id] ? (
+                                  <div className={`flex items-center gap-2 bg-white px-3 py-2 ${borderRadius.base} border ${colors.gray.border200} text-sm ${colors.gray.text700}`}>
+                                    <FileImage size={16} className={colors.brand.primary.text500} />
+                                    <span className="max-w-[200px] truncate">{evidenceMap[step.id].name}</span>
+                                    <button
+                                      onClick={() => removeEvidence(step.id)}
+                                      className={`${colors.status.error.text600} hover:bg-red-50 p-1 ${borderRadius.base} ml-2`}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className={`flex items-center gap-2 cursor-pointer ${colors.status.error[100]} hover:bg-red-200 ${colors.status.error.text700} px-3 py-2 ${borderRadius.base} text-sm transition-colors`}>
+                                    <Upload size={16} />
+                                    Adjuntar Evidencia
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      accept="image/*,video/*,.log,.txt"
+                                      onChange={(e) => handleFileChange(step.id, e)}
+                                    />
+                                  </label>
+                                )}
+                                <div className={`text-xs ${colors.gray.text500} flex items-center gap-1 italic`}>
+                                  <AlertCircle size={12} />
+                                  Puedes continuar ejecutando los siguientes steps
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </ScenarioCard>
+                );
+              })}
+            </ScenarioList>
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t bg-white flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-          >
+          <Button variant="ghost" size="md" onClick={onClose}>
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleSave}
             disabled={isSaving || scenarios.length === 0}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:shadow-none flex items-center gap-2 transition-all active:scale-95"
+            isLoading={isSaving}
+            leftIcon={!isSaving ? <Save size={18} /> : undefined}
           >
-            {isSaving ? (
-              <>Guardando...</>
-            ) : (
-              <><Save size={18} /> Guardar Resultado</>
-            )}
-          </button>
+            {isSaving ? 'Guardando...' : 'Guardar Resultado'}
+          </Button>
         </div>
       </div>
 
@@ -518,7 +431,7 @@ export const TestRunnerModal: React.FC<Props> = ({
             test_case_id: testCaseId,
             executed_by: 'QA Tester',
             execution_date: new Date().toISOString(),
-            status: executionStatus,
+            status: executionStatus === 'IN_PROGRESS' ? 'BLOCKED' : executionStatus,
             environment: 'QA',
             version: '',
             execution_time_minutes: elapsedSeconds / 60,
@@ -532,11 +445,12 @@ export const TestRunnerModal: React.FC<Props> = ({
                 text: step.text,
                 status: step.status.toUpperCase(),
                 scenario_name: scenario.scenarioName,
-                evidence_file: null
+                evidence_file: undefined
               }))
             ),
             evidence_count: Object.keys(evidenceMap).length,
-            evidence_files: []
+            evidence_files: [],
+            bug_ids: []
           }}
         />
       )}
@@ -549,6 +463,13 @@ export const TestRunnerModal: React.FC<Props> = ({
             setSelectedScenarioForBug(null);
           }}
           onSuccess={() => {
+            // Update bug count for this scenario
+            if (selectedScenarioForBug) {
+              setScenarioBugCounts(prev => ({
+                ...prev,
+                [selectedScenarioForBug.index]: (prev[selectedScenarioForBug.index] || 0) + 1
+              }));
+            }
             setSelectedScenarioForBug(null);
             toast.success('Bug reportado exitosamente para el scenario: ' + selectedScenarioForBug.name);
           }}
@@ -575,10 +496,11 @@ export const TestRunnerModal: React.FC<Props> = ({
               text: step.text,
               status: step.status.toUpperCase(),
               scenario_name: selectedScenarioForBug.name,
-              evidence_file: evidenceMap[step.id] ? null : null
+              evidence_file: undefined
             })),
             evidence_count: selectedScenarioForBug.steps.filter(s => evidenceMap[s.id]).length,
-            evidence_files: []
+            evidence_files: [],
+            bug_ids: []
           } : undefined}
         />
       )}

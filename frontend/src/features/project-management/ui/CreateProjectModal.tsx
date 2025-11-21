@@ -10,6 +10,11 @@ import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { projectApi, type CreateProjectDTO } from '@/entities/project';
 import { useProject } from '@/app/providers/ProjectContext';
+import {
+  colors,
+  borderRadius,
+  getTypographyPreset,
+} from '@/shared/design-system/tokens';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -72,12 +77,16 @@ export const CreateProjectModal = ({ isOpen, onClose, onSuccess }: CreateProject
     onClose();
   };
 
+  // Get design tokens
+  const labelText = getTypographyPreset('label');
+  const bodySmall = getTypographyPreset('bodySmall');
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Crear Nuevo Proyecto">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Project Name */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="name" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             Nombre del Proyecto *
           </label>
           <Input
@@ -92,7 +101,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSuccess }: CreateProject
 
         {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="description" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             Descripción
           </label>
           <textarea
@@ -102,13 +111,13 @@ export const CreateProjectModal = ({ isOpen, onClose, onSuccess }: CreateProject
             placeholder="Descripción breve del proyecto..."
             rows={3}
             disabled={loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`w-full px-3 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
           />
         </div>
 
         {/* Client */}
         <div>
-          <label htmlFor="client" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="client" className={`block ${labelText.className} ${colors.gray.text700} mb-1`}>
             Cliente
           </label>
           <Input
@@ -122,7 +131,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSuccess }: CreateProject
 
         {/* Default Test Types */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className={`block ${labelText.className} ${colors.gray.text700} mb-2`}>
             Tipos de Test por Defecto
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -138,9 +147,9 @@ export const CreateProjectModal = ({ isOpen, onClose, onSuccess }: CreateProject
                     setFormData({ ...formData, default_test_types: newTypes });
                   }}
                   disabled={loading}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className={`${borderRadius.base} ${colors.gray.border300} ${colors.brand.primary.text600} focus:ring-blue-500`}
                 />
-                <span className="text-sm text-gray-700">{type}</span>
+                <span className={`${bodySmall.className} ${colors.gray.text700}`}>{type}</span>
               </label>
             ))}
           </div>
@@ -148,13 +157,13 @@ export const CreateProjectModal = ({ isOpen, onClose, onSuccess }: CreateProject
 
         {/* Error Message */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className={`p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+            <p className={`${bodySmall.className} ${colors.status.error.text800}`}>{error}</p>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+        <div className={`flex items-center justify-end gap-3 pt-4 border-t ${colors.gray.border200}`}>
           <Button
             type="button"
             variant="secondary"

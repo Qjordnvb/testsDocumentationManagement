@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Bug } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 import { bugApi } from '@/entities/bug';
-import type { CreateBugDTO, BugSeverity, BugPriority, BugType, Bug as BugEntity } from '@/entities/bug';
-import type { ExecutionDetails } from '@/entities/test-execution';
+import type { Bug, BugSeverity, BugPriority, BugType, UpdateBugDTO } from '@/entities/bug';
 import toast from 'react-hot-toast';
 import { Button } from '@/shared/ui/Button';
 import {
@@ -11,105 +10,49 @@ import {
   getComponentSpacing,
   getComponentShadow,
   borderRadius,
-
 } from '@/shared/design-system/tokens';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (bug: BugEntity) => void;
-
-  // Pre-fill data (optional)
-  projectId: string;
-  executionDetails?: ExecutionDetails;
-  testCaseId?: string;
-  testCaseTitle?: string;
-  userStoryId?: string;
-  scenarioName?: string;
+  onSuccess?: (bug: Bug) => void;
+  bug: Bug;
 }
 
-export const BugReportModal: React.FC<Props> = ({
+export const EditBugModal: React.FC<Props> = ({
   isOpen,
   onClose,
   onSuccess,
-  projectId,
-  executionDetails,
-  testCaseId,
-  testCaseTitle,
-  userStoryId,
-  scenarioName,
+  bug,
 }) => {
-  // Form state
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [stepsToReproduce, setStepsToReproduce] = useState<string[]>(['']);
-  const [expectedBehavior, setExpectedBehavior] = useState('');
-  const [actualBehavior, setActualBehavior] = useState('');
-  const [severity, setSeverity] = useState<BugSeverity>('Medium');
-  const [priority, setPriority] = useState<BugPriority>('Medium');
-  const [bugType, setBugType] = useState<BugType>('Functional');
-  const [environment, setEnvironment] = useState('QA');
-  const [browser, setBrowser] = useState('');
-  const [os, setOs] = useState('');
-  const [version, setVersion] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
+  // Form state - initialize with bug data
+  const [title, setTitle] = useState(bug.title);
+  const [description, setDescription] = useState(bug.description);
+  const [stepsToReproduce, setStepsToReproduce] = useState<string[]>(bug.steps_to_reproduce);
+  const [expectedBehavior, setExpectedBehavior] = useState(bug.expected_behavior);
+  const [actualBehavior, setActualBehavior] = useState(bug.actual_behavior);
+  const [severity, setSeverity] = useState<BugSeverity>(bug.severity);
+  const [priority, setPriority] = useState<BugPriority>(bug.priority);
+  const [bugType, setBugType] = useState<BugType>(bug.bug_type);
+  const [assignedTo, setAssignedTo] = useState(bug.assigned_to || '');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Pre-fill data when execution details are provided
+  // Reset form when bug changes
   useEffect(() => {
-    if (executionDetails && isOpen) {
-      // Auto-fill environment and version from execution
-      setEnvironment(executionDetails.environment || 'QA');
-      setVersion(executionDetails.version || '');
-
-      // Extract failed steps for "Steps to Reproduce"
-      const failedSteps = executionDetails.step_results.filter(s => s.status === 'FAILED');
-      if (failedSteps.length > 0) {
-        const steps = failedSteps.map((step) =>
-          `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
-        );
-        setStepsToReproduce(steps.length > 0 ? steps : ['']);
-      }
-
-      // Suggest title based on scenario name and test case
-      if (!title) {
-        if (scenarioName && testCaseTitle) {
-          setTitle(`Bug in Scenario: ${scenarioName}`);
-        } else if (testCaseTitle) {
-          setTitle(`Bug in: ${testCaseTitle}`);
-        } else if (scenarioName) {
-          setTitle(`Bug in: ${scenarioName}`);
-        }
-      }
-
-      // Pre-fill description with comprehensive execution context
-      if (!description) {
-        let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
-
-        if (scenarioName) {
-          descriptionText += `📋 Scenario: ${scenarioName}\n`;
-        }
-        if (testCaseId) {
-          descriptionText += `🧪 Test Case: ${testCaseId}\n`;
-        }
-        descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
-        descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
-        descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
-        if (executionDetails.version) {
-          descriptionText += `📦 Version: ${executionDetails.version}\n`;
-        }
-        descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
-
-        if (failedSteps.length > 0 && failedSteps[0].actual_result) {
-          descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
-        }
-
-        setDescription(descriptionText);
-      }
+    if (bug && isOpen) {
+      setTitle(bug.title);
+      setDescription(bug.description);
+      setStepsToReproduce(bug.steps_to_reproduce);
+      setExpectedBehavior(bug.expected_behavior);
+      setActualBehavior(bug.actual_behavior);
+      setSeverity(bug.severity);
+      setPriority(bug.priority);
+      setBugType(bug.bug_type);
+      setAssignedTo(bug.assigned_to || '');
     }
-  }, [executionDetails, isOpen, testCaseId, testCaseTitle, scenarioName, title, description]);
+  }, [bug, isOpen]);
 
   const handleAddStep = () => {
     setStepsToReproduce([...stepsToReproduce, '']);
@@ -168,7 +111,7 @@ export const BugReportModal: React.FC<Props> = ({
     try {
       const validSteps = stepsToReproduce.filter(s => s.trim());
 
-      const bugData: CreateBugDTO = {
+      const updates: UpdateBugDTO = {
         title: title.trim(),
         description: description.trim(),
         steps_to_reproduce: validSteps,
@@ -177,53 +120,28 @@ export const BugReportModal: React.FC<Props> = ({
         severity,
         priority,
         bug_type: bugType,
-        environment: environment.trim(),
-        browser: browser.trim() || undefined,
-        os: os.trim() || undefined,
-        version: version.trim() || undefined,
-        project_id: projectId,
-        user_story_id: userStoryId,
-        test_case_id: testCaseId,
-        scenario_name: scenarioName,
-        execution_id: executionDetails?.execution_id,
-        reported_by: 'QA Tester', // TODO: Get from auth context
         assigned_to: assignedTo.trim() || undefined,
       };
 
-      const createdBug = await bugApi.create(bugData);
+      const updatedBug = await bugApi.update(bug.id, updates);
 
-      toast.success(`Bug ${createdBug.id} created successfully`);
+      toast.success(`Bug ${updatedBug.id} updated successfully`);
 
       if (onSuccess) {
-        onSuccess(createdBug);
+        onSuccess(updatedBug);
       }
 
       handleClose();
     } catch (error: any) {
-      console.error('Error creating bug:', error);
-      toast.error(error.response?.data?.detail || 'Failed to create bug report');
+      console.error('Error updating bug:', error);
+      toast.error(error.response?.data?.detail || 'Failed to update bug');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setStepsToReproduce(['']);
-    setExpectedBehavior('');
-    setActualBehavior('');
-    setSeverity('Medium');
-    setPriority('Medium');
-    setBugType('Functional');
-    setEnvironment('QA');
-    setBrowser('');
-    setOs('');
-    setVersion('');
-    setAssignedTo('');
     setErrors({});
-
     onClose();
   };
 
@@ -240,18 +158,13 @@ export const BugReportModal: React.FC<Props> = ({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`${colors.white} ${borderRadius.xl} ${modalShadow.base} w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden`}>
         {/* Header */}
-        <div className={`${modalSpacing.padding} border-b ${colors.status.error.gradient}`}>
+        <div className={`${modalSpacing.padding} border-b ${colors.brand.primary.gradient}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`${colors.status.error[100]} ${modalSpacing.padding} ${borderRadius.lg}`}>
-                <Bug size={24} className={colors.status.error.text600} />
-              </div>
-              <div>
-                <h2 className={`${titleTypography.className} ${colors.gray.text900}`}>Report Bug</h2>
-                <p className={`${subtitleTypography.className} ${colors.gray.text600} mt-1`}>
-                  Document a defect found during testing
-                </p>
-              </div>
+            <div>
+              <h2 className={`${titleTypography.className} ${colors.gray.text900}`}>Edit Bug Report</h2>
+              <p className={`${subtitleTypography.className} ${colors.gray.text600} mt-1`}>
+                Modify bug details - {bug.id}
+              </p>
             </div>
             <button
               onClick={handleClose}
@@ -265,28 +178,6 @@ export const BugReportModal: React.FC<Props> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6 max-w-3xl mx-auto">
-            {/* Context Info (if from execution) */}
-            {executionDetails && (
-              <div className={`${colors.brand.primary[50]} border ${colors.brand.primary.border200} ${borderRadius.lg} p-4`}>
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={20} className={`${colors.brand.primary.text600} mt-0.5 flex-shrink-0`} />
-                  <div className={subtitleTypography.className}>
-                    <p className={`font-medium ${colors.brand.primary.text900} mb-1`}>Pre-filled from Execution #{executionDetails.execution_id}</p>
-                    {scenarioName && (
-                      <p className={`${colors.brand.primary.text900} font-semibold mb-1`}>
-                        📋 Scenario: {scenarioName}
-                      </p>
-                    )}
-                    <p className={`${colors.brand.primary.text700}`}>
-                      {testCaseId && `Test Case: ${testCaseId} • `}
-                      Environment: {executionDetails.environment}
-                      {executionDetails.version && ` • Version: ${executionDetails.version}`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Title */}
             <div>
               <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
@@ -296,10 +187,10 @@ export const BugReportModal: React.FC<Props> = ({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.title ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
                 }`}
-                placeholder="Brief summary of the bug (e.g., 'Login button not working on mobile')"
+                placeholder="Brief summary of the bug"
               />
               {errors.title && (
                 <p className={`${colors.status.error.text600} ${subtitleTypography.className} mt-1`}>{errors.title}</p>
@@ -315,7 +206,7 @@ export const BugReportModal: React.FC<Props> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.description ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
                 }`}
                 placeholder="Detailed description of the issue..."
@@ -338,7 +229,7 @@ export const BugReportModal: React.FC<Props> = ({
                         type="text"
                         value={step}
                         onChange={(e) => handleStepChange(index, e.target.value)}
-                        className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                        className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                           errors.stepsToReproduce ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
                         }`}
                         placeholder={`Step ${index + 1}`}
@@ -378,7 +269,7 @@ export const BugReportModal: React.FC<Props> = ({
                   value={expectedBehavior}
                   onChange={(e) => setExpectedBehavior(e.target.value)}
                   rows={3}
-                  className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                  className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.expectedBehavior ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
                   }`}
                   placeholder="What should happen?"
@@ -396,7 +287,7 @@ export const BugReportModal: React.FC<Props> = ({
                   value={actualBehavior}
                   onChange={(e) => setActualBehavior(e.target.value)}
                   rows={3}
-                  className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                  className={`w-full px-4 py-2 border ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.actualBehavior ? `${colors.status.error.border300} ${colors.status.error[50]}` : colors.gray.border300
                   }`}
                   placeholder="What actually happens?"
@@ -416,7 +307,7 @@ export const BugReportModal: React.FC<Props> = ({
                 <select
                   value={severity}
                   onChange={(e) => setSeverity(e.target.value as BugSeverity)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 >
                   <option value="Critical">🔴 Critical - System crash, data loss</option>
                   <option value="High">🟠 High - Major functionality broken</option>
@@ -432,7 +323,7 @@ export const BugReportModal: React.FC<Props> = ({
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as BugPriority)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 >
                   <option value="Urgent">⚡ Urgent - Fix immediately</option>
                   <option value="High">🔥 High - Fix in current sprint</option>
@@ -450,7 +341,7 @@ export const BugReportModal: React.FC<Props> = ({
               <select
                 value={bugType}
                 onChange={(e) => setBugType(e.target.value as BugType)}
-                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               >
                 <option value="Functional">Functional - Feature not working</option>
                 <option value="UI/UX">UI/UX - Visual or layout issue</option>
@@ -463,64 +354,6 @@ export const BugReportModal: React.FC<Props> = ({
               </select>
             </div>
 
-            {/* Environment Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
-                  Environment <span className={colors.status.error.text500}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={environment}
-                  onChange={(e) => setEnvironment(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  placeholder="e.g., QA, Staging, Production"
-                />
-              </div>
-
-              <div>
-                <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
-                  Version
-                </label>
-                <input
-                  type="text"
-                  value={version}
-                  onChange={(e) => setVersion(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  placeholder="e.g., 1.2.3"
-                />
-              </div>
-            </div>
-
-            {/* Browser & OS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
-                  Browser
-                </label>
-                <input
-                  type="text"
-                  value={browser}
-                  onChange={(e) => setBrowser(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  placeholder="e.g., Chrome 120, Firefox 121"
-                />
-              </div>
-
-              <div>
-                <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
-                  Operating System
-                </label>
-                <input
-                  type="text"
-                  value={os}
-                  onChange={(e) => setOs(e.target.value)}
-                  className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  placeholder="e.g., Windows 11, macOS 14"
-                />
-              </div>
-            </div>
-
             {/* Assign To */}
             <div>
               <label className={`block ${labelTypography.className} ${colors.gray.text700} mb-2`}>
@@ -530,7 +363,7 @@ export const BugReportModal: React.FC<Props> = ({
                 type="text"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                className={`w-full px-4 py-2 border ${colors.gray.border300} ${borderRadius.lg} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="Email or name of assignee"
               />
             </div>
@@ -550,14 +383,14 @@ export const BugReportModal: React.FC<Props> = ({
           </Button>
           <Button
             type="submit"
-            variant="danger"
+            variant="primary"
             size="md"
             onClick={handleSubmit}
             disabled={isSubmitting}
             isLoading={isSubmitting}
-            leftIcon={!isSubmitting ? <Bug size={18} /> : undefined}
+            leftIcon={!isSubmitting ? <Save size={18} /> : undefined}
           >
-            {isSubmitting ? 'Creating Bug...' : 'Create Bug Report'}
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>

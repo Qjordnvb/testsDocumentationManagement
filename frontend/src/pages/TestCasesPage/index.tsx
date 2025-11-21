@@ -59,6 +59,8 @@ export const TestCasesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Typography presets
+
   // Validate project
   useEffect(() => {
     if (!projectId || !currentProject) {

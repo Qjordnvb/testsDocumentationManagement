@@ -21,6 +21,9 @@ import { useProject } from '@/app/providers/ProjectContext';
 import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
+import { EditBugModal } from '@/features/bug-management/ui';
+import { Button } from '@/shared/ui/Button';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
   Bug as BugIcon,
   AlertCircle,
@@ -33,7 +36,9 @@ import {
   PlayCircle,
   ArrowLeft,
   Edit,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Paperclip
 } from 'lucide-react';
 
 export const BugDetailsPage = () => {
@@ -50,6 +55,14 @@ export const BugDetailsPage = () => {
   // Test Runner Modal state
   const [showTestRunner, setShowTestRunner] = useState(false);
   const [gherkinContent, setGherkinContent] = useState<string>('');
+
+  // Edit Bug Modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Typography presets
+  const bodySmall = getTypographyPreset('bodySmall');
+  const body = getTypographyPreset('body');
+  const headingLarge = getTypographyPreset('headingLarge');
 
   // Validate project
   useEffect(() => {
@@ -275,7 +288,7 @@ export const BugDetailsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Cargando detalles del bug...</div>
+        <div className={`${body.className} ${colors.gray.text600}`}>Cargando detalles del bug...</div>
       </div>
     );
   }
@@ -283,13 +296,14 @@ export const BugDetailsPage = () => {
   if (error || !bug) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="text-red-600">Error: {error || 'Bug no encontrado'}</div>
-        <button
+        <div className={`${body.className} ${colors.status.error.text600}`}>Error: {error || 'Bug no encontrado'}</div>
+        <Button
+          variant="primary"
+          size="md"
           onClick={() => navigate(`/projects/${projectId}/bugs`)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Volver a Bugs
-        </button>
+        </Button>
       </div>
     );
   }
@@ -301,37 +315,39 @@ export const BugDetailsPage = () => {
         <div className="flex items-start gap-4">
           <button
             onClick={() => navigate(`/projects/${projectId}/bugs`)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`p-2 hover:bg-gray-100 ${borderRadius.lg} transition-colors`}
           >
             <ArrowLeft size={24} />
           </button>
           <div>
             <div className="flex items-center gap-3 mb-2">
               {getStatusIcon(bug.status)}
-              <h1 className="text-3xl font-bold text-gray-900">{bug.title}</h1>
+              <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900}`}>{bug.title}</h1>
             </div>
-            <p className="text-sm text-gray-600 font-mono">{bug.id}</p>
+            <p className={`${bodySmall.className} ${colors.gray.text600} font-mono`}>{bug.id}</p>
           </div>
         </div>
 
         {/* Action buttons */}
         <div className="flex items-center gap-3">
           {testCase && (
-            <button
+            <Button
+              variant="success"
+              size="md"
               onClick={handleRetest}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              leftIcon={<PlayCircle size={18} />}
             >
-              <PlayCircle size={18} />
               Re-ejecutar Test
-            </button>
+            </Button>
           )}
-          <button
-            onClick={() => toast('Edit functionality coming soon')}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={() => setShowEditModal(true)}
+            leftIcon={<Edit size={18} />}
           >
-            <Edit size={18} />
             Editar
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -559,6 +575,74 @@ export const BugDetailsPage = () => {
         </div>
       </div>
 
+      {/* Evidence & Attachments */}
+      {bug.attachments && bug.attachments.length > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <ImageIcon size={18} />
+            Evidencia ({bug.attachments.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bug.attachments.map((attachment, index) => {
+              // Check if it's an image file
+              const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment);
+
+              if (isImage) {
+                return (
+                  <div key={index} className="group relative">
+                    <div className={`${borderRadius.lg} overflow-hidden border ${colors.gray.border200} hover:border-blue-400 transition-all hover:shadow-lg`}>
+                      <img
+                        src={`/api/v1${attachment}`}
+                        alt={`Evidence ${index + 1}`}
+                        className="w-full h-48 object-cover"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
+                        }}
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a
+                          href={`/api/v1${attachment}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`px-2 py-1 ${colors.white} ${colors.brand.primary[600]} ${borderRadius.base} text-xs font-medium hover:bg-blue-700 shadow-md`}
+                        >
+                          Ver completa
+                        </a>
+                      </div>
+                    </div>
+                    <p className={`${bodySmall.className} ${colors.gray.text600} mt-1 truncate`}>
+                      {attachment.split('/').pop()}
+                    </p>
+                  </div>
+                );
+              } else {
+                // Non-image attachment (file)
+                return (
+                  <div key={index} className={`p-4 border ${colors.gray.border200} ${borderRadius.lg} hover:border-blue-400 hover:bg-gray-50 transition-all`}>
+                    <a
+                      href={`/api/v1${attachment}`}
+                      download
+                      className="flex items-center gap-3 group"
+                    >
+                      <Paperclip size={20} className={colors.gray.text500} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`${bodySmall.className} ${colors.gray.text900} font-medium truncate group-hover:text-blue-600`}>
+                          {attachment.split('/').pop()}
+                        </p>
+                        <p className={`text-xs ${colors.gray.text500}`}>
+                          Click para descargar
+                        </p>
+                      </div>
+                    </a>
+                  </div>
+                );
+              }
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Test Runner Modal */}
       {testCase && projectId && (
         <TestRunnerModal
@@ -570,6 +654,20 @@ export const BugDetailsPage = () => {
           projectId={projectId}
           userStoryId={bug?.user_story_id}
           onSave={handleTestExecutionComplete}
+        />
+      )}
+
+      {/* Edit Bug Modal */}
+      {bug && (
+        <EditBugModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          bug={bug}
+          onSuccess={(updatedBug) => {
+            setBug(updatedBug);
+            setShowEditModal(false);
+            toast.success('Bug actualizado exitosamente');
+          }}
         />
       )}
     </div>

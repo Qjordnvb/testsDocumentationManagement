@@ -1,32 +1,25 @@
 /**
  * Badge Component - Design System
  * Reusable badge for status, priority, and labels
+ *
+ * Now uses centralized design tokens from @/shared/design-system/tokens
  */
 
 import type { ReactNode } from 'react';
+import {
+  getBadgeVariantClasses,
+  getComponentSpacing,
+  borderRadius,
+} from '@/shared/design-system/tokens';
+import type { BadgeVariant } from '@/shared/design-system/tokens';
 
 export interface BadgeProps {
   children: ReactNode;
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
+  variant?: BadgeVariant;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   icon?: ReactNode;
 }
-
-const variantClasses = {
-  default: 'bg-gray-100 text-gray-700 border-gray-300',
-  primary: 'bg-blue-100 text-blue-700 border-blue-300',
-  success: 'bg-green-100 text-green-700 border-green-300',
-  warning: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  danger: 'bg-red-100 text-red-700 border-red-300',
-  info: 'bg-purple-100 text-purple-700 border-purple-300',
-};
-
-const sizeClasses = {
-  sm: 'px-2 py-0.5 text-xs',
-  md: 'px-2.5 py-1 text-sm',
-  lg: 'px-3 py-1.5 text-base',
-};
 
 export const Badge = ({
   children,
@@ -35,15 +28,34 @@ export const Badge = ({
   className = '',
   icon,
 }: BadgeProps) => {
+  // Get design tokens
+  const variantClasses = getBadgeVariantClasses(variant);
+  const sizeMap = {
+    sm: 'badgeSmall',
+    md: 'badgeMedium',
+    lg: 'badgeLarge',
+  };
+  const spacing = getComponentSpacing(sizeMap[size]);
+
+  // Font size mapping
+  const fontSizeMap = {
+    sm: 'text-xs',
+    md: 'text-sm',
+    lg: 'text-base',
+  };
+
+  const combinedClasses = `
+    inline-flex items-center font-medium border
+    ${borderRadius.full}
+    ${spacing.padding}
+    ${spacing.gap}
+    ${fontSizeMap[size]}
+    ${variantClasses}
+    ${className}
+  `.replace(/\s+/g, ' ').trim();
+
   return (
-    <span
-      className={`
-        inline-flex items-center gap-1 font-medium rounded-full border
-        ${variantClasses[variant]}
-        ${sizeClasses[size]}
-        ${className}
-      `}
-    >
+    <span className={combinedClasses}>
       {icon && <span className="flex-shrink-0">{icon}</span>}
       {children}
     </span>

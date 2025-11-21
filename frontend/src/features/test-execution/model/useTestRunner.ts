@@ -67,10 +67,16 @@ export const useTestRunner = (initialScenarios: GherkinScenario[]) => {
       prevScenarios.map((scenario, idx) => {
         if (idx !== scenarioIndex) return scenario;
 
-        // Update step status
-        const updatedSteps = scenario.steps.map((step: GherkinStep) =>
-          step.id === stepId ? { ...step, status } : step
-        );
+        // Update step status with TOGGLE functionality
+        // If step already has this status, reset to 'pending' (allows unchecking)
+        const updatedSteps = scenario.steps.map((step: GherkinStep) => {
+          if (step.id === stepId) {
+            const newStatus: 'passed' | 'failed' | 'pending' =
+              step.status === status ? 'pending' : status;
+            return { ...step, status: newStatus };
+          }
+          return step;
+        });
 
         // Note: We do NOT auto-skip subsequent steps when one fails
         // QA must be able to execute and mark all steps independently

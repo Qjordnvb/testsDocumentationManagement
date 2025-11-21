@@ -51,6 +51,8 @@ export const BugsPage = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
 
+  // Typography presets
+
   // Validate project
   useEffect(() => {
     if (!projectId || !currentProject) {

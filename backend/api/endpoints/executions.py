@@ -7,11 +7,12 @@ import os
 import json
 from datetime import datetime
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
 
 # Imports del proyecto (Asegúrate que las rutas sean correctas desde este nivel)
 from backend.database import get_db, TestCaseDB, TestExecutionDB
 from backend.models import TestStatus
-from backend.models.test_case import TestExecutionCreate, TestExecutionCreate
+from backend.models.test_case import TestExecutionCreate
 from backend.config import settings
 
 router = APIRouter()
@@ -64,11 +65,20 @@ async def upload_evidence(
 
 @router.post("/test-executions")
 async def create_test_execution(
-    execution_data: TestExecutionCreate,
+    execution_data: TestExecutionCreate,  # ✅ Pydantic valida automáticamente
     db: Session = Depends(get_db)
 ):
     """
-    Save a detailed test execution result and update the parent Test Case
+    Save a detailed test execution result and update the parent Test Case.
+
+    VALIDACIÓN AUTOMÁTICA (Pydantic):
+    - scenario_name es REQUERIDO en todos los steps
+    - keyword debe ser: Given, When, Then, And, But
+    - step_index debe ser >= 0 y único
+    - step_results debe tener al menos 1 item
+    - text y scenario_name no pueden estar vacíos
+
+    Si la validación falla, Pydantic retorna 422 automáticamente con detalles del error.
     """
     try:
         # Debug: Log received data
@@ -119,7 +129,7 @@ async def create_test_execution(
             failed_steps=failed_steps,
             total_steps=total_steps,
             step_results=serialized_steps,
-            evidence_files=json.dumps(execution_data.evidence_files),
+            evidence_files=json.dumps(execution_data.evidence_files) if execution_data.evidence_files else None,
             notes=execution_data.notes,
             failure_reason=execution_data.failure_reason,
             bug_ids=",".join(execution_data.bug_ids) if execution_data.bug_ids else None
