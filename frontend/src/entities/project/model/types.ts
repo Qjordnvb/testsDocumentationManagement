@@ -52,6 +52,7 @@ export interface ProjectStats {
   total_user_stories: number;
   total_test_cases: number;
   total_bugs: number;
+  test_coverage: number;  // Percentage of stories with at least 1 test case
   stories_by_status: Record<string, number>;
   timestamp: string;
 }

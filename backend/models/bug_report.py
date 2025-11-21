@@ -93,6 +93,10 @@ class BugReport(BaseModel):
     # Relationships
     user_story_id: Optional[str] = None
     test_case_id: Optional[str] = None
+    scenario_name: Optional[str] = Field(
+        default=None,
+        description="Specific scenario that failed (e.g., 'Valid user login')"
+    )
     related_bugs: List[str] = Field(
         default_factory=list,
         description="Related bug IDs"

@@ -6,6 +6,11 @@
 import { useState, useEffect } from 'react';
 import { Save, X, FileText } from 'lucide-react';
 import { Button } from '../Button';
+import {
+  colors,
+  borderRadius,
+  getTypographyPreset,
+} from '@/shared/design-system/tokens';
 
 interface GherkinEditorProps {
   testCaseId?: string;
@@ -60,22 +65,26 @@ export const GherkinEditor = ({
     onCancel();
   };
 
+  // Get design tokens
+  const bodySmall = getTypographyPreset('bodySmall');
+  const code = getTypographyPreset('code');
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+      <div className={`flex items-center justify-between p-4 border-b ${colors.gray.border200} ${colors.gray[50]}`}>
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-600" />
-          <h3 className="text-sm font-medium text-gray-900">
+          <FileText className={`w-5 h-5 ${colors.gray.text600}`} />
+          <h3 className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>
             Editor Gherkin
           </h3>
           {hasChanges && (
-            <span className="px-2 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-800">
+            <span className={`px-2 py-0.5 ${bodySmall.className} font-medium ${borderRadius.base} ${colors.status.warning[100]} ${colors.status.warning.text800}`}>
               Sin guardar
             </span>
           )}
           {readOnly && (
-            <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700">
+            <span className={`px-2 py-0.5 ${bodySmall.className} font-medium ${borderRadius.base} ${colors.gray[100]} ${colors.gray.text700}`}>
               Solo lectura
             </span>
           )}
@@ -107,8 +116,8 @@ export const GherkinEditor = ({
 
       {/* Error message */}
       {saveError && (
-        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800">{saveError}</p>
+        <div className={`mx-4 mt-4 p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+          <p className={`${bodySmall.className} ${colors.status.error.text800}`}>{saveError}</p>
         </div>
       )}
 
@@ -119,10 +128,10 @@ export const GherkinEditor = ({
           onChange={(e) => setContent(e.target.value)}
           readOnly={readOnly}
           className={`
-            w-full h-full min-h-[400px] p-4 font-mono text-sm
-            border border-gray-300 rounded-lg
+            w-full h-full min-h-[400px] p-4 ${code.className} ${code.fontSize}
+            border ${colors.gray.border300} ${borderRadius.lg}
             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-            ${readOnly ? 'bg-gray-50 text-gray-700' : 'bg-white text-gray-900'}
+            ${readOnly ? `${colors.gray[50]} ${colors.gray.text700}` : `${colors.white} ${colors.gray.text900}`}
           `}
           placeholder="# language: es
 Feature: Nombre de la característica
@@ -136,12 +145,12 @@ Feature: Nombre de la característica
       </div>
 
       {/* Info footer */}
-      <div className="p-3 border-t border-gray-200 bg-gray-50">
-        <p className="text-xs text-gray-600">
+      <div className={`p-3 border-t ${colors.gray.border200} ${colors.gray[50]}`}>
+        <p className={`${bodySmall.className} ${colors.gray.text600}`}>
           💡 Formato Gherkin: Feature → Scenario → Given/When/Then
         </p>
         {!readOnly && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className={`${bodySmall.className} ${colors.gray.text500} mt-1`}>
             Los cambios se guardarán en el archivo .feature asociado al test case.
           </p>
         )}

@@ -22,7 +22,7 @@ class GeminiClient:
         # This reduces input token costs by 75% for cached portions
         try:
             self.cached_prompt = caching.CachedContent.create(
-                model="models/gemini-2.5-flash-001",
+                model="models/gemini-2.5-flash",
                 display_name="qa_senior_prompt_v1",
                 system_instruction=self._get_static_system_instruction(),
                 ttl=timedelta(hours=24)
@@ -37,20 +37,20 @@ class GeminiClient:
             self.model = genai.GenerativeModel.from_cached_content(
                 cached_content=self.cached_prompt,
                 generation_config={
-                    "temperature": 0.7,
+                    "temperature": 0.5,
                     "top_p": 0.95,
                     "top_k": 40,
-                    "max_output_tokens": 16384,
+                    "max_output_tokens": 65536,
                 }
             )
         else:
             self.model = genai.GenerativeModel(
                 "gemini-2.5-flash",
                 generation_config={
-                    "temperature": 0.7,
+                    "temperature": 0.5,
                     "top_p": 0.95,
                     "top_k": 40,
-                    "max_output_tokens": 16384,
+                    "max_output_tokens": 65536,
                 }
             )
 

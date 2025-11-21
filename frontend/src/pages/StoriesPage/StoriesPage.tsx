@@ -14,6 +14,7 @@ import { storyApi } from '@/entities/user-story';
 import { useProject } from '@/app/providers/ProjectContext';
 import type { UserStory } from '@/entities/user-story';
 import { Upload, RefreshCw, AlertCircle } from 'lucide-react';
+import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const StoriesPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -73,6 +74,8 @@ export const StoriesPage = () => {
     loadStories();
   };
 
+  const bodySmall = getTypographyPreset('bodySmall');
+
   return (
     <PageLayout
       title="User Stories"
@@ -100,7 +103,7 @@ export const StoriesPage = () => {
         </div>
 
         {stories.length > 0 && (
-          <div className="text-sm text-gray-600">
+          <div className={`${bodySmall.className} ${colors.gray.text600}`}>
             {stories.length} {stories.length === 1 ? 'historia' : 'historias'}
           </div>
         )}
@@ -108,11 +111,11 @@ export const StoriesPage = () => {
 
       {/* Error state */}
       {error && (
-        <div className="flex items-start gap-3 p-4 mb-6 bg-red-50 border border-red-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className={`flex items-start gap-3 p-4 mb-6 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
+          <AlertCircle className={`w-5 h-5 ${colors.status.error.text600} flex-shrink-0 mt-0.5`} />
           <div>
-            <p className="text-sm font-medium text-red-900">Error</p>
-            <p className="text-sm text-red-700">{error}</p>
+            <p className={`${bodySmall.className} font-medium ${colors.status.error.text900}`}>Error</p>
+            <p className={`${bodySmall.className} ${colors.status.error.text700}`}>{error}</p>
           </div>
         </div>
       )}

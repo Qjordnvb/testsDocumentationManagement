@@ -207,12 +207,14 @@ class BugReportGenerator:
             env_table.rows[i].cells[0].paragraphs[0].runs[0].font.bold = True
 
         # Related information
-        if bug.user_story_id or bug.test_case_id:
+        if bug.user_story_id or bug.test_case_id or bug.scenario_name:
             doc.add_heading("7. Related Items", level=1)
             if bug.user_story_id:
                 doc.add_paragraph(f"User Story: {bug.user_story_id}")
             if bug.test_case_id:
                 doc.add_paragraph(f"Test Case: {bug.test_case_id}")
+            if bug.scenario_name:
+                doc.add_paragraph(f"Scenario: {bug.scenario_name}")
             if bug.related_bugs:
                 doc.add_paragraph(f"Related Bugs: {', '.join(bug.related_bugs)}")
 
@@ -259,7 +261,7 @@ class BugReportGenerator:
         self, bugs: List[BugReport], output_dir: str, filename: str = "BugSummaryReport.docx"
     ) -> str:
         """
-        Generate a summary report of multiple bugs
+        Generate a summary report of multiple bugs grouped by Test Case and Scenario
 
         Args:
             bugs: List of BugReport objects
@@ -283,8 +285,8 @@ class BugReportGenerator:
         date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         # Summary statistics
-        doc.add_heading("Summary", level=1)
-        doc.add_paragraph(f"Total Bugs: {len(bugs)}")
+        doc.add_heading("Executive Summary", level=1)
+        doc.add_paragraph(f"Total Bugs Reported: {len(bugs)}")
 
         # Count by severity
         severity_counts = self._count_by_attribute(bugs, "severity")
@@ -304,33 +306,60 @@ class BugReportGenerator:
         for status, count in status_counts.items():
             doc.add_paragraph(f"  • {status}: {count}", style="List Bullet 2")
 
-        # Detailed bug list
-        doc.add_heading("Detailed Bug List", level=1)
+        # Group bugs by test_case_id and scenario_name
+        grouped_bugs = self._group_bugs_by_test_case_and_scenario(bugs)
 
-        # Create table
-        table = doc.add_table(rows=1, cols=6)
-        table.style = "Light Grid Accent 1"
+        # Detailed bug list (grouped)
+        doc.add_heading("Bugs by Test Case and Scenario", level=1)
 
-        # Header row
-        headers = ["ID", "Title", "Severity", "Priority", "Status", "Type"]
-        header_cells = table.rows[0].cells
-        for i, header in enumerate(headers):
-            header_cells[i].text = header
-            header_cells[i].paragraphs[0].runs[0].font.bold = True
+        if not grouped_bugs:
+            doc.add_paragraph("No bugs to display.")
+        else:
+            for test_case_id, scenarios in sorted(grouped_bugs.items()):
+                # Test Case heading
+                doc.add_heading(f"Test Case: {test_case_id}", level=2)
 
-        # Add bugs
-        for bug in bugs:
-            row_cells = table.add_row().cells
-            row_cells[0].text = bug.id or "TBD"
-            row_cells[1].text = bug.title[:50] + "..." if len(bug.title) > 50 else bug.title
-            row_cells[2].text = bug.severity.value
-            row_cells[3].text = bug.priority.value
-            row_cells[4].text = bug.status.value
-            row_cells[5].text = bug.bug_type.value
+                for scenario_name, scenario_bugs in sorted(scenarios.items()):
+                    # Scenario subheading
+                    scenario_heading = doc.add_heading(f"Scenario: {scenario_name}", level=3)
+                    scenario_heading.paragraph_format.left_indent = Inches(0.25)
+
+                    # Bugs count
+                    doc.add_paragraph(f"({len(scenario_bugs)} bug{'s' if len(scenario_bugs) > 1 else ''})")
+
+                    # Create table for this scenario's bugs
+                    table = doc.add_table(rows=1, cols=7)
+                    table.style = "Light Grid Accent 1"
+
+                    # Header row
+                    headers = ["ID", "Title", "Severity", "Priority", "Status", "Type", "Reported By"]
+                    header_cells = table.rows[0].cells
+                    for i, header in enumerate(headers):
+                        header_cells[i].text = header
+                        header_cells[i].paragraphs[0].runs[0].font.bold = True
+
+                    # Add bugs for this scenario
+                    for bug in scenario_bugs:
+                        row_cells = table.add_row().cells
+                        row_cells[0].text = bug.id or "TBD"
+                        row_cells[1].text = bug.title[:40] + "..." if len(bug.title) > 40 else bug.title
+                        row_cells[2].text = bug.severity.value
+                        # Color code severity
+                        severity_run = row_cells[2].paragraphs[0].runs[0]
+                        severity_run.font.color.rgb = self._get_severity_color(bug.severity)
+                        severity_run.font.bold = True
+                        row_cells[3].text = bug.priority.value
+                        row_cells[4].text = bug.status.value
+                        row_cells[5].text = bug.bug_type.value
+                        row_cells[6].text = bug.reported_by or "N/A"
+
+                    doc.add_paragraph()  # Add spacing between scenarios
 
         # Footer
         doc.add_paragraph()
-        footer = doc.add_paragraph("Generated by QA Documentation Automation System")
+        footer = doc.add_paragraph(
+            f"Generated by QA Documentation Automation System • {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
         footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
         footer.runs[0].font.size = Pt(9)
         footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
@@ -340,6 +369,24 @@ class BugReportGenerator:
         doc.save(str(file_path))
 
         return str(file_path)
+
+    def _group_bugs_by_test_case_and_scenario(self, bugs: List[BugReport]) -> dict:
+        """
+        Group bugs by test_case_id and scenario_name
+
+        Returns:
+            Dict structure: {test_case_id: {scenario_name: [bugs]}}
+        """
+        from collections import defaultdict
+
+        grouped = defaultdict(lambda: defaultdict(list))
+
+        for bug in bugs:
+            test_case_id = bug.test_case_id if bug.test_case_id else "No Test Case"
+            scenario_name = bug.scenario_name if bug.scenario_name else "No Scenario"
+            grouped[test_case_id][scenario_name].append(bug)
+
+        return dict(grouped)
 
     def _get_severity_color(self, severity: BugSeverity) -> RGBColor:
         """Get color for severity level"""

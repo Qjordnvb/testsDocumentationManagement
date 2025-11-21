@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { Sidebar } from '@/widgets/sidebar/Sidebar';
 import { Header } from './Header';
 import { useAppStore } from '@/app/providers/appStore';
+import { colors } from '@/shared/design-system/tokens';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,7 +17,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const { sidebarCollapsed } = useAppStore();
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className={`flex h-screen ${colors.gray[50]}`}>
       {/* Sidebar */}
       <Sidebar />
 

@@ -151,6 +151,46 @@ export const apiService = {
     return data;
   },
 
+
+  // ==================== Test Execution (NUEVO - SPRINT 1) ====================
+
+  // Guardar una ejecución de prueba
+  createTestExecution: async (payload: any): Promise<any> => {
+    const { data } = await api.post('/test-executions', payload);
+    return data;
+  },
+
+  // Subir evidencia (screenshot/video)
+  uploadEvidence: async (file: File, projectId: string, entityType: 'execution' | 'bug'): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Nota: Los params van en la URL o query params según tu backend endpoints/executions.py
+    const { data } = await api.post('/upload-evidence', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      params: { project_id: projectId, entity_type: entityType }
+    });
+    return data;
+  },
+
+  // Get execution history for a test case
+  getTestCaseExecutions: async (testCaseId: string, limit: number = 10): Promise<any> => {
+    const { data } = await api.get(`/test-cases/${testCaseId}/executions`, {
+      params: { limit }
+    });
+    return data;
+  },
+
+  // Get detailed execution information
+  getExecutionDetails: async (executionId: number): Promise<any> => {
+    const { data } = await api.get(`/test-executions/${executionId}`);
+    return data;
+  },
+
+  // Get evidence file URL
+  getEvidenceUrl: (filePath: string): string => {
+    return `/api/v1/evidence/${filePath}`;
+  },
+
   // ==================== File Downloads ====================
 
   // Download generated file
@@ -158,6 +198,37 @@ export const apiService = {
     const { data } = await api.get(`/download/${filename}`, {
       responseType: 'blob',
     });
+    return data;
+  },
+
+  // ==================== Reports ====================
+
+  // Download Bug Summary Report (Word)
+  downloadBugSummaryReport: async (projectId: string): Promise<Blob> => {
+    const { data } = await api.get(`/projects/${projectId}/reports/bug-summary`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
+  // Download Test Execution Summary Report (Word)
+  downloadTestExecutionSummary: async (projectId: string): Promise<Blob> => {
+    const { data } = await api.get(`/projects/${projectId}/reports/test-execution-summary`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
+  // Generate and download Test Plan Document
+  downloadTestPlan: async (projectId: string, format: 'pdf' | 'docx' = 'pdf'): Promise<Blob> => {
+    const { data } = await api.post(
+      `/generate-test-plan`,
+      null,
+      {
+        params: { project_id: projectId, format },
+        responseType: 'blob',
+      }
+    );
     return data;
   },
 };
