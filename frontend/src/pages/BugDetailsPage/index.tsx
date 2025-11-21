@@ -592,17 +592,18 @@ export const BugDetailsPage = () => {
                   <div key={index} className="group relative">
                     <div className={`${borderRadius.lg} overflow-hidden border ${colors.gray.border200} hover:border-blue-400 transition-all hover:shadow-lg`}>
                       <img
-                        src={`/api/v1${attachment}`}
+                        src={`/api/v1/evidence/${attachment}`}
                         alt={`Evidence ${index + 1}`}
                         className="w-full h-48 object-cover"
                         onError={(e) => {
                           // Fallback if image fails to load
+                          console.error(`Failed to load image: /api/v1/evidence/${attachment}`);
                           e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
                         }}
                       />
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a
-                          href={`/api/v1${attachment}`}
+                          href={`/api/v1/evidence/${attachment}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`px-2 py-1 ${colors.white} ${colors.brand.primary[600]} ${borderRadius.base} text-xs font-medium hover:bg-blue-700 shadow-md`}
@@ -621,7 +622,7 @@ export const BugDetailsPage = () => {
                 return (
                   <div key={index} className={`p-4 border ${colors.gray.border200} ${borderRadius.lg} hover:border-blue-400 hover:bg-gray-50 transition-all`}>
                     <a
-                      href={`/api/v1${attachment}`}
+                      href={`/api/v1/evidence/${attachment}`}
                       download
                       className="flex items-center gap-3 group"
                     >
