@@ -7,7 +7,7 @@ import { ConfirmModal } from '@/shared/ui';
 import { BugReportModal } from '@/features/bug-management/ui/BugReportModal';
 import { ScenarioList, ScenarioCard, StepExecutionItem } from '@/shared/design-system/components/composite';
 import { Button } from '@/shared/ui/Button';
-import { colors, getStatusClasses, borderRadius } from '@/shared/design-system/tokens';
+import { colors, borderRadius } from '@/shared/design-system/tokens';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -34,7 +34,7 @@ export const TestRunnerModal: React.FC<Props> = ({
 
   const {
     scenarios, isRunning, elapsedSeconds, executionStatus, evidenceMap,
-    expandedScenarios, startExecution, pauseExecution, toggleScenario, markStep, addEvidence, removeEvidence
+    startExecution, pauseExecution, markStep, addEvidence, removeEvidence
   } = useTestRunner(parsedFeature.scenarios);
 
   const [isSaving, setIsSaving] = useState(false);

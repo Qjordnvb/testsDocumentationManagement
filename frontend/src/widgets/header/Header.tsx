@@ -10,7 +10,6 @@ export const Header = () => {
   const { currentProject } = useProject();
 
   const bodySmall = getTypographyPreset('bodySmall');
-  const body = getTypographyPreset('body');
   const headingMedium = getTypographyPreset('headingMedium');
 
   return (

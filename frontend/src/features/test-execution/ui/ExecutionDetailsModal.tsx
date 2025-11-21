@@ -5,7 +5,7 @@ import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-exec
 import { BugReportModal } from '@/features/bug-management/ui';
 import { ScenarioList, ScenarioCard, StepExecutionItem } from '@/shared/design-system/components/composite';
 import { Button } from '@/shared/ui/Button';
-import { colors, getBadgeVariantClasses, borderRadius } from '@/shared/design-system/tokens';
+import { colors, borderRadius } from '@/shared/design-system/tokens';
 import toast from 'react-hot-toast';
 
 interface Props {

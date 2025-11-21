@@ -11,7 +11,7 @@ import {
   getComponentSpacing,
   getComponentShadow,
   borderRadius,
-  getSeverityClasses,
+
 } from '@/shared/design-system/tokens';
 
 interface Props {

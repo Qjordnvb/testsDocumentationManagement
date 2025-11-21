@@ -132,8 +132,6 @@ export const GenerateModal = ({
 
   // Get design tokens
   const bodySmall = getTypographyPreset('bodySmall');
-  const bodyText = getTypographyPreset('body');
-  const labelText = getTypographyPreset('label');
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Generar Test Cases con IA">

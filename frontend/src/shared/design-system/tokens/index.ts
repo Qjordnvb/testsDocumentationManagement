@@ -104,7 +104,7 @@ export type {
 // COMBINED UTILITY FUNCTIONS
 // ============================================================================
 
-import type { ExecutionStatus, StatusClasses } from './colors';
+import type { ExecutionStatus } from './colors';
 import { getStatusClasses, colors } from './colors';
 import { getComponentSpacing, spacing } from './spacing';
 import { getComponentShadow, shadows } from './shadows';
@@ -210,7 +210,6 @@ export const getModalClasses = (size: 'sm' | 'md' | 'lg' | 'xl' | 'full' = 'md')
   };
 
   const shadow = getComponentShadow('modal');
-  const spacing = getComponentSpacing('modal');
 
   return `bg-white ${sizeMap[size]} w-full mx-4 max-h-[90vh] ${shadow.base} rounded-xl flex flex-col`;
 };

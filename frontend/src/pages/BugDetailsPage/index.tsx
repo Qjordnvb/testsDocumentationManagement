@@ -55,7 +55,6 @@ export const BugDetailsPage = () => {
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
   const body = getTypographyPreset('body');
-  const headingMedium = getTypographyPreset('headingMedium');
   const headingLarge = getTypographyPreset('headingLarge');
 
   // Validate project

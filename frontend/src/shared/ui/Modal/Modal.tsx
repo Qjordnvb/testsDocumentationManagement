@@ -15,7 +15,7 @@ import {
   containerWidth,
   borderRadius,
   colors,
-  gap,
+
 } from '@/shared/design-system/tokens';
 
 export interface ModalProps {

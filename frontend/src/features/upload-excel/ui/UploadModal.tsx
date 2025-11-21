@@ -141,7 +141,6 @@ export const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) =>
 
   // Get design tokens
   const bodySmall = getTypographyPreset('bodySmall');
-  const bodyText = getTypographyPreset('body');
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Subir Excel/CSV">

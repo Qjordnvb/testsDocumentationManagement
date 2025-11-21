@@ -10,7 +10,7 @@ import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
 import { UploadModal } from '@/features/upload-excel';
 import { useProject } from '@/app/providers/ProjectContext';
 import { projectApi, type ProjectStats } from '@/entities/project';
-import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 
 export const Dashboard = () => {
   const navigate = useNavigate();

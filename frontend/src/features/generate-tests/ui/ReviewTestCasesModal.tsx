@@ -108,8 +108,6 @@ export const ReviewTestCasesModal = ({
 
   // Get design tokens
   const bodySmall = getTypographyPreset('bodySmall');
-  const bodyText = getTypographyPreset('body');
-  const labelText = getTypographyPreset('label');
 
   return (
     <Modal

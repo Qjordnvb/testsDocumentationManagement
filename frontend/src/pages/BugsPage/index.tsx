@@ -15,7 +15,6 @@ import toast from 'react-hot-toast';
 import { bugApi } from '@/entities/bug';
 import { useProject } from '@/app/providers/ProjectContext';
 import type { Bug, BugSeverity, BugPriority, BugStatus, TestCaseGroup } from '@/entities/bug';
-import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
   Bug as BugIcon,
   Search,
@@ -53,10 +52,6 @@ export const BugsPage = () => {
   const [selectedType, setSelectedType] = useState<string>('ALL');
 
   // Typography presets
-  const bodySmall = getTypographyPreset('bodySmall');
-  const body = getTypographyPreset('body');
-  const headingMedium = getTypographyPreset('headingMedium');
-  const headingLarge = getTypographyPreset('headingLarge');
 
   // Validate project
   useEffect(() => {
