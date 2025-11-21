@@ -12,7 +12,8 @@
 // ============================================================================
 
 export const fontFamily = {
-  sans: 'font-sans',        // System UI fonts
+  sans: 'font-sans',        // Inter - Clean, modern UI
+  heading: 'font-heading',  // Space Grotesk - Bold, distinctive headings
   mono: 'font-mono',        // Monospace for code
 } as const;
 
@@ -68,36 +69,36 @@ export interface TypographyPreset {
 }
 
 const typographyPresets: Record<string, TypographyPreset> = {
-  // Headings
+  // Headings - Using Space Grotesk for memorable, bold identity
   h1: {
+    fontSize: fontSize['5xl'],
+    fontWeight: fontWeight.bold,
+    lineHeight: lineHeight.tight,
+    className: 'text-5xl font-heading font-bold leading-tight tracking-tight',
+  },
+  h2: {
     fontSize: fontSize['4xl'],
     fontWeight: fontWeight.bold,
     lineHeight: lineHeight.tight,
-    className: 'text-4xl font-bold leading-tight',
-  },
-  h2: {
-    fontSize: fontSize['3xl'],
-    fontWeight: fontWeight.bold,
-    lineHeight: lineHeight.tight,
-    className: 'text-3xl font-bold leading-tight',
+    className: 'text-4xl font-heading font-bold leading-tight tracking-tight',
   },
   h3: {
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize['3xl'],
     fontWeight: fontWeight.bold,
     lineHeight: lineHeight.snug,
-    className: 'text-2xl font-bold leading-snug',
+    className: 'text-3xl font-heading font-bold leading-snug tracking-tight',
   },
   h4: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    lineHeight: lineHeight.snug,
-    className: 'text-xl font-bold leading-snug',
-  },
-  h5: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize['2xl'],
     fontWeight: fontWeight.semibold,
     lineHeight: lineHeight.snug,
-    className: 'text-lg font-semibold leading-snug',
+    className: 'text-2xl font-heading font-semibold leading-snug',
+  },
+  h5: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.semibold,
+    lineHeight: lineHeight.snug,
+    className: 'text-xl font-heading font-semibold leading-snug',
   },
 
   // Body Text
@@ -200,7 +201,7 @@ export const scenarioTypography = {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
     lineHeight: lineHeight.snug,
-    className: 'text-lg font-semibold leading-snug',
+    className: 'text-lg font-heading font-semibold leading-snug',
   },
 
   // Scenario Metadata (tags, counts)
@@ -278,18 +279,18 @@ export const getScenarioTypography = (
 export const modalTypography = {
   // Modal Title
   modalTitle: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize['2xl'],
     fontWeight: fontWeight.bold,
     lineHeight: lineHeight.tight,
-    className: 'text-xl font-bold leading-tight',
+    className: 'text-2xl font-heading font-bold leading-tight',
   },
 
   // Modal Section Title
   modalSectionTitle: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
     lineHeight: lineHeight.snug,
-    className: 'text-base font-semibold leading-snug',
+    className: 'text-lg font-heading font-semibold leading-snug',
   },
 
   // Form Label

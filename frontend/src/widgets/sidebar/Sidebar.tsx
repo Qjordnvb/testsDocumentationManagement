@@ -70,7 +70,7 @@ export const Sidebar = () => {
   };
 
   const bodySmall = getTypographyPreset('bodySmall');
-  const headingMedium = getTypographyPreset('headingMedium');
+  const h4 = getTypographyPreset('h4');
 
   return (
     <aside
@@ -82,7 +82,7 @@ export const Sidebar = () => {
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         {!sidebarCollapsed && (
           <div className="flex-1">
-            <h1 className={`${headingMedium.className} font-bold`}>🎯 QA Flow</h1>
+            <h1 className={`${h4.className} text-white`}>🎯 QA Flow</h1>
             {projectId && currentProject ? (
               <p className={`${bodySmall.className} text-white/70 mt-1 truncate`}>
                 {currentProject.name}
@@ -97,7 +97,7 @@ export const Sidebar = () => {
         {sidebarCollapsed && <span className="text-2xl">🎯</span>}
         <button
           onClick={toggleSidebar}
-          className={`p-2 ${borderRadius.lg} hover:bg-white/10 transition-colors`}
+          className={`p-2 ${borderRadius.lg} hover:bg-blue-600/20 hover:scale-110 transition-all duration-200`}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {sidebarCollapsed ? '→' : '←'}
@@ -163,12 +163,12 @@ export const Sidebar = () => {
                     key={project.id}
                     to={`/projects/${project.id}/dashboard`}
                     onClick={() => handleProjectClick(project)}
-                    className={`block p-3 ${borderRadius.lg} hover:bg-white/10 transition-colors group`}
+                    className={`block p-3 ${borderRadius.lg} hover:bg-purple-600/20 hover:translate-x-1 transition-all duration-200 group`}
                   >
-                    <div className={`font-medium ${colors.white} group-hover:text-white/90 truncate`}>
+                    <div className={`font-medium ${colors.white} group-hover:text-white truncate`}>
                       {project.name}
                     </div>
-                    <div className={`${bodySmall.className} text-white/50 mt-0.5 truncate`}>
+                    <div className={`${bodySmall.className} text-white/50 group-hover:text-white/70 mt-0.5 truncate`}>
                       {project.id} • {project.total_test_cases} tests
                     </div>
                   </Link>
