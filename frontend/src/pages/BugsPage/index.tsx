@@ -74,11 +74,14 @@ export const BugsPage = () => {
       // Load both list and grouped data
       const [bugsData, groupedData] = await Promise.all([
         bugApi.getAll({ project_id: projectId }),
-        bugApi.getGrouped(projectId)
+        bugApi.getGrouped(projectId).catch(err => {
+          console.warn('Error loading grouped bugs, using empty array:', err);
+          return { grouped_bugs: [] };
+        })
       ]);
 
       setBugs(bugsData);
-      setGroupedBugs(groupedData.grouped_bugs);
+      setGroupedBugs(groupedData.grouped_bugs || []);
     } catch (err: any) {
       console.error('Error loading bugs:', err);
       setError(err.message || 'Error al cargar bugs');
