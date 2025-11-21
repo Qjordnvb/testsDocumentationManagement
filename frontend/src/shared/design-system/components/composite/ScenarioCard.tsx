@@ -6,7 +6,7 @@
  * Fully uses design system tokens for consistent styling
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronUp, Bug } from 'lucide-react';
 import {
@@ -60,6 +60,11 @@ export const ScenarioCard = ({
   className = '',
 }: ScenarioCardProps) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  // Sync with prop changes (for Expand/Collapse All functionality)
+  useEffect(() => {
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
   // Get design tokens
   const statusClasses = getStatusClasses(status);
