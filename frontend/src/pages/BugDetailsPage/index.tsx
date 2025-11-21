@@ -21,6 +21,7 @@ import { useProject } from '@/app/providers/ProjectContext';
 import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
+import { EditBugModal } from '@/features/bug-management/ui';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
   Bug as BugIcon,
@@ -53,6 +54,9 @@ export const BugDetailsPage = () => {
   // Test Runner Modal state
   const [showTestRunner, setShowTestRunner] = useState(false);
   const [gherkinContent, setGherkinContent] = useState<string>('');
+
+  // Edit Bug Modal state
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
@@ -334,7 +338,7 @@ export const BugDetailsPage = () => {
             </button>
           )}
           <button
-            onClick={() => toast('Edit functionality coming soon')}
+            onClick={() => setShowEditModal(true)}
             className={`px-4 py-2 border ${colors.gray.border300} ${colors.gray.text700} ${borderRadius.lg} hover:bg-gray-50 transition-colors flex items-center gap-2`}
           >
             <Edit size={18} />
@@ -646,6 +650,20 @@ export const BugDetailsPage = () => {
           projectId={projectId}
           userStoryId={bug?.user_story_id}
           onSave={handleTestExecutionComplete}
+        />
+      )}
+
+      {/* Edit Bug Modal */}
+      {bug && (
+        <EditBugModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          bug={bug}
+          onSuccess={(updatedBug) => {
+            setBug(updatedBug);
+            setShowEditModal(false);
+            toast.success('Bug actualizado exitosamente');
+          }}
         />
       )}
     </div>
