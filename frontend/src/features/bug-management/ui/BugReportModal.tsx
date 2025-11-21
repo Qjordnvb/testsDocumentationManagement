@@ -94,7 +94,7 @@ export const BugReportModal: React.FC<Props> = ({
           setVersion(bug.version || '');
           setAssignedTo(bug.assigned_to || '');
           // Load attachments/screenshots
-          setAttachments(bug.attachments || bug.screenshots || []);
+          setAttachments(bug.attachments || []);
         })
         .catch((error) => {
           console.error('❌ Error loading bug:', error);
@@ -237,16 +237,7 @@ export const BugReportModal: React.FC<Props> = ({
     try {
       const validSteps = stepsToReproduce.filter(s => s.trim());
 
-      // Extract evidence files from step results
-      const evidenceFiles: string[] = [];
-      if (executionDetails?.step_results) {
-        executionDetails.step_results.forEach(step => {
-          if (step.evidence_file) {
-            evidenceFiles.push(step.evidence_file);
-          }
-        });
-      }
-
+      // Use attachments state (already populated from executionDetails or loaded bug)
       const bugData: CreateBugDTO = {
         title: title.trim(),
         description: description.trim(),
@@ -267,11 +258,11 @@ export const BugReportModal: React.FC<Props> = ({
         execution_id: executionDetails?.execution_id && executionDetails.execution_id > 0 ? executionDetails.execution_id : undefined,
         reported_by: 'QA Tester', // TODO: Get from auth context
         assigned_to: assignedTo.trim() || undefined,
-        screenshots: evidenceFiles.length > 0 ? evidenceFiles : undefined,
+        screenshots: attachments.length > 0 ? attachments : undefined,
       };
 
       console.log('📤 Sending bug data:', bugData);
-      console.log('📸 Evidence files:', evidenceFiles);
+      console.log('📸 Evidence files from attachments state:', attachments);
 
       const createdBug = await bugApi.create(bugData);
 
@@ -694,26 +685,56 @@ export const BugReportModal: React.FC<Props> = ({
 
         {/* Footer */}
         <div className={`${modalSpacing.padding} border-t ${colors.gray[50]} flex justify-end gap-3`}>
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            onClick={handleClose}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="danger"
-            size="md"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            isLoading={isSubmitting}
-            leftIcon={!isSubmitting ? <Bug size={18} /> : undefined}
-          >
-            {isSubmitting ? 'Creating Bug...' : 'Create Bug Report'}
-          </Button>
+          {isReadonly ? (
+            <>
+              {/* Readonly mode: Only Close and View Details buttons */}
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={handleClose}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  if (existingBugId) {
+                    navigate(`/projects/${projectId}/bugs/${existingBugId}`);
+                  }
+                }}
+                leftIcon={<ExternalLink size={18} />}
+              >
+                View Full Details
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* Create mode: Cancel and Create buttons */}
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="danger"
+                size="md"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                isLoading={isSubmitting}
+                leftIcon={!isSubmitting ? <Bug size={18} /> : undefined}
+              >
+                {isSubmitting ? 'Creating Bug...' : 'Create Bug Report'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
