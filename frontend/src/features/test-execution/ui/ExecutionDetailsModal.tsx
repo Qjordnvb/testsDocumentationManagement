@@ -289,7 +289,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                       totalSteps={scenario.steps.length}
                       bugCount={scenarioBugIds.length}
                       bugIds={scenarioBugIds}
-                      showBugButton={!!projectId}
+                      showBugButton={scenario.failedSteps > 0}
                       onReportBug={() => setSelectedScenarioForBug(scenario)}
                     >
                     {/* Steps within scenario */}

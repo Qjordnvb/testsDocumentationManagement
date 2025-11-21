@@ -49,8 +49,8 @@ export const TestRunnerModal: React.FC<Props> = ({
     steps: any[];
   } | null>(null);
 
-  // Track scenarios with bugs reported (scenarioIndex -> bug count)
-  const [scenarioBugCounts, setScenarioBugCounts] = useState<Record<number, number>>({});
+  // Track scenarios with bugs reported (scenarioName -> [bugId1, bugId2, ...])
+  const [scenarioBugs, setScenarioBugs] = useState<Record<string, string[]>>({});
 
   // Track uploaded evidence paths (stepId -> file_path)
   const [uploadedEvidencePaths, setUploadedEvidencePaths] = useState<Record<number, string>>({});
@@ -116,8 +116,8 @@ export const TestRunnerModal: React.FC<Props> = ({
 
   const linkBugsToExecution = async (executionId: number) => {
     try {
-      // Get bug IDs from scenarioBugCounts
-      const bugIds = Object.values(scenarioBugCounts).flat();
+      // Get bug IDs from scenarioBugs
+      const bugIds = Object.values(scenarioBugs).flat();
 
       if (bugIds.length === 0) {
         console.log('[TestRunnerModal] No bugs to link');
@@ -324,7 +324,7 @@ export const TestRunnerModal: React.FC<Props> = ({
                     failedSteps={failedSteps}
                     skippedSteps={skippedSteps}
                     totalSteps={scenario.steps.length}
-                    bugCount={scenarioBugCounts[scenarioIdx] || 0}
+                    bugCount={(scenarioBugs[scenario.scenarioName] || []).length}
                     showBugButton={scenario.status === 'failed'}
                     onReportBug={async () => {
                       // Upload evidence for this scenario before opening bug modal
@@ -537,23 +537,33 @@ export const TestRunnerModal: React.FC<Props> = ({
       )}
 
       {/* Bug Report Modal (Specific Scenario) */}
-      {selectedScenarioForBug && (
-        <BugReportModal
-          isOpen={!!selectedScenarioForBug}
-          onClose={() => {
-            setSelectedScenarioForBug(null);
-          }}
-          onSuccess={() => {
-            // Update bug count for this scenario
-            if (selectedScenarioForBug) {
-              setScenarioBugCounts(prev => ({
-                ...prev,
-                [selectedScenarioForBug.index]: (prev[selectedScenarioForBug.index] || 0) + 1
-              }));
-            }
-            setSelectedScenarioForBug(null);
-            toast.success('Bug reportado exitosamente para el scenario: ' + selectedScenarioForBug.name);
-          }}
+      {selectedScenarioForBug && (() => {
+        // Check if this scenario already has bugs
+        const existingBugsForScenario = scenarioBugs[selectedScenarioForBug.name] || [];
+        const hasExistingBugs = existingBugsForScenario.length > 0;
+
+        return (
+          <BugReportModal
+            isOpen={!!selectedScenarioForBug}
+            onClose={() => {
+              setSelectedScenarioForBug(null);
+            }}
+            onSuccess={(bug) => {
+              // Update scenarioBugs state to reflect the new bug
+              if (selectedScenarioForBug && bug) {
+                setScenarioBugs(prev => ({
+                  ...prev,
+                  [selectedScenarioForBug.name]: [
+                    ...(prev[selectedScenarioForBug.name] || []),
+                    bug.id
+                  ]
+                }));
+              }
+              setSelectedScenarioForBug(null);
+              toast.success(`Bug ${bug.id} reportado exitosamente para el scenario: ${selectedScenarioForBug.name}`);
+            }}
+            mode={hasExistingBugs ? 'readonly' : 'create'}
+            existingBugId={hasExistingBugs ? existingBugsForScenario[0] : undefined}
           projectId={projectId}
           testCaseId={testCaseId}
           testCaseTitle={testCaseTitle}
@@ -586,7 +596,8 @@ export const TestRunnerModal: React.FC<Props> = ({
             bug_ids: []
           }}
         />
-      )}
+        );
+      })()}
     </div>
   );
 };
