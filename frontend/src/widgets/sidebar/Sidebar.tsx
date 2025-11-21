@@ -163,12 +163,12 @@ export const Sidebar = () => {
                     key={project.id}
                     to={`/projects/${project.id}/dashboard`}
                     onClick={() => handleProjectClick(project)}
-                    className={`block p-3 ${borderRadius.lg} hover:bg-purple-600/20 hover:translate-x-1 transition-all duration-200 group`}
+                    className={`block p-3 ${borderRadius.lg} hover:bg-purple-600/20 hover:scale-105 transition-all duration-200 group text-white`}
                   >
-                    <div className={`font-medium ${colors.white} group-hover:text-white truncate`}>
+                    <div className={`font-medium truncate group-hover:text-white/95`}>
                       {project.name}
                     </div>
-                    <div className={`${bodySmall.className} text-white/50 group-hover:text-white/70 mt-0.5 truncate`}>
+                    <div className={`${bodySmall.className} text-white/60 group-hover:text-white/80 mt-0.5 truncate`}>
                       {project.id} • {project.total_test_cases} tests
                     </div>
                   </Link>

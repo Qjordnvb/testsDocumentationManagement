@@ -37,13 +37,14 @@ import {
 interface StoryTableProps {
   stories: UserStory[];
   onGenerateTests: (story: UserStory) => void;
+  onUpdateStory?: (storyId: string, updates: Partial<UserStory>) => Promise<void>;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
 
 const columnHelper = createColumnHelper<UserStory>();
 
-export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
+export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTableProps) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -52,6 +53,23 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
   const body = getTypographyPreset('body');
+
+  // Toggle acceptance criteria completed status
+  const toggleCriteria = async (story: UserStory, criterionIndex: number) => {
+    if (!onUpdateStory) return;
+
+    const updatedCriteria = [...story.acceptance_criteria];
+    updatedCriteria[criterionIndex] = {
+      ...updatedCriteria[criterionIndex],
+      completed: !updatedCriteria[criterionIndex].completed
+    };
+
+    try {
+      await onUpdateStory(story.id, { acceptance_criteria: updatedCriteria });
+    } catch (error) {
+      console.error('Error updating criterion:', error);
+    }
+  };
 
   // Define columns
   const columns = useMemo<ColumnDef<UserStory, any>[]>(
@@ -98,17 +116,30 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
         cell: (info) => {
           const criteria = info.getValue() || [];
           const completed = criteria.filter((c: { completed: boolean }) => c.completed).length;
+          const percentage = criteria.length > 0 ? (completed / criteria.length) * 100 : 0;
+
           return (
-            <div className="flex items-center gap-2">
-              <span className={`${bodySmall.className} ${colors.gray.text600}`}>
+            <div className="flex items-center gap-2" title={`${completed} de ${criteria.length} criterios completados (${percentage.toFixed(0)}%)`}>
+              {/* Contador con color dinámico */}
+              <span className={`${bodySmall.className} font-semibold ${
+                completed === 0 ? colors.gray.text400 :
+                percentage === 100 ? colors.status.success.text600 :
+                colors.brand.primary.text600
+              }`}>
                 {completed}/{criteria.length}
               </span>
+
+              {/* Barra de progreso con mejor visualización */}
               {criteria.length > 0 && (
-                <div className={`w-20 h-2 ${colors.gray[200]} ${borderRadius.full} overflow-hidden`}>
+                <div className={`w-24 h-2.5 ${colors.gray[200]} ${borderRadius.full} overflow-hidden border border-gray-300`}>
                   <div
-                    className={`h-full ${colors.status.success[600]}`}
+                    className={`h-full transition-all duration-300 ${
+                      percentage === 100 ? colors.status.success[600] :
+                      percentage > 0 ? colors.brand.primary[600] :
+                      colors.gray[300]
+                    }`}
                     style={{
-                      width: `${(completed / criteria.length) * 100}%`,
+                      width: `${percentage}%`,
                     }}
                   />
                 </div>
@@ -281,15 +312,25 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
                             </p>
                           </div>
 
-                          {/* Acceptance Criteria */}
+                          {/* Acceptance Criteria - Checkeables */}
                           {row.original.acceptance_criteria && row.original.acceptance_criteria.length > 0 && (
                             <div>
                               <h4 className={`${bodySmall.className} font-semibold ${colors.gray.text900} mb-2`}>
                                 Criterios de Aceptación ({row.original.acceptance_criteria.length})
+                                {onUpdateStory && (
+                                  <span className={`ml-2 ${colors.gray.text500} font-normal italic`}>
+                                    (Click para marcar/desmarcar)
+                                  </span>
+                                )}
                               </h4>
                               <ul className="space-y-2">
                                 {row.original.acceptance_criteria.map((criterion: any, index: number) => (
-                                  <li key={criterion.id || index} className="flex items-start gap-2">
+                                  <li
+                                    key={criterion.id || index}
+                                    onClick={() => onUpdateStory && toggleCriteria(row.original, index)}
+                                    className={`flex items-start gap-2 ${onUpdateStory ? 'cursor-pointer hover:bg-gray-100 p-2 -ml-2 rounded-md transition-colors' : ''}`}
+                                    title={onUpdateStory ? (criterion.completed ? 'Click para desmarcar' : 'Click para marcar como completado') : ''}
+                                  >
                                     {criterion.completed ? (
                                       <CheckCircle2 className={`w-4 h-4 ${colors.status.success.text600} mt-0.5 flex-shrink-0`} />
                                     ) : (
