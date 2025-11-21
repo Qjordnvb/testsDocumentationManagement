@@ -105,10 +105,10 @@ export type {
 // ============================================================================
 
 import type { ExecutionStatus, StatusClasses } from './colors';
-import { getStatusClasses } from './colors';
-import { getComponentSpacing } from './spacing';
-import { getComponentShadow } from './shadows';
-import { getTypographyPreset } from './typography';
+import { getStatusClasses, colors } from './colors';
+import { getComponentSpacing, spacing } from './spacing';
+import { getComponentShadow, shadows } from './shadows';
+import { getTypographyPreset, typography } from './typography';
 
 /**
  * Get complete classes for a scenario card based on execution status

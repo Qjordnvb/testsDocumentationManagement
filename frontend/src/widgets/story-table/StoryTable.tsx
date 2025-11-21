@@ -106,7 +106,7 @@ export const StoryTable = ({ stories, onGenerateTests }: StoryTableProps) => {
               {criteria.length > 0 && (
                 <div className={`w-20 h-2 ${colors.gray[200]} ${borderRadius.full} overflow-hidden`}>
                   <div
-                    className={`h-full ${colors.status.success.text500}`}
+                    className={`h-full ${colors.status.success[600]}`}
                     style={{
                       width: `${(completed / criteria.length) * 100}%`,
                     }}

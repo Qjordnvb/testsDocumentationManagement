@@ -261,10 +261,12 @@ const componentSpacing: Record<string, ComponentSpacing> = {
 
   // Form Elements
   formGroup: {
+    padding: 'p-0',
     margin: 'mb-4',
     gap: 'gap-2',
   },
   formLabel: {
+    padding: 'p-0',
     margin: 'mb-1',
   },
   formInput: {
@@ -324,16 +326,19 @@ const componentSpacing: Record<string, ComponentSpacing> = {
     padding: 'p-8',
   },
   pageHeader: {
+    padding: 'p-0',
     margin: 'mb-8',
     gap: 'gap-4',
   },
   pageSection: {
+    padding: 'p-0',
     margin: 'mb-6',
     gap: 'gap-4',
   },
 
   // Dashboard
   dashboardGrid: {
+    padding: 'p-0',
     gap: 'gap-6',
   },
   dashboardCard: {

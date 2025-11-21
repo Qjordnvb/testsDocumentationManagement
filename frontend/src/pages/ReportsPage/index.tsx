@@ -97,7 +97,7 @@ export const ReportsPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900} flex items-center gap-3`}>
-            <FileText size={32} className={colors.brand.primary} />
+            <FileText size={32} className={colors.brand.primary.text600} />
             Reportes y Documentación
           </h1>
           <p className={`${body.className} ${colors.gray.text600} mt-2`}>
@@ -191,8 +191,8 @@ export const ReportsPage = () => {
         {/* Test Plan Document */}
         <div className="card hover:shadow-lg transition-shadow lg:col-span-2">
           <div className="flex items-start gap-4">
-            <div className={`${colors.brand.secondary} p-3 ${borderRadius.lg}`}>
-              <FileCheck size={32} className={colors.brand.primary} />
+            <div className={`${colors.brand.secondary[100]} p-3 ${borderRadius.lg}`}>
+              <FileCheck size={32} className={colors.brand.primary.text600} />
             </div>
             <div className="flex-1">
               <h3 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-2`}>Test Plan Document</h3>
@@ -249,7 +249,7 @@ export const ReportsPage = () => {
       {/* Info Banner */}
       <div className={`${colors.status.info[50]} border ${colors.status.info.border200} ${borderRadius.lg} p-4`}>
         <div className="flex items-start gap-3">
-          <AlertCircle size={20} className={`${colors.brand.primary} flex-shrink-0 mt-0.5`} />
+          <AlertCircle size={20} className={`${colors.brand.primary.text600} flex-shrink-0 mt-0.5`} />
           <div className={bodySmall.className}>
             <p className={`font-semibold ${colors.status.info.text900} mb-1`}>Información sobre los reportes</p>
             <ul className={`space-y-1 ${colors.gray.text600}`}>

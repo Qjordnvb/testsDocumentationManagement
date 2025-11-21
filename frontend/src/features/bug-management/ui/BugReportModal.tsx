@@ -213,12 +213,12 @@ export const BugReportModal: React.FC<Props> = ({
   const modalSpacing = getComponentSpacing('modal');
   const modalShadow = getComponentShadow('modal');
   const titleTypography = getModalTypography('modalTitle');
-  const subtitleTypography = getModalTypography('modalSubtitle');
-  const labelTypography = getModalTypography('label');
+  const subtitleTypography = getModalTypography('modalSectionTitle');
+  const labelTypography = getModalTypography('formLabel');
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`${colors.white} ${borderRadius.xl} ${modalShadow.elevated} w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden`}>
+      <div className={`${colors.white} ${borderRadius.xl} ${modalShadow.base} w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden`}>
         {/* Header */}
         <div className={`${modalSpacing.padding} border-b ${colors.status.error.gradient}`}>
           <div className="flex items-center justify-between">

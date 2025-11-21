@@ -427,7 +427,7 @@ export const TestRunnerModal: React.FC<Props> = ({
             test_case_id: testCaseId,
             executed_by: 'QA Tester',
             execution_date: new Date().toISOString(),
-            status: executionStatus,
+            status: executionStatus === 'IN_PROGRESS' ? 'BLOCKED' : executionStatus,
             environment: 'QA',
             version: '',
             execution_time_minutes: elapsedSeconds / 60,
@@ -441,11 +441,12 @@ export const TestRunnerModal: React.FC<Props> = ({
                 text: step.text,
                 status: step.status.toUpperCase(),
                 scenario_name: scenario.scenarioName,
-                evidence_file: null
+                evidence_file: undefined
               }))
             ),
             evidence_count: Object.keys(evidenceMap).length,
-            evidence_files: []
+            evidence_files: [],
+            bug_ids: []
           }}
         />
       )}
@@ -484,10 +485,11 @@ export const TestRunnerModal: React.FC<Props> = ({
               text: step.text,
               status: step.status.toUpperCase(),
               scenario_name: selectedScenarioForBug.name,
-              evidence_file: evidenceMap[step.id] ? null : null
+              evidence_file: undefined
             })),
             evidence_count: selectedScenarioForBug.steps.filter(s => evidenceMap[s.id]).length,
-            evidence_files: []
+            evidence_files: [],
+            bug_ids: []
           } : undefined}
         />
       )}

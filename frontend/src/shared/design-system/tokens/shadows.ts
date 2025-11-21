@@ -312,5 +312,3 @@ export const getHoverShadow = (
 export type ElevationLevel = keyof typeof elevationLevels;
 export type ComponentShadowName = keyof typeof componentShadows;
 export type ShadowTransitionSpeed = keyof typeof shadowTransition;
-
-export type { ElevationShadow, ComponentShadow };
