@@ -719,6 +719,30 @@ Extract now:"""
             print(f"❌ AI extraction failed: {e}")
             return []
 
+    async def extract_acceptance_criteria_async(self, raw_text: str) -> List[str]:
+        """
+        Async version of extract_acceptance_criteria for parallel processing
+
+        This method allows multiple acceptance criteria extractions to run in parallel,
+        significantly improving performance when processing large Excel files.
+
+        Args:
+            raw_text: Raw acceptance criteria text from Excel
+
+        Returns:
+            List of clean acceptance criteria descriptions
+        """
+        import asyncio
+
+        # Run the synchronous AI call in a thread pool to not block event loop
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,  # Use default executor (ThreadPoolExecutor)
+            self.extract_acceptance_criteria,
+            raw_text
+        )
+        return result
+
     def improve_acceptance_criteria(self, user_story: UserStory) -> List[str]:
         """
         Analyze and suggest improvements to acceptance criteria

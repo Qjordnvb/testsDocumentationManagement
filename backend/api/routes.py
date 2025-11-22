@@ -296,10 +296,10 @@ async def upload_file(
 
         print(f"File saved successfully. Size: {file_path.stat().st_size} bytes")
 
-        # Parse file WITHOUT AI (for performance - AI extraction can be done later via separate endpoint)
-        print("Starting file parsing (AI disabled for performance)...")
-        parser = FileParser(gemini_client=None)  # Disable AI to avoid slow sync calls
-        result = parser.parse(str(file_path))
+        # Parse file WITH PARALLEL AI processing for better criteria readability
+        print("Starting file parsing with parallel AI processing...")
+        parser = FileParser(gemini_client=gemini_client)  # Enable AI with parallel processing
+        result = await parser.parse_async(str(file_path))
 
         print(f"Parse result: success={result.success}, stories={len(result.user_stories)}, errors={result.errors}")
 
