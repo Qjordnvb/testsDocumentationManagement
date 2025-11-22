@@ -1,7 +1,7 @@
 """
 SQLAlchemy database models for tracking
 """
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum as SQLEnum, Float
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum as SQLEnum, Float, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -54,8 +54,12 @@ class ProjectDB(Base):
 class UserStoryDB(Base):
     """User Story database model"""
     __tablename__ = "user_stories"
+    __table_args__ = (
+        PrimaryKeyConstraint('id', 'project_id'),
+        {},
+    )
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, nullable=False, index=True)
     project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
 
     title = Column(String, nullable=False)
@@ -94,8 +98,12 @@ class UserStoryDB(Base):
 class TestCaseDB(Base):
     """Test Case database model"""
     __tablename__ = "test_cases"
+    __table_args__ = (
+        PrimaryKeyConstraint('id', 'project_id'),
+        {},
+    )
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, nullable=False, index=True)
     project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
 
     title = Column(String, nullable=False)
@@ -135,8 +143,12 @@ class TestCaseDB(Base):
 class BugReportDB(Base):
     """Bug Report database model"""
     __tablename__ = "bug_reports"
+    __table_args__ = (
+        PrimaryKeyConstraint('id', 'project_id'),
+        {},
+    )
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, nullable=False, index=True)
     project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
 
     title = Column(String, nullable=False)
