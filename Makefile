@@ -143,14 +143,19 @@ test-frontend: ## 🧪 Tests del Frontend
 	cd frontend && npm test
 
 # ==================== Database ====================
-db-migrate: ## 🗄️ Corre migraciones de base de datos
-	cd backend && alembic upgrade head
+db-clear: ## 🗄️ Limpia TODOS los datos (mantiene estructura de tablas)
+	@python clear_database.py
 
-db-reset: ## 🗄️ Resetea base de datos (⚠️ BORRA DATOS)
-	@echo "⚠️  Esto BORRARÁ todos los datos. ¿Continuar? [y/N] " && read ans && [ $${ans:-N} = y ]
-	rm -f data/qa_automation.db
-	@$(MAKE) db-migrate
-	@echo "✅ Base de datos reseteada"
+db-migrate: ## 🗄️ Migra a arquitectura multi-proyecto
+	@python migrate_to_multiproject.py
+
+db-reset: ## 🗄️ Resetea base de datos COMPLETAMENTE (⚠️ NUCLEAR)
+	@echo "⚠️  Esto BORRARÁ la base de datos completamente. ¿Continuar? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@rm -f data/qa_automation.db
+	@echo "✅ Base de datos eliminada. Se creará nueva al iniciar el backend."
+
+db-status: ## 📊 Ver estadísticas de la base de datos
+	@python -c "from backend.database.db import SessionLocal; from backend.database.models import ProjectDB, UserStoryDB, TestCaseDB; db = SessionLocal(); print(f'\n📊 Database Statistics:\n'); print(f'Projects: {db.query(ProjectDB).count()}'); print(f'User Stories: {db.query(UserStoryDB).count()}'); print(f'Test Cases: {db.query(TestCaseDB).count()}\n'); db.close()"
 
 # ==================== Redis ====================
 redis-start: ## 🔴 Inicia solo Redis (Docker)
