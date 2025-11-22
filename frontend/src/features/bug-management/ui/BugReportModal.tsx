@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Bug, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bugApi } from '@/entities/bug';
-import type { CreateBugDTO, BugSeverity, BugPriority, BugType, Bug as BugEntity } from '@/entities/bug';
+import type { CreateBugDTO, UpdateBugDTO, BugSeverity, BugPriority, BugType, Bug as BugEntity } from '@/entities/bug';
 import type { ExecutionDetails } from '@/entities/test-execution';
 import toast from 'react-hot-toast';
 import { Button } from '@/shared/ui/Button';
@@ -239,44 +239,53 @@ export const BugReportModal: React.FC<Props> = ({
     try {
       const validSteps = stepsToReproduce.filter(s => s.trim());
 
-      // Use attachments state (already populated from executionDetails or loaded bug)
-      const bugData: CreateBugDTO = {
-        title: title.trim(),
-        description: description.trim(),
-        steps_to_reproduce: validSteps,
-        expected_behavior: expectedBehavior.trim(),
-        actual_behavior: actualBehavior.trim(),
-        severity,
-        priority,
-        bug_type: bugType,
-        environment: environment.trim(),
-        browser: browser.trim() || undefined,
-        os: os.trim() || undefined,
-        version: version.trim() || undefined,
-        project_id: projectId,
-        user_story_id: userStoryId,
-        test_case_id: testCaseId,
-        scenario_name: scenarioName,
-        execution_id: executionDetails?.execution_id && executionDetails.execution_id > 0 ? executionDetails.execution_id : undefined,
-        reported_by: 'QA Tester', // TODO: Get from auth context
-        assigned_to: assignedTo.trim() || undefined,
-        screenshots: attachments.length > 0 ? attachments : undefined,
-      };
-
-      console.log('📤 Sending bug data:', bugData);
-      console.log('📸 Evidence files from attachments state:', attachments);
-
       let resultBug: BugEntity;
 
       if (isEditMode && existingBugId) {
-        // Update existing bug
-        console.log(`📝 Updating bug ${existingBugId}...`);
-        resultBug = await bugApi.update(existingBugId, bugData);
+        // Update existing bug - Use UpdateBugDTO (only allowed fields)
+        const updateData: UpdateBugDTO = {
+          title: title.trim(),
+          description: description.trim(),
+          steps_to_reproduce: validSteps,
+          expected_behavior: expectedBehavior.trim(),
+          actual_behavior: actualBehavior.trim(),
+          severity,
+          priority,
+          bug_type: bugType,
+          assigned_to: assignedTo.trim() || undefined,
+        };
+
+        console.log('📝 Updating bug with data:', updateData);
+        resultBug = await bugApi.update(existingBugId, updateData);
         toast.success(`Bug ${resultBug.id} updated successfully`);
       } else {
-        // Create new bug
-        console.log('📝 Creating new bug...');
-        resultBug = await bugApi.create(bugData);
+        // Create new bug - Use CreateBugDTO (all fields including context)
+        const createData: CreateBugDTO = {
+          title: title.trim(),
+          description: description.trim(),
+          steps_to_reproduce: validSteps,
+          expected_behavior: expectedBehavior.trim(),
+          actual_behavior: actualBehavior.trim(),
+          severity,
+          priority,
+          bug_type: bugType,
+          environment: environment.trim(),
+          browser: browser.trim() || undefined,
+          os: os.trim() || undefined,
+          version: version.trim() || undefined,
+          project_id: projectId,
+          user_story_id: userStoryId,
+          test_case_id: testCaseId,
+          scenario_name: scenarioName,
+          execution_id: executionDetails?.execution_id && executionDetails.execution_id > 0 ? executionDetails.execution_id : undefined,
+          reported_by: 'QA Tester', // TODO: Get from auth context
+          assigned_to: assignedTo.trim() || undefined,
+          screenshots: attachments.length > 0 ? attachments : undefined,
+        };
+
+        console.log('📤 Creating bug with data:', createData);
+        console.log('📸 Evidence files from attachments state:', attachments);
+        resultBug = await bugApi.create(createData);
         toast.success(`Bug ${resultBug.id} created successfully`);
       }
 
