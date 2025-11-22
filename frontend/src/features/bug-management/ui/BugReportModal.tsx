@@ -167,6 +167,7 @@ export const BugReportModal: React.FC<Props> = ({
     }
   }, [
     title, description, expectedBehavior, actualBehavior,
+    severity, priority, bugType,
     environment, browser, os, version, assignedTo
   ]);
 
@@ -326,6 +327,10 @@ export const BugReportModal: React.FC<Props> = ({
           severity,
           priority,
           bug_type: bugType,
+          environment: environment.trim() || undefined,
+          browser: browser.trim() || undefined,
+          os: os.trim() || undefined,
+          version: version.trim() || undefined,
           assigned_to: assignedTo.trim() || undefined,
         };
 

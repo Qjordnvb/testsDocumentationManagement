@@ -115,6 +115,14 @@ export interface UpdateBugDTO {
   priority?: BugPriority;
   bug_type?: BugType;
   status?: BugStatus;
+
+  // Context fields
+  environment?: string;
+  browser?: string;
+  os?: string;
+  version?: string;
+
+  // Assignment
   assigned_to?: string;
   verified_by?: string;
 }
