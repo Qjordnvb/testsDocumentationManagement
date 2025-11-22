@@ -13,6 +13,7 @@ import { GenerateModal } from '@/features/generate-tests';
 import { Button } from '@/shared/ui/Button';
 import { storyApi } from '@/entities/user-story';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useTestGenerationQueue } from '@/shared/stores';
 import type { UserStory } from '@/entities/user-story';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
@@ -22,6 +23,7 @@ type ViewMode = 'table' | 'cards';
 export const StoriesPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { currentProject } = useProject();
+  const { setOnTestCasesSaved } = useTestGenerationQueue();
   const navigate = useNavigate();
   const [stories, setStories] = useState<UserStory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +72,13 @@ export const StoriesPage = () => {
   useEffect(() => {
     loadStories();
   }, [projectId]); // Reload when projectId changes
+
+  // Register callback for when test cases are saved
+  useEffect(() => {
+    setOnTestCasesSaved(loadStories);
+    // Cleanup on unmount
+    return () => setOnTestCasesSaved(() => {});
+  }, [setOnTestCasesSaved, projectId]);
 
   // Handle generate tests for a story
   const handleGenerateTests = (story: UserStory) => {
@@ -191,6 +200,7 @@ export const StoriesPage = () => {
           stories={stories}
           isLoading={isLoading}
           onGenerateTests={handleGenerateTests}
+          onViewTests={handleViewTests}
           onUpdateStory={handleUpdateStory}
           onRefresh={loadStories}
         />

@@ -4,8 +4,8 @@
  * Grouped by User Story for better organization
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { testCaseApi } from '@/entities/test-case';
 import { storyApi } from '@/entities/user-story';
@@ -28,6 +28,7 @@ export const TestCasesPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { currentProject } = useProject();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [userStories, setUserStories] = useState<UserStory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,10 @@ export const TestCasesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Highlight specific suite when coming from URL
+  const [highlightedSuite, setHighlightedSuite] = useState<string | null>(null);
+  const suiteRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
   // Typography presets
 
   // Validate project
@@ -86,9 +91,17 @@ export const TestCasesPage = () => {
       setTestCases(tcData);
       setUserStories(usData);
 
-      // Auto-expand all suites initially
-      const allSuiteIds = new Set(tcData.map(tc => tc.user_story_id));
-      setExpandedSuites(allSuiteIds);
+      // Check if we're filtering by a specific story
+      const storyIdFromUrl = searchParams.get('story');
+
+      if (storyIdFromUrl) {
+        // Only expand the specific suite from URL parameter
+        setExpandedSuites(new Set([storyIdFromUrl]));
+      } else {
+        // Auto-expand all suites initially
+        const allSuiteIds = new Set(tcData.map(tc => tc.user_story_id));
+        setExpandedSuites(allSuiteIds);
+      }
 
       setError(null);
     } catch (err: any) {
@@ -163,6 +176,29 @@ export const TestCasesPage = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedTestType, selectedStatus, selectedPriority]);
+
+  // Scroll to and highlight specific suite when coming from URL
+  useEffect(() => {
+    const storyIdFromUrl = searchParams.get('story');
+
+    if (storyIdFromUrl && !loading && testSuites.length > 0) {
+      // Highlight the suite
+      setHighlightedSuite(storyIdFromUrl);
+
+      // Wait a bit for rendering, then scroll
+      setTimeout(() => {
+        const suiteElement = suiteRefs.current[storyIdFromUrl];
+        if (suiteElement) {
+          suiteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedSuite(null);
+      }, 3000);
+    }
+  }, [searchParams, loading, testSuites]);
 
   const toggleSuite = (suiteId: string) => {
     setExpandedSuites(prev => {
@@ -430,11 +466,23 @@ export const TestCasesPage = () => {
             const failedCount = suite.testCases.filter(tc => tc.status === 'FAILED').length;
             const notRunCount = suite.testCases.filter(tc => !tc.status || tc.status === 'NOT_RUN').length;
 
+            const isHighlighted = highlightedSuite === suite.userStoryId;
+
             return (
-              <div key={suite.userStoryId} className="card overflow-hidden border-l-4 border-l-blue-500">
+              <div
+                key={suite.userStoryId}
+                ref={(el) => (suiteRefs.current[suite.userStoryId] = el)}
+                className={`card overflow-hidden border-l-4 transition-all duration-500 ${
+                  isHighlighted
+                    ? 'border-l-yellow-500 bg-yellow-50 shadow-lg ring-2 ring-yellow-300'
+                    : 'border-l-blue-500'
+                }`}
+              >
                 {/* Suite Header */}
                 <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${
+                    isHighlighted ? 'hover:bg-yellow-100' : 'hover:bg-gray-50'
+                  }`}
                   onClick={() => toggleSuite(suite.userStoryId)}
                 >
                   <div className="flex items-center gap-3 flex-1">

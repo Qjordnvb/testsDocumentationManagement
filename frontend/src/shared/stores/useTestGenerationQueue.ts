@@ -24,12 +24,15 @@ interface TestGenerationQueueState {
   // Data
   jobs: Record<string, TestGenerationJob>; // taskId -> job
   activePolling: Set<string>; // Set of taskIds being polled
+  onTestCasesSaved?: () => void; // Callback when test cases are saved
 
   // Actions
   addJob: (job: TestGenerationJob) => void;
   updateJob: (taskId: string, updates: Partial<TestGenerationJob>) => void;
   removeJob: (taskId: string) => void;
   clearCompletedJobs: () => void;
+  setOnTestCasesSaved: (callback: () => void) => void;
+  notifyTestCasesSaved: () => void;
 
   // Polling management
   startPolling: (taskId: string) => void;
@@ -95,6 +98,15 @@ export const useTestGenerationQueue = create<TestGenerationQueueState>((set, get
 
     return { jobs: activeJobs };
   }),
+
+  setOnTestCasesSaved: (callback) => set({ onTestCasesSaved: callback }),
+
+  notifyTestCasesSaved: () => {
+    const callback = get().onTestCasesSaved;
+    if (callback) {
+      callback();
+    }
+  },
 
   // Polling management
   startPolling: (taskId) => set((state) => {

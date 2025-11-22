@@ -59,11 +59,27 @@ dev: ## 🚀 DESARROLLO LOCAL (4 terminales) - RECOMENDADO
 
 dev-stop: ## 🛑 Detiene desarrollo local
 	@echo "🛑 Deteniendo servicios..."
+	@echo "  🐳 Deteniendo Redis (Docker)..."
 	@(command -v docker-compose > /dev/null && docker-compose down) || (docker compose down) || true
+	@echo "  🔄 Deteniendo Celery Worker..."
 	@pkill -f "celery.*worker" || true
-	@pkill -f "uvicorn.*main:app" || true
-	@pkill -f "vite" || true
-	@echo "✅ Servicios detenidos"
+	@sleep 1
+	@pgrep -f "celery.*worker" > /dev/null && pkill -9 -f "celery.*worker" || true
+	@echo "  🐍 Deteniendo Backend (Uvicorn)..."
+	@for pid in $$(pgrep -f "uvicorn.*main:app" 2>/dev/null); do kill $$pid 2>/dev/null || true; done
+	@sleep 1
+	@for pid in $$(pgrep -f "uvicorn.*main:app" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
+	@for pid in $$(pgrep -f "python.*main:app" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
+	@echo "  ⚛️  Deteniendo Frontend (Vite)..."
+	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill $$pid 2>/dev/null || true; done
+	@sleep 1
+	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
+	@echo "  🧹 Verificando puertos..."
+	@sleep 1
+	@lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@echo "✅ Servicios detenidos correctamente"
 
 # ==================== Development (Docker) ====================
 dev-docker: ## 🐳 DESARROLLO con Docker (todo containerizado)

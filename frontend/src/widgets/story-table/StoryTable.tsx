@@ -38,19 +38,21 @@ import {
   Loader2,
   Clock,
   AlertCircle,
+  Eye,
 } from 'lucide-react';
 
 interface StoryTableProps {
   stories: UserStory[];
   onGenerateTests: (story: UserStory) => void;
   onUpdateStory?: (storyId: string, updates: Partial<UserStory>) => Promise<void>;
+  onViewTests?: (storyId: string) => void;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
 
 const columnHelper = createColumnHelper<UserStory>();
 
-export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTableProps) => {
+export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTests }: StoryTableProps) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -59,7 +61,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
   // Queue store
-  const { getActiveJobForStory, getJobByTaskId } = useTestGenerationQueue();
+  const { getActiveJobForStory } = useTestGenerationQueue();
 
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
@@ -211,6 +213,8 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
                 bgColor: colors.gray[100],
                 borderColor: colors.gray.border300,
                 text: 'En cola',
+                spin: false,
+                clickable: false,
               },
               pending: {
                 icon: Clock,
@@ -218,6 +222,8 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
                 bgColor: colors.status.warning[50],
                 borderColor: colors.status.warning.border200,
                 text: 'Iniciando...',
+                spin: false,
+                clickable: false,
               },
               generating: {
                 icon: Loader2,
@@ -226,6 +232,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
                 borderColor: colors.brand.primary.border200,
                 text: `Generando ${activeJob.progress}%`,
                 spin: true,
+                clickable: false,
               },
               completed: {
                 icon: CheckCircle2,
@@ -233,6 +240,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
                 bgColor: colors.status.success[50],
                 borderColor: colors.status.success.border200,
                 text: 'Listo para revisar',
+                spin: false,
                 clickable: true,
               },
               failed: {
@@ -241,6 +249,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
                 bgColor: colors.status.error[50],
                 borderColor: colors.status.error.border200,
                 text: 'Error',
+                spin: false,
                 clickable: true,
               },
             };
@@ -274,7 +283,45 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
             );
           }
 
-          // No active job, show generate button
+          // No active job - check if test cases exist
+          const hasTestCases = story.test_case_ids && story.test_case_ids.length > 0;
+
+          if (hasTestCases) {
+            // Has test cases - show "View Tests" button
+            return (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (onViewTests) {
+                      onViewTests(story.id);
+                    } else {
+                      // Fallback: Navigate to tests page filtered by this story
+                      const currentPath = window.location.pathname;
+                      const projectId = currentPath.match(/\/projects\/([^\/]+)/)?.[1] || 'PROJ-001';
+                      window.location.href = `/projects/${projectId}/tests?story=${story.id}`;
+                    }
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <Eye className="w-4 h-4" />
+                  Ver Tests ({story.test_case_ids.length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onGenerateTests(story)}
+                  className="flex items-center gap-1"
+                  title="Generar más test cases"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          }
+
+          // No test cases yet - show generate button
           return (
             <Button
               size="sm"
