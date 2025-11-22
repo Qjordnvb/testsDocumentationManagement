@@ -406,68 +406,88 @@ def process_excel_task(
             'total_stories': total_stories
         })
 
-        saved_stories = []
-        updated_stories = []
+        # BATCH PROCESSING for 10-100x speedup
+        # Step 1: Identify existing stories in ONE query
+        self.update_state(state='PROGRESS', meta={
+            'progress': 35,
+            'status': 'Identifying existing stories...',
+            'project_id': project_id,
+            'project_name': project.name
+        })
 
-        for idx, user_story in enumerate(result.user_stories, 1):
-            # Update progress for each story
-            if idx % 10 == 0 or idx == total_stories:  # Update every 10 stories
-                progress = 30 + int((idx / total_stories) * 50)  # 30-80%
-                self.update_state(state='PROGRESS', meta={
-                    'progress': progress,
-                    'status': f'Processing story {idx}/{total_stories}...',
-                    'project_id': project_id,
-                    'project_name': project.name,
-                    'current_story': idx,
-                    'total_stories': total_stories
-                })
+        all_story_ids = [s.id for s in result.user_stories]
+        existing_stories_query = self.db.query(UserStoryDB).filter(
+            UserStoryDB.id.in_(all_story_ids),
+            UserStoryDB.project_id == project_id
+        ).all()
 
-            # Check if story already exists IN THIS PROJECT
-            existing_story = self.db.query(UserStoryDB).filter(
-                UserStoryDB.id == user_story.id,
-                UserStoryDB.project_id == project_id
-            ).first()
+        existing_ids = {s.id for s in existing_stories_query}
 
-            if existing_story:
-                # Update existing story
-                existing_story.title = user_story.title
-                existing_story.description = user_story.description
-                existing_story.priority = user_story.priority
-                existing_story.status = user_story.status
-                existing_story.epic = user_story.epic
-                existing_story.sprint = user_story.sprint
-                existing_story.story_points = user_story.story_points
-                existing_story.assigned_to = user_story.assigned_to
-                existing_story.acceptance_criteria = json.dumps(
+        # Step 2: Prepare data for batch operations
+        self.update_state(state='PROGRESS', meta={
+            'progress': 40,
+            'status': 'Preparing batch data...',
+            'project_id': project_id,
+            'project_name': project.name
+        })
+
+        new_stories_data = []
+        update_stories_data = []
+        now = datetime.now()
+
+        for user_story in result.user_stories:
+            story_data = {
+                'id': user_story.id,
+                'project_id': project_id,
+                'title': user_story.title,
+                'description': user_story.description,
+                'priority': user_story.priority.value if hasattr(user_story.priority, 'value') else user_story.priority,
+                'status': user_story.status.value if hasattr(user_story.status, 'value') else user_story.status,
+                'epic': user_story.epic,
+                'sprint': user_story.sprint,
+                'story_points': user_story.story_points,
+                'assigned_to': user_story.assigned_to,
+                'acceptance_criteria': json.dumps(
                     [ac.dict() for ac in user_story.acceptance_criteria]
-                ) if user_story.acceptance_criteria else None
-                existing_story.total_criteria = len(user_story.acceptance_criteria)
-                existing_story.completed_criteria = sum(1 for ac in user_story.acceptance_criteria if ac.completed)
-                existing_story.completion_percentage = user_story.get_completion_percentage()
-                existing_story.updated_date = datetime.now()
-                updated_stories.append(user_story.id)
+                ) if user_story.acceptance_criteria else None,
+                'total_criteria': len(user_story.acceptance_criteria),
+                'completed_criteria': sum(1 for ac in user_story.acceptance_criteria if ac.completed),
+                'completion_percentage': user_story.get_completion_percentage(),
+                'updated_date': now
+            }
+
+            if user_story.id in existing_ids:
+                update_stories_data.append(story_data)
             else:
-                # Insert new story
-                db_story = UserStoryDB(
-                    id=user_story.id,
-                    project_id=project_id,
-                    title=user_story.title,
-                    description=user_story.description,
-                    priority=user_story.priority,
-                    status=user_story.status,
-                    epic=user_story.epic,
-                    sprint=user_story.sprint,
-                    story_points=user_story.story_points,
-                    assigned_to=user_story.assigned_to,
-                    acceptance_criteria=json.dumps(
-                        [ac.dict() for ac in user_story.acceptance_criteria]
-                    ) if user_story.acceptance_criteria else None,
-                    total_criteria=len(user_story.acceptance_criteria),
-                    completed_criteria=sum(1 for ac in user_story.acceptance_criteria if ac.completed),
-                    completion_percentage=user_story.get_completion_percentage()
-                )
-                self.db.add(db_story)
-                saved_stories.append(user_story.id)
+                story_data['created_date'] = now
+                new_stories_data.append(story_data)
+
+        # Step 3: Batch insert new stories (FAST!)
+        if new_stories_data:
+            self.update_state(state='PROGRESS', meta={
+                'progress': 50,
+                'status': f'Batch inserting {len(new_stories_data)} new stories...',
+                'project_id': project_id,
+                'project_name': project.name
+            })
+
+            self.db.bulk_insert_mappings(UserStoryDB, new_stories_data)
+            print(f"   ✅ Batch inserted {len(new_stories_data)} new stories")
+
+        # Step 4: Batch update existing stories (FAST!)
+        if update_stories_data:
+            self.update_state(state='PROGRESS', meta={
+                'progress': 70,
+                'status': f'Batch updating {len(update_stories_data)} existing stories...',
+                'project_id': project_id,
+                'project_name': project.name
+            })
+
+            self.db.bulk_update_mappings(UserStoryDB, update_stories_data)
+            print(f"   ✅ Batch updated {len(update_stories_data)} stories")
+
+        saved_stories = [s['id'] for s in new_stories_data]
+        updated_stories = [s['id'] for s in update_stories_data]
 
         # Update progress: Committing to database
         self.update_state(state='PROGRESS', meta={
