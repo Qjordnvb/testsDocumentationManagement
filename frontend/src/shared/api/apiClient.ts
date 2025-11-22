@@ -109,6 +109,50 @@ export const apiService = {
     return data;
   },
 
+  // Queue test generation task (Celery background job)
+  queueTestGeneration: async (
+    storyId: string,
+    numTestCases: number = 5,
+    scenariosPerTest: number = 3,
+    testTypes: string[] = ['FUNCTIONAL', 'UI'],
+    useAi: boolean = true
+  ): Promise<{
+    task_id: string;
+    story_id: string;
+    status: string;
+    message: string;
+    status_url: string;
+  }> => {
+    const { data } = await api.post(
+      `/generate-test-cases/${storyId}/queue`,
+      null,
+      {
+        params: {
+          num_test_cases: numTestCases,
+          scenarios_per_test: scenariosPerTest,
+          test_types: testTypes,
+          use_ai: useAi,
+        },
+      }
+    );
+    return data;
+  },
+
+  // Get status of queued test generation task
+  getTestGenerationStatus: async (taskId: string): Promise<{
+    task_id: string;
+    status: 'pending' | 'generating' | 'completed' | 'failed';
+    progress: number;
+    message?: string;
+    story_id?: string;
+    story_title?: string;
+    result?: any;
+    error?: string;
+  }> => {
+    const { data } = await api.get(`/generate-test-cases/status/${taskId}`);
+    return data;
+  },
+
   // ==================== Test Plans ====================
 
   // Generate test plan

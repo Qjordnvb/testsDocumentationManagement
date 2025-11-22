@@ -2,6 +2,7 @@
  * Main App Component
  * Configures React Router and wraps pages with Layout
  * Implements multi-project architecture
+ * UPDATED: Added test generation polling hook
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ import { TestCasesPage } from '@/pages/TestCasesPage';
 import { BugsPage } from '@/pages/BugsPage';
 import { BugDetailsPage } from '@/pages/BugDetailsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { useTestGenerationPolling } from '@/shared/lib/useTestGenerationPolling';
 
 // Placeholder pages (to be created)
 
@@ -26,6 +28,9 @@ const SettingsPage = () => (
 );
 
 function App() {
+  // Initialize test generation polling (runs in background)
+  useTestGenerationPolling();
+
   return (
     <BrowserRouter>
       <ProjectProvider>

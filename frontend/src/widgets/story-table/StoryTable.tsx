@@ -1,6 +1,7 @@
 /**
  * Story Table Widget
  * Interactive table for displaying user stories with filters and actions
+ * UPDATED: Added badge UI for test generation queue status
  */
 
 import React, { useMemo, useState } from 'react';
@@ -21,6 +22,8 @@ import {
 import type { UserStory } from '@/entities/user-story';
 import { Button } from '@/shared/ui/Button';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+import { useTestGenerationQueue } from '@/shared/stores';
+import { ReviewTestCasesModal } from '@/features/generate-tests/ui/ReviewTestCasesModal';
 import {
   ChevronUp,
   ChevronDown,
@@ -32,6 +35,9 @@ import {
   ChevronRight as ChevronRightIcon,
   CheckCircle2,
   Circle,
+  Loader2,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 
 interface StoryTableProps {
@@ -49,6 +55,11 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+
+  // Queue store
+  const { getActiveJobForStory, getJobByTaskId } = useTestGenerationQueue();
 
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
@@ -187,17 +198,95 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
       columnHelper.display({
         id: 'actions',
         header: 'Acciones',
-        cell: (info) => (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => onGenerateTests(info.row.original)}
-            className="flex items-center gap-1"
-          >
-            <Sparkles className="w-4 h-4" />
-            Generar Tests
-          </Button>
-        ),
+        cell: (info) => {
+          const story = info.row.original;
+          const activeJob = getActiveJobForStory(story.id);
+
+          // Show badge if there's an active job
+          if (activeJob) {
+            const statusConfig = {
+              queued: {
+                icon: Clock,
+                color: colors.gray.text600,
+                bgColor: colors.gray[100],
+                borderColor: colors.gray.border300,
+                text: 'En cola',
+              },
+              pending: {
+                icon: Clock,
+                color: colors.status.warning.text700,
+                bgColor: colors.status.warning[50],
+                borderColor: colors.status.warning.border200,
+                text: 'Iniciando...',
+              },
+              generating: {
+                icon: Loader2,
+                color: colors.brand.primary.text700,
+                bgColor: colors.brand.primary[50],
+                borderColor: colors.brand.primary.border200,
+                text: `Generando ${activeJob.progress}%`,
+                spin: true,
+              },
+              completed: {
+                icon: CheckCircle2,
+                color: colors.status.success.text700,
+                bgColor: colors.status.success[50],
+                borderColor: colors.status.success.border200,
+                text: 'Listo para revisar',
+                clickable: true,
+              },
+              failed: {
+                icon: AlertCircle,
+                color: colors.status.error.text700,
+                bgColor: colors.status.error[50],
+                borderColor: colors.status.error.border200,
+                text: 'Error',
+                clickable: true,
+              },
+            };
+
+            const config = statusConfig[activeJob.status as keyof typeof statusConfig];
+            const Icon = config.icon;
+
+            return (
+              <button
+                onClick={() => {
+                  if (config.clickable && activeJob.status === 'completed') {
+                    setSelectedJob(activeJob);
+                    setReviewModalOpen(true);
+                  }
+                }}
+                disabled={!config.clickable}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 ${borderRadius.base} border
+                  ${config.bgColor} border-[${config.borderColor}]
+                  ${config.clickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
+                  transition-opacity
+                `}
+              >
+                <Icon
+                  className={`w-4 h-4 ${config.color} ${config.spin ? 'animate-spin' : ''}`}
+                />
+                <span className={`${bodySmall.className} font-medium ${config.color}`}>
+                  {config.text}
+                </span>
+              </button>
+            );
+          }
+
+          // No active job, show generate button
+          return (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onGenerateTests(story)}
+              className="flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generar Tests
+            </Button>
+          );
+        },
       }),
     ],
     [onGenerateTests, bodySmall, body]
@@ -229,8 +318,9 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
   });
 
   return (
-    <div className="space-y-4">
-      {/* Search bar */}
+    <>
+      <div className="space-y-4">
+        {/* Search bar */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-md">
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${colors.gray.text400}`} />
@@ -435,6 +525,25 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory }: StoryTab
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Review Test Cases Modal - Opens when clicking "Listo para revisar" badge */}
+      {reviewModalOpen && selectedJob && selectedJob.result && (
+        <ReviewTestCasesModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedJob(null);
+          }}
+          suggestedTests={selectedJob.result.suggested_test_cases || []}
+          userStoryId={selectedJob.storyId}
+          userStoryTitle={selectedJob.storyTitle || ''}
+          onSuccess={() => {
+            setReviewModalOpen(false);
+            setSelectedJob(null);
+          }}
+        />
+      )}
+    </>
   );
 };
