@@ -106,9 +106,10 @@ export const BugReportModal: React.FC<Props> = ({
           setIsLoadingBug(false);
         });
     }
-  }, [isReadonly, existingBugId, isOpen]);
+  }, [isReadonly, existingBugId, isOpen, mode]);
 
-  // Pre-fill data when execution details are provided (create mode)
+  // Pre-fill data when execution details are provided (create mode ONLY)
+  // Only run once when modal opens in create mode, not on subsequent re-renders
   useEffect(() => {
     console.log('🔍 BugReportModal useEffect - Props:', {
       isOpen,
@@ -120,67 +121,77 @@ export const BugReportModal: React.FC<Props> = ({
       executionDetails
     });
 
-    if (executionDetails && isOpen && mode === 'create') {
-      // Auto-fill environment and version from execution
-      setEnvironment(executionDetails.environment || 'QA');
-      setVersion(executionDetails.version || '');
-
-      // Extract failed steps for "Steps to Reproduce"
-      const failedSteps = executionDetails.step_results.filter(s => s.status === 'FAILED');
-      if (failedSteps.length > 0) {
-        const steps = failedSteps.map((step) =>
-          `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
-        );
-        setStepsToReproduce(steps.length > 0 ? steps : ['']);
-      } else {
-        setStepsToReproduce(['']);
-      }
-
-      // Suggest title based on scenario name and test case (ALWAYS)
-      if (scenarioName && testCaseTitle) {
-        setTitle(`Bug in Scenario: ${scenarioName}`);
-      } else if (testCaseTitle) {
-        setTitle(`Bug in: ${testCaseTitle}`);
-      } else if (scenarioName) {
-        setTitle(`Bug in: ${scenarioName}`);
-      }
-
-      // Pre-fill description with comprehensive execution context (ALWAYS)
-      let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
-
-      if (scenarioName) {
-        descriptionText += `📋 Scenario: ${scenarioName}\n`;
-      }
-      if (testCaseId) {
-        descriptionText += `🧪 Test Case: ${testCaseId}\n`;
-      }
-      descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
-      descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
-      descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
-      if (executionDetails.version) {
-        descriptionText += `📦 Version: ${executionDetails.version}\n`;
-      }
-      descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
-
-      if (failedSteps.length > 0 && failedSteps[0].actual_result) {
-        descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
-      }
-
-      setDescription(descriptionText);
-
-      // Extract and populate evidence files/attachments from step results
-      const evidenceFiles: string[] = [];
-      if (executionDetails.step_results) {
-        executionDetails.step_results.forEach(step => {
-          if (step.evidence_file) {
-            evidenceFiles.push(step.evidence_file);
-          }
-        });
-      }
-      setAttachments(evidenceFiles);
-      console.log('📸 Pre-populated attachments:', evidenceFiles);
+    // Only pre-fill in CREATE mode when modal first opens
+    // Don't run if:
+    // - Not in create mode
+    // - Modal is not open
+    // - No execution details
+    // - Title is already set (means we already pre-filled)
+    if (!isOpen || mode !== 'create' || !executionDetails || title) {
+      return;
     }
-  }, [executionDetails, isOpen, scenarioName]);
+
+    console.log('🔄 Pre-filling bug form with execution details...');
+
+    // Auto-fill environment and version from execution
+    setEnvironment(executionDetails.environment || 'QA');
+    setVersion(executionDetails.version || '');
+
+    // Extract failed steps for "Steps to Reproduce"
+    const failedSteps = executionDetails.step_results.filter(s => s.status === 'FAILED');
+    if (failedSteps.length > 0) {
+      const steps = failedSteps.map((step) =>
+        `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
+      );
+      setStepsToReproduce(steps.length > 0 ? steps : ['']);
+    } else {
+      setStepsToReproduce(['']);
+    }
+
+    // Suggest title based on scenario name and test case (ALWAYS)
+    if (scenarioName && testCaseTitle) {
+      setTitle(`Bug in Scenario: ${scenarioName}`);
+    } else if (testCaseTitle) {
+      setTitle(`Bug in: ${testCaseTitle}`);
+    } else if (scenarioName) {
+      setTitle(`Bug in: ${scenarioName}`);
+    }
+
+    // Pre-fill description with comprehensive execution context (ALWAYS)
+    let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
+
+    if (scenarioName) {
+      descriptionText += `📋 Scenario: ${scenarioName}\n`;
+    }
+    if (testCaseId) {
+      descriptionText += `🧪 Test Case: ${testCaseId}\n`;
+    }
+    descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
+    descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
+    descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
+    if (executionDetails.version) {
+      descriptionText += `📦 Version: ${executionDetails.version}\n`;
+    }
+    descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
+
+    if (failedSteps.length > 0 && failedSteps[0].actual_result) {
+      descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
+    }
+
+    setDescription(descriptionText);
+
+    // Extract and populate evidence files/attachments from step results
+    const evidenceFiles: string[] = [];
+    if (executionDetails.step_results) {
+      executionDetails.step_results.forEach(step => {
+        if (step.evidence_file) {
+          evidenceFiles.push(step.evidence_file);
+        }
+      });
+    }
+    setAttachments(evidenceFiles);
+    console.log('📸 Pre-populated attachments:', evidenceFiles);
+  }, [isOpen, mode, executionDetails, scenarioName, testCaseTitle, testCaseId, title]);
 
   const handleAddStep = () => {
     setStepsToReproduce([...stepsToReproduce, '']);
