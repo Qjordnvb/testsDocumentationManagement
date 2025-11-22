@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle, Bug, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bugApi } from '@/entities/bug';
@@ -71,6 +71,9 @@ export const BugReportModal: React.FC<Props> = ({
   const [isLoadingBug, setIsLoadingBug] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Track if we've already pre-filled the form to prevent re-execution
+  const hasPreFilledRef = useRef(false);
+
   // Load existing bug in readonly or edit mode
   useEffect(() => {
     if (shouldLoadExistingBug && isOpen) {
@@ -108,6 +111,13 @@ export const BugReportModal: React.FC<Props> = ({
     }
   }, [isReadonly, existingBugId, isOpen, mode]);
 
+  // Reset pre-fill flag when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasPreFilledRef.current = false;
+    }
+  }, [isOpen]);
+
   // Pre-fill data when execution details are provided (create mode ONLY)
   // Only run once when modal opens in create mode, not on subsequent re-renders
   useEffect(() => {
@@ -115,23 +125,24 @@ export const BugReportModal: React.FC<Props> = ({
       isOpen,
       mode,
       hasExecutionDetails: !!executionDetails,
+      hasPreFilled: hasPreFilledRef.current,
       scenarioName,
       testCaseTitle,
-      testCaseId,
-      executionDetails
+      testCaseId
     });
 
     // Only pre-fill in CREATE mode when modal first opens
     // Don't run if:
+    // - Already pre-filled (prevents re-execution)
     // - Not in create mode
     // - Modal is not open
     // - No execution details
-    // - Title is already set (means we already pre-filled)
-    if (!isOpen || mode !== 'create' || !executionDetails || title) {
+    if (hasPreFilledRef.current || !isOpen || mode !== 'create' || !executionDetails) {
       return;
     }
 
     console.log('🔄 Pre-filling bug form with execution details...');
+    hasPreFilledRef.current = true; // Mark as pre-filled
 
     // Auto-fill environment and version from execution
     setEnvironment(executionDetails.environment || 'QA');
@@ -191,7 +202,7 @@ export const BugReportModal: React.FC<Props> = ({
     }
     setAttachments(evidenceFiles);
     console.log('📸 Pre-populated attachments:', evidenceFiles);
-  }, [isOpen, mode, executionDetails, scenarioName, testCaseTitle, testCaseId, title]);
+  }, [isOpen, mode, executionDetails, scenarioName, testCaseTitle, testCaseId]);
 
   const handleAddStep = () => {
     setStepsToReproduce([...stepsToReproduce, '']);
