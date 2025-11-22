@@ -16,8 +16,7 @@ from backend.database import get_db, UserDB
 from backend.api.dependencies import (
     get_current_user,
     verify_password,
-    create_access_token,
-    get_password_hash
+    create_access_token
 )
 from backend.models import (
     LoginRequest,
