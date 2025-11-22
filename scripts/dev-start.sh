@@ -35,9 +35,23 @@ fi
 # Create necessary directories
 mkdir -p data output uploads logs
 
+# Detect docker-compose vs docker compose
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo -e "${RED}❌ Error: Docker Compose no encontrado${NC}"
+    echo -e "${YELLOW}Instala Docker Desktop o Docker Compose${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}Using: $DOCKER_COMPOSE${NC}"
+echo ""
+
 # ==================== 1. Start Redis ====================
 echo -e "${GREEN}[1/4]${NC} Iniciando Redis (Docker)..."
-docker-compose up redis -d > /dev/null 2>&1
+$DOCKER_COMPOSE up redis -d > /dev/null 2>&1
 
 # Wait for Redis to be ready
 echo "      Esperando Redis..."

@@ -55,11 +55,11 @@ dev: ## 🚀 DESARROLLO LOCAL (4 terminales) - RECOMENDADO
 	@echo "║  Backend:  http://localhost:8000                              ║"
 	@echo "║  API Docs: http://localhost:8000/docs                         ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
-	@./scripts/dev-start.sh
+	@bash ./scripts/dev-start.sh
 
 dev-stop: ## 🛑 Detiene desarrollo local
 	@echo "🛑 Deteniendo servicios..."
-	docker-compose down
+	@(command -v docker-compose > /dev/null && docker-compose down) || (docker compose down) || true
 	@pkill -f "celery.*worker" || true
 	@pkill -f "uvicorn.*main:app" || true
 	@pkill -f "vite" || true
@@ -79,15 +79,15 @@ dev-docker: ## 🐳 DESARROLLO con Docker (todo containerizado)
 	@echo "║  Frontend: http://localhost:5173                              ║"
 	@echo "║  Backend:  http://localhost:8000                              ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
-	docker-compose -f docker-compose.full.yml up -d
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml up -d) || (docker compose -f docker-compose.full.yml up -d)
 	@echo ""
 	@echo "✅ Servicios iniciados. Ver logs: make logs"
 
 dev-docker-stop: ## 🛑 Detiene desarrollo Docker
-	docker-compose -f docker-compose.full.yml down
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml down) || (docker compose -f docker-compose.full.yml down)
 
 dev-docker-rebuild: ## 🔄 Rebuild containers Docker
-	docker-compose -f docker-compose.full.yml up -d --build
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml up -d --build) || (docker compose -f docker-compose.full.yml up -d --build)
 
 # ==================== Production ====================
 prod: ## 🏭 PRODUCCIÓN con Docker (optimizado)
@@ -100,19 +100,19 @@ prod-stop: ## 🛑 Detiene producción
 
 # ==================== Logs ====================
 logs: ## 📋 Ver logs de todos los servicios (Docker)
-	docker-compose -f docker-compose.full.yml logs -f
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml logs -f) || (docker compose -f docker-compose.full.yml logs -f)
 
 logs-backend: ## 📋 Ver logs del Backend
-	docker-compose -f docker-compose.full.yml logs -f backend
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml logs -f backend) || (docker compose -f docker-compose.full.yml logs -f backend)
 
 logs-celery: ## 📋 Ver logs del Celery Worker
-	docker-compose -f docker-compose.full.yml logs -f celery_worker
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml logs -f celery_worker) || (docker compose -f docker-compose.full.yml logs -f celery_worker)
 
 logs-redis: ## 📋 Ver logs de Redis
-	docker-compose -f docker-compose.full.yml logs -f redis
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml logs -f redis) || (docker compose -f docker-compose.full.yml logs -f redis)
 
 logs-frontend: ## 📋 Ver logs del Frontend
-	docker-compose -f docker-compose.full.yml logs -f frontend
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml logs -f frontend) || (docker compose -f docker-compose.full.yml logs -f frontend)
 
 # ==================== Testing ====================
 test: ## 🧪 Corre tests
@@ -138,13 +138,13 @@ db-reset: ## 🗄️ Resetea base de datos (⚠️ BORRA DATOS)
 
 # ==================== Redis ====================
 redis-start: ## 🔴 Inicia solo Redis (Docker)
-	docker-compose up redis -d
+	@(command -v docker-compose > /dev/null && docker-compose up redis -d) || (docker compose up redis -d)
 
 redis-stop: ## 🛑 Detiene Redis
-	docker-compose down redis
+	@(command -v docker-compose > /dev/null && docker-compose down redis) || (docker compose down redis)
 
 redis-cli: ## 💻 Abre Redis CLI
-	docker exec -it qa_redis redis-cli
+	@docker exec -it qa_redis redis-cli
 
 # ==================== Celery ====================
 celery-start: ## 🔄 Inicia solo Celery Worker (local)
@@ -168,8 +168,8 @@ clean: ## 🧹 Limpia archivos temporales y cache
 	@echo "✅ Limpieza completada"
 
 clean-docker: ## 🧹 Limpia containers y volúmenes Docker
-	docker-compose -f docker-compose.full.yml down -v
-	docker system prune -f
+	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml down -v) || (docker compose -f docker-compose.full.yml down -v)
+	@docker system prune -f
 	@echo "✅ Docker limpiado"
 
 # ==================== Utilities ====================
