@@ -202,7 +202,7 @@ async def get_user_stories(
             "created_at": s.created_date.isoformat() if s.created_date else None,
             "updated_at": s.updated_date.isoformat() if s.updated_date else None,
             "completion_percentage": s.completion_percentage,
-            "test_case_ids": []  # TODO: Fetch from relationship
+            "test_case_ids": [tc.id for tc in s.test_cases] if s.test_cases else []
         }
         for s in stories
     ]
@@ -226,7 +226,8 @@ async def get_user_story(story_id: str, db: Session = Depends(get_db)):
         "sprint": story.sprint,
         "story_points": story.story_points,
         "acceptance_criteria": json.loads(story.acceptance_criteria) if story.acceptance_criteria else [],
-        "completion_percentage": story.completion_percentage
+        "completion_percentage": story.completion_percentage,
+        "test_case_ids": [tc.id for tc in story.test_cases] if story.test_cases else []
     }
 
 

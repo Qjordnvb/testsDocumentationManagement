@@ -8,10 +8,8 @@ import { useState } from 'react';
 import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
 import { useGenerateStore } from '../model/generateStore';
-import { previewTests } from '../api/generateTests';
-import { ReviewTestCasesModal } from './ReviewTestCasesModal';
-import { Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { UserStory } from '@/entities/user-story';
 import type { SuggestedTestCase } from '../api/generateTests';
 import { useTestGenerationQueue } from '@/shared/stores';
@@ -38,7 +36,6 @@ export const GenerateModal = ({
   const {
     isGenerating,
     generationError,
-    setIsGenerating,
     setGenerationError,
     resetGeneration,
   } = useGenerateStore();
@@ -49,7 +46,6 @@ export const GenerateModal = ({
   const [selectedTestTypes, setSelectedTestTypes] = useState<string[]>(['FUNCTIONAL', 'UI']);
   const [useAi, setUseAi] = useState(true);
   const [suggestedTests, setSuggestedTests] = useState<SuggestedTestCase[]>([]);
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
 
   // Combined loading state (local OR store)
@@ -103,10 +99,10 @@ export const GenerateModal = ({
       });
 
       // Show success toast
-      toast.success('Test Generation Queued!', {
-        description: `Generating ${numTestCases} test cases for "${story.title}". You'll be notified when ready.`,
-        duration: 4000,
-      });
+      toast.success(
+        `Test Generation Queued! Generating ${numTestCases} test cases for "${story.title}". You'll be notified when ready.`,
+        { duration: 4000 }
+      );
 
       // Close modal and call onSuccess
       onClose();
@@ -127,10 +123,10 @@ export const GenerateModal = ({
       }
 
       setGenerationError(errorMessage);
-      toast.error('Queue Failed', {
-        description: errorMessage,
-        duration: 5000,
-      });
+      toast.error(
+        `Queue Failed - ${errorMessage}`,
+        { duration: 5000 }
+      );
     } finally {
       setIsLoadingLocal(false);
     }

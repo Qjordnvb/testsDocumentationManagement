@@ -6,7 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { useTestGenerationQueue } from '../stores';
 import { apiService } from '../api';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 const POLLING_INTERVAL = 2000; // 2 seconds
 
@@ -18,9 +18,10 @@ export function useTestGenerationPolling() {
     stopPolling,
     isPolling,
     getActiveJobs,
+    notifyTestCasesSaved,
   } = useTestGenerationQueue();
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   // Poll a single job
   const pollJob = async (taskId: string) => {
@@ -48,20 +49,62 @@ export function useTestGenerationPolling() {
         // Show notification
         if (status.status === 'completed') {
           const job = jobs[taskId];
-          toast.success('Test Cases Generated!', {
-            description: `Ready for ${job?.storyTitle || 'user story'}`,
-            duration: 5000,
-          });
+
+          // ✅ SAVE TEST CASES TO DATABASE
+          if (status.result?.suggested_test_cases && status.result?.story_id) {
+            try {
+              // Transform suggested test cases to batch format
+              const testCasesToSave = status.result.suggested_test_cases.map((tc: any) => ({
+                suggested_id: tc.suggested_id,
+                title: tc.title,
+                description: tc.description,
+                user_story_id: status.result.story_id,
+                test_type: tc.test_type,
+                priority: tc.priority,
+                status: tc.status,
+                gherkin_content: tc.gherkin_content,
+              }));
+
+              // Call batch create endpoint
+              await fetch('/api/v1/test-cases/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_story_id: status.result.story_id,
+                  test_cases: testCasesToSave,
+                }),
+              });
+
+              toast.success(
+                `Test Cases Saved! ${testCasesToSave.length} test cases created for ${job?.storyTitle || 'user story'}`,
+                { duration: 5000 }
+              );
+
+              // Notify that test cases were saved (triggers refresh in StoriesPage)
+              notifyTestCasesSaved();
+            } catch (error) {
+              console.error('Error saving test cases:', error);
+              toast.error(
+                'Failed to Save - Test cases were generated but could not be saved',
+                { duration: 7000 }
+              );
+            }
+          } else {
+            // No test cases in result (shouldn't happen)
+            toast('No Test Cases - Generation completed but no test cases were returned', {
+              duration: 5000,
+            });
+          }
 
           // Mark as completed
           updateJob(taskId, {
             completedAt: new Date(),
           });
         } else {
-          toast.error('Generation Failed', {
-            description: status.error || 'An error occurred during generation',
-            duration: 7000,
-          });
+          toast.error(
+            `Generation Failed - ${status.error || 'An error occurred during generation'}`,
+            { duration: 7000 }
+          );
 
           // Mark as failed
           updateJob(taskId, {
@@ -78,8 +121,8 @@ export function useTestGenerationPolling() {
       const failureCount = (job as any)._failureCount || 0;
 
       if (failureCount >= 3) {
-        toast.warning('Connection Issue', {
-          description: 'Unable to check job status. Will keep trying...',
+        toast('Connection Issue - Unable to check job status. Will keep trying...', {
+          duration: 4000,
         });
       }
 
