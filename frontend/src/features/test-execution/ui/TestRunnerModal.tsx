@@ -328,7 +328,7 @@ export const TestRunnerModal: React.FC<Props> = ({
     }
   };
 
-  const totalSteps = scenarios.reduce((sum, s) => sum + s.steps.length, 0);
+  // totalSteps, passedSteps, failedSteps already memoized above (lines 62-75)
   const passedScenarios = scenarios.filter(s => s.status === 'passed').length;
   const failedScenarios = scenarios.filter(s => s.status === 'failed').length;
 
