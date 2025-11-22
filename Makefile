@@ -71,9 +71,12 @@ dev-stop: ## 🛑 Detiene desarrollo local
 	@for pid in $$(pgrep -f "uvicorn.*main:app" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
 	@for pid in $$(pgrep -f "python.*main:app" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
 	@echo "  ⚛️  Deteniendo Frontend (Vite)..."
+	@pkill -f "node.*vite" || true
+	@pkill -f "npm.*dev" || true
 	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill $$pid 2>/dev/null || true; done
 	@sleep 1
 	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
+	@for pid in $$(pgrep -f "node.*vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
 	@echo "  🧹 Verificando puertos..."
 	@sleep 1
 	@lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
@@ -144,10 +147,10 @@ test-frontend: ## 🧪 Tests del Frontend
 
 # ==================== Database ====================
 db-clear: ## 🗄️ Limpia TODOS los datos (mantiene estructura de tablas)
-	@python clear_database.py
+	@PYTHONPATH=. python clear_database.py
 
 db-migrate: ## 🗄️ Migra a arquitectura multi-proyecto
-	@python migrate_to_multiproject.py
+	@PYTHONPATH=. python migrate_to_multiproject.py
 
 db-reset: ## 🗄️ Resetea base de datos COMPLETAMENTE (⚠️ NUCLEAR)
 	@echo "⚠️  Esto BORRARÁ la base de datos completamente. ¿Continuar? [y/N] " && read ans && [ $${ans:-N} = y ]
@@ -155,7 +158,7 @@ db-reset: ## 🗄️ Resetea base de datos COMPLETAMENTE (⚠️ NUCLEAR)
 	@echo "✅ Base de datos eliminada. Se creará nueva al iniciar el backend."
 
 db-status: ## 📊 Ver estadísticas de la base de datos
-	@python -c "from backend.database.db import SessionLocal; from backend.database.models import ProjectDB, UserStoryDB, TestCaseDB; db = SessionLocal(); print(f'\n📊 Database Statistics:\n'); print(f'Projects: {db.query(ProjectDB).count()}'); print(f'User Stories: {db.query(UserStoryDB).count()}'); print(f'Test Cases: {db.query(TestCaseDB).count()}\n'); db.close()"
+	@PYTHONPATH=. python -c "from backend.database.db import SessionLocal; from backend.database.models import ProjectDB, UserStoryDB, TestCaseDB; db = SessionLocal(); print(f'\n📊 Database Statistics:\n'); print(f'Projects: {db.query(ProjectDB).count()}'); print(f'User Stories: {db.query(UserStoryDB).count()}'); print(f'Test Cases: {db.query(TestCaseDB).count()}\n'); db.close()"
 
 # ==================== Redis ====================
 redis-start: ## 🔴 Inicia solo Redis (Docker)

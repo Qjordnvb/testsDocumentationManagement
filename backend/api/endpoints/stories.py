@@ -68,66 +68,66 @@ async def upload_file(
         if not result.success:
             raise HTTPException(status_code=400, detail=f"Parse errors: {result.errors}")
 
-        # Save to database (UPSERT: update if exists, insert if new)
-        print(f"Saving {len(result.user_stories)} stories to database...")
-        saved_stories = []
-        updated_stories = []
+        # Save to database (BATCH PROCESSING for 10-100x speedup)
+        print(f"Saving {len(result.user_stories)} stories to database with BATCH processing...")
+
+        # Step 1: Identify existing stories in ONE query
+        print("  Step 1: Identifying existing stories...")
+        all_story_ids = [s.id for s in result.user_stories]
+        existing_stories_query = db.query(UserStoryDB).filter(
+            UserStoryDB.id.in_(all_story_ids),
+            UserStoryDB.project_id == project_id
+        ).all()
+        existing_ids = {s.id for s in existing_stories_query}
+
+        # Step 2: Prepare batch data
+        print("  Step 2: Preparing batch data...")
+        new_stories_data = []
+        update_stories_data = []
+        now = datetime.now()
 
         for user_story in result.user_stories:
-            # Check if story already exists IN THIS PROJECT
-            # This allows the same story ID to exist in different projects
-            existing_story = db.query(UserStoryDB).filter(
-                UserStoryDB.id == user_story.id,
-                UserStoryDB.project_id == project_id
-            ).first()
-
-            if existing_story:
-                # Update existing story
-                print(f"  Updating story: {user_story.id} - {user_story.title}")
-                existing_story.title = user_story.title
-                existing_story.description = user_story.description
-                existing_story.priority = user_story.priority
-                existing_story.status = user_story.status
-                existing_story.epic = user_story.epic
-                existing_story.sprint = user_story.sprint
-                existing_story.story_points = user_story.story_points
-                existing_story.assigned_to = user_story.assigned_to
-                # Save acceptance criteria as JSON
-                existing_story.acceptance_criteria = json.dumps(
+            story_data = {
+                'id': user_story.id,
+                'project_id': project_id,
+                'title': user_story.title,
+                'description': user_story.description,
+                'priority': user_story.priority.value if hasattr(user_story.priority, 'value') else user_story.priority,
+                'status': user_story.status.value if hasattr(user_story.status, 'value') else user_story.status,
+                'epic': user_story.epic,
+                'sprint': user_story.sprint,
+                'story_points': user_story.story_points,
+                'assigned_to': user_story.assigned_to,
+                'acceptance_criteria': json.dumps(
                     [ac.dict() for ac in user_story.acceptance_criteria]
-                ) if user_story.acceptance_criteria else None
-                existing_story.total_criteria = len(user_story.acceptance_criteria)
-                existing_story.completed_criteria = sum(1 for ac in user_story.acceptance_criteria if ac.completed)
-                existing_story.completion_percentage = user_story.get_completion_percentage()
-                existing_story.updated_date = datetime.now()
-                updated_stories.append(user_story.id)
+                ) if user_story.acceptance_criteria else None,
+                'total_criteria': len(user_story.acceptance_criteria),
+                'completed_criteria': sum(1 for ac in user_story.acceptance_criteria if ac.completed),
+                'completion_percentage': user_story.get_completion_percentage(),
+                'updated_date': now
+            }
+
+            if user_story.id in existing_ids:
+                update_stories_data.append(story_data)
             else:
-                # Insert new story
-                print(f"  Inserting new story: {user_story.id} - {user_story.title}")
-                db_story = UserStoryDB(
-                    id=user_story.id,
-                    project_id=project_id,  # Associate with project
-                    title=user_story.title,
-                    description=user_story.description,
-                    priority=user_story.priority,
-                    status=user_story.status,
-                    epic=user_story.epic,
-                    sprint=user_story.sprint,
-                    story_points=user_story.story_points,
-                    assigned_to=user_story.assigned_to,
-                    # Save acceptance criteria as JSON
-                    acceptance_criteria=json.dumps(
-                        [ac.dict() for ac in user_story.acceptance_criteria]
-                    ) if user_story.acceptance_criteria else None,
-                    total_criteria=len(user_story.acceptance_criteria),
-                    completed_criteria=sum(1 for ac in user_story.acceptance_criteria if ac.completed),
-                    completion_percentage=user_story.get_completion_percentage()
-                )
-                db.add(db_story)
-                saved_stories.append(user_story.id)
+                story_data['created_date'] = now
+                new_stories_data.append(story_data)
+
+        # Step 3: Batch insert new stories (FAST!)
+        if new_stories_data:
+            print(f"  Step 3: Batch inserting {len(new_stories_data)} new stories...")
+            db.bulk_insert_mappings(UserStoryDB, new_stories_data)
+
+        # Step 4: Batch update existing stories (FAST!)
+        if update_stories_data:
+            print(f"  Step 4: Batch updating {len(update_stories_data)} existing stories...")
+            db.bulk_update_mappings(UserStoryDB, update_stories_data)
+
+        saved_stories = [s['id'] for s in new_stories_data]
+        updated_stories = [s['id'] for s in update_stories_data]
 
         db.commit()
-        print(f"Database commit successful! Inserted: {len(saved_stories)}, Updated: {len(updated_stories)}")
+        print(f"✅ Database commit successful! Inserted: {len(saved_stories)}, Updated: {len(updated_stories)}")
 
         # Fetch the saved stories with all data (from THIS PROJECT only)
         all_story_ids = [s.id for s in result.user_stories]
