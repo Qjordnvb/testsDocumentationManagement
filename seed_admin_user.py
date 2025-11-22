@@ -50,7 +50,7 @@ def seed_admin_user():
             email=admin_email,
             password_hash=hash_password(admin_password),
             full_name=admin_name,
-            role="ADMIN",
+            role="admin",  # Must match Role enum value (lowercase)
             is_active=True,
             created_at=datetime.utcnow(),
             created_by=None,  # Self-created
