@@ -75,6 +75,10 @@ export const BugReportModal: React.FC<Props> = ({
   const hasPreFilledRef = useRef(false);
   // Track if we've already loaded the bug to prevent duplicate loads
   const hasLoadedBugRef = useRef(false);
+  // Track if user has started editing to prevent overwriting their changes
+  const hasUserEditedRef = useRef(false);
+  // Track if initial form population is complete
+  const isInitialLoadCompleteRef = useRef(false);
 
   // Load existing bug in readonly or edit mode
   useEffect(() => {
@@ -91,23 +95,48 @@ export const BugReportModal: React.FC<Props> = ({
       .then((bug) => {
         console.log('✅ Bug loaded:', bug);
 
-          // Populate all fields with bug data
-          setTitle(bug.title);
-          setDescription(bug.description);
-          setStepsToReproduce(bug.steps_to_reproduce || ['']);
-          setExpectedBehavior(bug.expected_behavior);
-          setActualBehavior(bug.actual_behavior);
-          setSeverity(bug.severity);
-          setPriority(bug.priority);
-          setBugType(bug.bug_type);
-          setEnvironment(bug.environment);
-          setBrowser(bug.browser || '');
-          setOs(bug.os || '');
-          setVersion(bug.version || '');
-          setAssignedTo(bug.assigned_to || '');
-          // Load attachments/screenshots
-          setAttachments(bug.attachments || []);
-        })
+        // CRITICAL: Check if user has typed in any fields while we were loading
+        // Compare current form state with initial/empty values
+        const hasUserInput = (
+          (title && title !== '') ||
+          (description && description !== '') ||
+          (expectedBehavior && expectedBehavior !== '') ||
+          (actualBehavior && actualBehavior !== '') ||
+          (browser && browser !== '') ||
+          (os && os !== '') ||
+          (version && version !== '') ||
+          (assignedTo && assignedTo !== '')
+        );
+
+        if (hasUserInput) {
+          console.log('⚠️  User has already typed data - skipping form population to preserve changes');
+          console.log('   Current state:', { title, expectedBehavior, actualBehavior, assignedTo });
+          setIsLoadingBug(false);
+          return;
+        }
+
+        console.log('📝 Populating form with loaded bug data...');
+        // Populate all fields with bug data
+        setTitle(bug.title);
+        setDescription(bug.description);
+        setStepsToReproduce(bug.steps_to_reproduce || ['']);
+        setExpectedBehavior(bug.expected_behavior);
+        setActualBehavior(bug.actual_behavior);
+        setSeverity(bug.severity);
+        setPriority(bug.priority);
+        setBugType(bug.bug_type);
+        setEnvironment(bug.environment);
+        setBrowser(bug.browser || '');
+        setOs(bug.os || '');
+        setVersion(bug.version || '');
+        setAssignedTo(bug.assigned_to || '');
+        // Load attachments/screenshots
+        setAttachments(bug.attachments || []);
+
+        // Mark initial load as complete - any subsequent changes are from user
+        isInitialLoadCompleteRef.current = true;
+        console.log('✅ Initial form population complete');
+      })
         .catch((error) => {
           console.error('❌ Error loading bug:', error);
           toast.error('Error al cargar el bug');
@@ -122,8 +151,24 @@ export const BugReportModal: React.FC<Props> = ({
     if (!isOpen) {
       hasPreFilledRef.current = false;
       hasLoadedBugRef.current = false;
+      hasUserEditedRef.current = false;
+      isInitialLoadCompleteRef.current = false;
     }
   }, [isOpen]);
+
+  // Detect when user edits form fields
+  // If initial load is complete and a field changes, mark as user-edited
+  useEffect(() => {
+    if (isInitialLoadCompleteRef.current && !hasUserEditedRef.current) {
+      // This useEffect runs when any dependency changes
+      // Since initial load is complete, this must be user input
+      hasUserEditedRef.current = true;
+      console.log('🖊️  User has started editing form');
+    }
+  }, [
+    title, description, expectedBehavior, actualBehavior,
+    environment, browser, os, version, assignedTo
+  ]);
 
   // Pre-fill data when execution details are provided (create mode ONLY)
   // Only run once when modal opens in create mode, not on subsequent re-renders
