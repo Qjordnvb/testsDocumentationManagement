@@ -13,6 +13,7 @@ import { GenerateModal } from '@/features/generate-tests';
 import { Button } from '@/shared/ui/Button';
 import { storyApi } from '@/entities/user-story';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import { useTestGenerationQueue } from '@/shared/stores';
 import type { UserStory } from '@/entities/user-story';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
@@ -23,6 +24,7 @@ type ViewMode = 'table' | 'cards';
 export const StoriesPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { currentProject } = useProject();
+  const { hasRole } = useAuth();
   const { setOnTestCasesSaved } = useTestGenerationQueue();
   const navigate = useNavigate();
   const [stories, setStories] = useState<UserStory[]>([]);
@@ -130,13 +132,16 @@ export const StoriesPage = () => {
       {/* Actions bar */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setUploadModalOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Subir Excel/CSV
-          </Button>
+          {/* Upload button - Only ADMIN and QA can upload user stories */}
+          {hasRole('admin', 'qa') && (
+            <Button
+              onClick={() => setUploadModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Subir Excel/CSV
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={loadStories}

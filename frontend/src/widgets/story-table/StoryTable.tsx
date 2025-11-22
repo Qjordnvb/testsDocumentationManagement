@@ -22,6 +22,7 @@ import {
 import type { UserStory } from '@/entities/user-story';
 import { Button } from '@/shared/ui/Button';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+import { useAuth } from '@/app/providers';
 import { useTestGenerationQueue } from '@/shared/stores';
 import { ReviewTestCasesModal } from '@/features/generate-tests/ui/ReviewTestCasesModal';
 import {
@@ -60,7 +61,8 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
-  // Queue store
+  // Auth and Queue
+  const { hasRole } = useAuth();
   const { getActiveJobForStory } = useTestGenerationQueue();
 
   // Typography presets
@@ -287,7 +289,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
           const hasTestCases = story.test_case_ids && story.test_case_ids.length > 0;
 
           if (hasTestCases) {
-            // Has test cases - show "View Tests" button
+            // Has test cases - show "View Tests" button (+ Generate if role allows)
             return (
               <div className="flex items-center gap-2">
                 <Button
@@ -308,20 +310,32 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
                   <Eye className="w-4 h-4" />
                   Ver Tests ({story.test_case_ids.length})
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onGenerateTests(story)}
-                  className="flex items-center gap-1"
-                  title="Generar más test cases"
-                >
-                  <Sparkles className="w-4 h-4" />
-                </Button>
+                {/* Only ADMIN and QA can generate tests */}
+                {hasRole('admin', 'qa') && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onGenerateTests(story)}
+                    className="flex items-center gap-1"
+                    title="Generar más test cases"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             );
           }
 
-          // No test cases yet - show generate button
+          // No test cases yet - show generate button (only if role allows)
+          // Only ADMIN and QA can generate tests
+          if (!hasRole('admin', 'qa')) {
+            return (
+              <span className={`${bodySmall.className} ${colors.gray.text500} italic`}>
+                Sin tests generados
+              </span>
+            );
+          }
+
           return (
             <Button
               size="sm"
@@ -336,7 +350,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
         },
       }),
     ],
-    [onGenerateTests, bodySmall, body]
+    [onGenerateTests, hasRole, bodySmall, body, getActiveJobForStory, onViewTests]
   );
 
   const table = useReactTable({

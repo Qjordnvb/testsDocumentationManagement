@@ -4,8 +4,9 @@
  */
 
 import { useState } from 'react';
-import { FileText, Download, Bug, CheckCircle, FileCheck, AlertCircle } from 'lucide-react';
+import { FileText, Download, Bug, CheckCircle, FileCheck, AlertCircle, Lock } from 'lucide-react';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import { apiService } from '@/shared/api/apiClient';
 import toast from 'react-hot-toast';
 import { Button } from '@/shared/ui/Button';
@@ -13,6 +14,7 @@ import { colors, borderRadius, getTypographyPreset } from '@/shared/design-syste
 
 export const ReportsPage = () => {
   const { currentProject } = useProject();
+  const { hasRole } = useAuth();
   const [loadingStates, setLoadingStates] = useState({
     bugSummary: false,
     testExecution: false,
@@ -25,6 +27,23 @@ export const ReportsPage = () => {
   const body = getTypographyPreset('body');
   const headingMedium = getTypographyPreset('headingMedium');
   const headingLarge = getTypographyPreset('headingLarge');
+
+  // DEV role cannot access reports
+  if (hasRole('dev')) {
+    return (
+      <div className="card flex items-center justify-center py-16">
+        <div className="text-center">
+          <Lock size={48} className={`mx-auto ${colors.gray.text400} mb-4`} />
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text700} mb-2`}>Acceso Restringido</h2>
+          <p className={`${body.className} ${colors.gray.text500}`}>
+            Los desarrolladores no tienen acceso a la generación de reportes.
+            <br />
+            Contacta a tu QA o Project Manager para obtener reportes.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentProject) {
     return (
