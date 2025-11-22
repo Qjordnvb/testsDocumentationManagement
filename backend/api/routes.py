@@ -906,6 +906,121 @@ async def preview_test_cases(
     return response
 
 
+# ==================== Test Cases Generation with Celery Queue ====================
+
+@router.post("/generate-test-cases/{story_id}/queue")
+async def queue_test_generation(
+    story_id: str,
+    num_test_cases: int = Query(default=5, ge=1, le=10),
+    scenarios_per_test: int = Query(default=3, ge=1, le=10),
+    test_types: List[str] = Query(default=["FUNCTIONAL", "UI"]),
+    use_ai: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Queue test generation task in background (non-blocking)
+    Returns task_id for status polling
+    """
+    from backend.tasks import generate_test_cases_task
+
+    # Validate user story exists
+    story_db = db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
+    if not story_db:
+        raise HTTPException(status_code=404, detail=f"User story {story_id} not found")
+
+    # Validate project_id
+    if not story_db.project_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User story {story_id} is not associated with a project"
+        )
+
+    # Queue the task (runs in background)
+    task = generate_test_cases_task.delay(
+        story_id=story_id,
+        num_test_cases=num_test_cases,
+        scenarios_per_test=scenarios_per_test,
+        test_types=test_types,
+        use_ai=use_ai
+    )
+
+    print(f"📋 Queued test generation task: {task.id} for story {story_id}")
+
+    return {
+        "task_id": task.id,
+        "story_id": story_id,
+        "status": "queued",
+        "message": "Test generation queued successfully",
+        "status_url": f"/api/v1/generate-test-cases/status/{task.id}"
+    }
+
+
+@router.get("/generate-test-cases/status/{task_id}")
+async def get_task_status(task_id: str):
+    """
+    Get status of background test generation task
+
+    Returns:
+        - status: "pending" | "generating" | "completed" | "failed"
+        - progress: 0-100
+        - result: Complete result when status=completed
+    """
+    from backend.celery_app import celery_app
+
+    task = celery_app.AsyncResult(task_id)
+
+    if task.state == 'PENDING':
+        return {
+            "task_id": task_id,
+            "status": "pending",
+            "progress": 0,
+            "message": "Task is waiting to start..."
+        }
+
+    elif task.state == 'PROGRESS':
+        # Task is running, return progress info
+        info = task.info or {}
+        return {
+            "task_id": task_id,
+            "status": "generating",
+            "progress": info.get('progress', 0),
+            "message": info.get('status', 'Generating test cases...'),
+            "story_id": info.get('story_id'),
+            "story_title": info.get('story_title')
+        }
+
+    elif task.state == 'SUCCESS':
+        # Task completed successfully
+        result = task.result
+        return {
+            "task_id": task_id,
+            "status": "completed",
+            "progress": 100,
+            "message": "Test cases generated successfully",
+            "result": result
+        }
+
+    elif task.state == 'FAILURE':
+        # Task failed
+        error_info = str(task.info) if task.info else "Unknown error"
+        return {
+            "task_id": task_id,
+            "status": "failed",
+            "progress": 0,
+            "message": "Test generation failed",
+            "error": error_info
+        }
+
+    else:
+        # Unknown state
+        return {
+            "task_id": task_id,
+            "status": "unknown",
+            "progress": 0,
+            "message": f"Unknown task state: {task.state}"
+        }
+
+
 @router.post("/test-cases/batch")
 async def create_test_cases_batch(
     test_cases_data: dict,

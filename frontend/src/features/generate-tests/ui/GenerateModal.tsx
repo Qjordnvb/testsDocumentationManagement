@@ -1,6 +1,7 @@
 /**
  * Generate Tests Feature - UI Component
  * Modal for configuring and generating test cases with AI
+ * UPDATED: Now uses Celery queue for background processing
  */
 
 import { useState } from 'react';
@@ -9,9 +10,12 @@ import { Button } from '@/shared/ui/Button';
 import { useGenerateStore } from '../model/generateStore';
 import { previewTests } from '../api/generateTests';
 import { ReviewTestCasesModal } from './ReviewTestCasesModal';
-import { Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { UserStory } from '@/entities/user-story';
 import type { SuggestedTestCase } from '../api/generateTests';
+import { useTestGenerationQueue } from '@/shared/stores';
+import { apiService } from '@/shared/api';
 import {
   colors,
   borderRadius,
@@ -38,6 +42,8 @@ export const GenerateModal = ({
     setGenerationError,
     resetGeneration,
   } = useGenerateStore();
+  const { addJob, hasActiveJob } = useTestGenerationQueue();
+
   const [numTestCases, setNumTestCases] = useState(5);
   const [scenariosPerTest, setScenariosPerTest] = useState(3);
   const [selectedTestTypes, setSelectedTestTypes] = useState<string[]>(['FUNCTIONAL', 'UI']);
@@ -48,6 +54,9 @@ export const GenerateModal = ({
 
   // Combined loading state (local OR store)
   const isActuallyGenerating = isGenerating || isLoadingLocal;
+
+  // Check if story already has active job
+  const storyHasActiveJob = hasActiveJob(story.id);
 
   const availableTestTypes = [
     { value: 'FUNCTIONAL', label: 'Functional' },
@@ -68,44 +77,49 @@ export const GenerateModal = ({
     }
   };
 
-  // Handle preview generation
+  // Handle queue generation (NEW - non-blocking)
   const handleGenerate = async () => {
-    // Set BOTH loading states
-    setIsGenerating(true);
     setIsLoadingLocal(true);
     setGenerationError(null);
-    setSuggestedTests([]); // Clear previous suggestions
-
-    // CRITICAL: Force React to re-render with loading state BEFORE making API call
-    // Without this delay, the await blocks and React never shows the loading indicator
-    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
-      const response = await previewTests({
-        storyId: story.id,
+      // Queue the test generation job (non-blocking)
+      const response = await apiService.queueTestGeneration(
+        story.id,
         numTestCases,
         scenariosPerTest,
-        testTypes: selectedTestTypes,
-        useAi,
+        selectedTestTypes,
+        useAi
+      );
+
+      // Add job to queue store
+      addJob({
+        taskId: response.task_id,
+        storyId: story.id,
+        storyTitle: story.title,
+        status: 'queued',
+        progress: 0,
+        queuedAt: new Date(),
       });
 
-      if (!response.suggested_test_cases || response.suggested_test_cases.length === 0) {
-        setGenerationError('No se generaron sugerencias de test cases. Intenta con otros parámetros.');
-        return;
-      }
+      // Show success toast
+      toast.success('Test Generation Queued!', {
+        description: `Generating ${numTestCases} test cases for "${story.title}". You'll be notified when ready.`,
+        duration: 4000,
+      });
 
-      setSuggestedTests(response.suggested_test_cases);
+      // Close modal and call onSuccess
+      onClose();
+      onSuccess?.();
     } catch (error: any) {
-      // Better error handling
-      let errorMessage = 'Error al generar sugerencias de test cases';
+      // Error handling
+      let errorMessage = 'Error al encolar generación de test cases';
 
       if (error.response?.status === 400) {
         errorMessage = error.response.data?.detail ||
-          'Este User Story no está asociado a un proyecto. Por favor, re-importa las user stories con project_id.';
+          'Este User Story no está asociado a un proyecto.';
       } else if (error.response?.status === 404) {
         errorMessage = 'User story no encontrada';
-      } else if (error.response?.status === 403) {
-        errorMessage = 'Error con la API key de Gemini. Verifica la configuración en el backend.';
       } else if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
       } else if (error.message) {
@@ -113,9 +127,11 @@ export const GenerateModal = ({
       }
 
       setGenerationError(errorMessage);
-      setSuggestedTests([]); // Ensure empty array on error
+      toast.error('Queue Failed', {
+        description: errorMessage,
+        duration: 5000,
+      });
     } finally {
-      setIsGenerating(false);
       setIsLoadingLocal(false);
     }
   };
@@ -146,6 +162,21 @@ export const GenerateModal = ({
             </p>
           )}
         </div>
+
+        {/* Active job warning */}
+        {storyHasActiveJob && (
+          <div className={`flex items-start gap-2 p-3 ${colors.status.warning[50]} border ${colors.status.warning.border200} ${borderRadius.lg}`}>
+            <Loader2 className={`w-5 h-5 ${colors.status.warning.text600} flex-shrink-0 mt-0.5 animate-spin`} />
+            <div>
+              <p className={`${bodySmall.className} font-medium ${colors.status.warning.text900}`}>
+                Ya hay una generación en progreso
+              </p>
+              <p className={`${bodySmall.className} ${colors.status.warning.text700} mt-1`}>
+                Esta user story tiene un trabajo de generación activo. Mira el badge en la tabla para ver el progreso.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Configuration */}
         {!suggestedTests.length && !isActuallyGenerating && (
@@ -249,78 +280,18 @@ export const GenerateModal = ({
             {/* Info box */}
             <div className={`p-3 ${colors.brand.primary[50]} border ${colors.brand.primary.border200} ${borderRadius.lg}`}>
               <p className={`${bodySmall.className} ${colors.brand.primary.text800}`}>
-                La IA generará sugerencias de test cases en formato Gherkin (Given-When-Then).
-                Podrás revisar y editar antes de guardar.
+                ⚡ Generación en segundo plano: Los test cases se generarán en background.
+                Podrás seguir trabajando mientras la IA procesa. Te notificaremos cuando estén listos.
               </p>
             </div>
           </div>
         )}
 
-        {/* Generation in progress */}
-        {isActuallyGenerating && (
+        {/* Queueing in progress */}
+        {isLoadingLocal && (
           <div className="flex flex-col items-center justify-center py-8 px-4">
-            <div className={`animate-spin ${borderRadius.full} h-12 w-12 border-b-2 ${colors.brand.primary.border600} mb-4`} />
-            <p className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>Generando test cases con IA...</p>
-            <p className={`${bodySmall.className} ${colors.gray.text600} mt-2`}>
-              Gemini está creando <strong>{numTestCases * scenariosPerTest} escenarios</strong>
-            </p>
-            <p className={`${bodySmall.className} ${colors.gray.text600}`}>
-              ({numTestCases} test cases × {scenariosPerTest} escenarios cada uno)
-            </p>
-            <div className={`mt-4 p-3 ${colors.status.warning[50]} border ${colors.status.warning.border200} ${borderRadius.lg} max-w-md`}>
-              <p className={`${bodySmall.className} ${colors.status.warning.text800} text-center`}>
-                ⏱️ Esto puede tomar hasta <strong>2 minutos</strong> para grandes cantidades de escenarios.
-                Por favor, espera sin cerrar esta ventana.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Success result */}
-        {!isActuallyGenerating && suggestedTests.length > 0 && (
-          <div className="space-y-3">
-            <div className={`flex items-start gap-3 p-4 ${colors.status.success[50]} border ${colors.status.success.border200} ${borderRadius.lg}`}>
-              <CheckCircle2 className={`w-5 h-5 ${colors.status.success.text600} flex-shrink-0 mt-0.5`} />
-              <div>
-                <p className={`${bodySmall.className} font-medium ${colors.status.success.text900}`}>
-                  Sugerencias generadas exitosamente
-                </p>
-                <p className={`${bodySmall.className} ${colors.status.success.text700} mt-1`}>
-                  {suggestedTests.length} test case{suggestedTests.length !== 1 ? 's' : ''} sugerido{suggestedTests.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-
-            {/* Suggested tests preview */}
-            <div className="max-h-60 overflow-y-auto space-y-2">
-              {suggestedTests.map((test, index) => (
-                <div key={test.suggested_id} className={`p-3 ${colors.gray[50]} ${borderRadius.base} border ${colors.gray.border200}`}>
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h4 className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>
-                      {index + 1}. {test.title}
-                    </h4>
-                    <span className={`px-2 py-0.5 ${bodySmall.className} font-medium ${borderRadius.base} ${colors.brand.primary[100]} ${colors.brand.primary.text800}`}>
-                      {test.test_type}
-                    </span>
-                  </div>
-                  <p className={`${bodySmall.className} ${colors.gray.text600} line-clamp-2`}>
-                    {test.description}
-                  </p>
-                  {test.scenarios_count && (
-                    <p className={`${bodySmall.className} ${colors.gray.text500} mt-1`}>
-                      {test.scenarios_count} escenario{test.scenarios_count !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Next step message */}
-            <div className={`p-3 ${colors.status.warning[50]} border ${colors.status.warning.border200} ${borderRadius.lg}`}>
-              <p className={`${bodySmall.className} ${colors.status.warning.text800}`}>
-                💡 Estas son sugerencias. Podrás revisar y editar antes de guardar.
-              </p>
-            </div>
+            <Loader2 className={`w-12 h-12 ${colors.brand.primary.text600} animate-spin mb-4`} />
+            <p className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>Encolando generación...</p>
           </div>
         )}
 
@@ -334,34 +305,18 @@ export const GenerateModal = ({
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-4 border-t">
-          <Button variant="secondary" onClick={handleClose}>
-            {suggestedTests.length > 0 ? 'Cerrar' : 'Cancelar'}
+          <Button variant="secondary" onClick={handleClose} disabled={isLoadingLocal}>
+            Cancelar
           </Button>
-          {!suggestedTests.length ? (
-            <Button onClick={handleGenerate} disabled={isGenerating}>
-              {isGenerating ? 'Generando...' : 'Generar Sugerencias'}
-            </Button>
-          ) : (
-            <Button onClick={() => setShowReviewModal(true)}>
-              Revisar y Guardar ({suggestedTests.length})
-            </Button>
-          )}
+          <Button
+            onClick={handleGenerate}
+            disabled={isLoadingLocal || storyHasActiveJob}
+            leftIcon={isLoadingLocal ? <Loader2 className="animate-spin" /> : <Sparkles />}
+          >
+            {isLoadingLocal ? 'Encolando...' : storyHasActiveJob ? 'Ya está en cola' : 'Encolar Generación'}
+          </Button>
         </div>
       </div>
-
-      {/* Review Modal */}
-      <ReviewTestCasesModal
-        isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
-        suggestedTests={suggestedTests}
-        userStoryId={story.id}
-        userStoryTitle={story.title}
-        onSuccess={() => {
-          // Close both modals and call parent onSuccess
-          setShowReviewModal(false);
-          handleClose();
-        }}
-      />
     </Modal>
   );
 };
