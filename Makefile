@@ -51,7 +51,7 @@ dev: ## 🚀 DESARROLLO LOCAL (4 terminales) - RECOMENDADO
 	@echo "║    3. Backend (FastAPI)                                       ║"
 	@echo "║    4. Frontend (React)                                        ║"
 	@echo "║                                                               ║"
-	@echo "║  Frontend: http://localhost:5173                              ║"
+	@echo "║  Frontend: http://localhost:3000                              ║"
 	@echo "║  Backend:  http://localhost:8000                              ║"
 	@echo "║  API Docs: http://localhost:8000/docs                         ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
@@ -77,11 +77,11 @@ dev-stop: ## 🛑 Detiene desarrollo local
 	@sleep 1
 	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
 	@for pid in $$(pgrep -f "node.*vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
-	@echo "  🧹 Verificando puertos..."
+	@echo "  🧹 Liberando puertos (3000, 8000, 6379)..."
 	@sleep 1
 	@lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
-	@lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti:6379 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@echo "✅ Servicios detenidos correctamente"
 
 # ==================== Development (Docker) ====================
@@ -95,7 +95,7 @@ dev-docker: ## 🐳 DESARROLLO con Docker (todo containerizado)
 	@echo "║    - Backend (FastAPI)                                        ║"
 	@echo "║    - Frontend (React)                                         ║"
 	@echo "║                                                               ║"
-	@echo "║  Frontend: http://localhost:5173                              ║"
+	@echo "║  Frontend: http://localhost:3000                              ║"
 	@echo "║  Backend:  http://localhost:8000                              ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
 	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml up -d) || (docker compose -f docker-compose.full.yml up -d)
