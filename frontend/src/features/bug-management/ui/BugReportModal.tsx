@@ -73,16 +73,23 @@ export const BugReportModal: React.FC<Props> = ({
 
   // Track if we've already pre-filled the form to prevent re-execution
   const hasPreFilledRef = useRef(false);
+  // Track if we've already loaded the bug to prevent duplicate loads
+  const hasLoadedBugRef = useRef(false);
 
   // Load existing bug in readonly or edit mode
   useEffect(() => {
-    if (shouldLoadExistingBug && isOpen) {
-      console.log(`📖 Loading existing bug (${mode} mode):`, existingBugId);
-      setIsLoadingBug(true);
+    // Prevent duplicate loads - only load once when modal opens
+    if (hasLoadedBugRef.current || !shouldLoadExistingBug || !isOpen) {
+      return;
+    }
 
-      bugApi.getById(existingBugId)
-        .then((bug) => {
-          console.log('✅ Bug loaded:', bug);
+    console.log(`📖 Loading existing bug (${mode} mode):`, existingBugId);
+    hasLoadedBugRef.current = true; // Mark as loaded immediately to prevent race conditions
+    setIsLoadingBug(true);
+
+    bugApi.getById(existingBugId)
+      .then((bug) => {
+        console.log('✅ Bug loaded:', bug);
 
           // Populate all fields with bug data
           setTitle(bug.title);
@@ -111,10 +118,11 @@ export const BugReportModal: React.FC<Props> = ({
     }
   }, [isReadonly, existingBugId, isOpen, mode]);
 
-  // Reset pre-fill flag when modal closes
+  // Reset flags when modal closes
   useEffect(() => {
     if (!isOpen) {
       hasPreFilledRef.current = false;
+      hasLoadedBugRef.current = false;
     }
   }, [isOpen]);
 
