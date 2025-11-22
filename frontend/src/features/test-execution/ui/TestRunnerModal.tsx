@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { X, Play, Pause, CheckCircle2, XCircle, Clock, Save, AlertCircle, Upload, Trash2, FileImage } from 'lucide-react';
 import { useTestRunner } from '../model/useTestRunner';
 import { parseGherkinContent } from '@/shared/lib/gherkinParser';
@@ -57,6 +57,90 @@ export const TestRunnerModal: React.FC<Props> = ({
   const [allUploadedFiles, setAllUploadedFiles] = useState<string[]>([]);
 
   if (!isOpen) return null;
+
+  // Memoize execution details to prevent infinite re-renders in BugReportModal
+  const totalSteps = useMemo(() =>
+    scenarios.reduce((sum, s) => sum + s.steps.length, 0),
+    [scenarios]
+  );
+
+  const passedSteps = useMemo(() =>
+    scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status === 'passed').length, 0),
+    [scenarios]
+  );
+
+  const failedSteps = useMemo(() =>
+    scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status === 'failed').length, 0),
+    [scenarios]
+  );
+
+  const stepResults = useMemo(() =>
+    scenarios.flatMap(scenario =>
+      scenario.steps.map((step: any) => ({
+        step_index: step.id,
+        keyword: step.keyword,
+        text: step.text,
+        status: step.status.toUpperCase(),
+        scenario_name: scenario.scenarioName,
+        evidence_file: uploadedEvidencePaths[step.id] || undefined
+      }))
+    ),
+    [scenarios, uploadedEvidencePaths]
+  );
+
+  // Memoized execution details for general bug modal
+  const generalExecutionDetails = useMemo(() => ({
+    execution_id: savedExecutionId,
+    test_case_id: testCaseId,
+    executed_by: 'QA Tester',
+    execution_date: new Date().toISOString(),
+    status: executionStatus === 'IN_PROGRESS' ? 'BLOCKED' : executionStatus,
+    environment: 'QA',
+    version: '',
+    execution_time_minutes: elapsedSeconds / 60,
+    total_steps: totalSteps,
+    passed_steps: passedSteps,
+    failed_steps: failedSteps,
+    step_results: stepResults,
+    evidence_count: allUploadedFiles.length,
+    evidence_files: allUploadedFiles,
+    bug_ids: []
+  }), [
+    savedExecutionId, testCaseId, executionStatus, elapsedSeconds,
+    totalSteps, passedSteps, failedSteps, stepResults, allUploadedFiles
+  ]);
+
+  // Memoized execution details for scenario-specific bug modal
+  const scenarioExecutionDetails = useMemo(() => {
+    if (!selectedScenarioForBug) return null;
+
+    const scenarioSteps = selectedScenarioForBug.steps.map((step: any) => ({
+      step_index: step.id,
+      keyword: step.keyword,
+      text: step.text,
+      status: step.status.toUpperCase(),
+      scenario_name: selectedScenarioForBug.name,
+      evidence_file: uploadedEvidencePaths[step.id] || undefined
+    }));
+
+    return {
+      execution_id: savedExecutionId || 0,
+      test_case_id: testCaseId,
+      executed_by: 'QA Tester',
+      execution_date: new Date().toISOString(),
+      status: executionStatus === 'IN_PROGRESS' ? 'BLOCKED' : executionStatus,
+      environment: 'QA',
+      version: '',
+      execution_time_minutes: elapsedSeconds / 60,
+      total_steps: selectedScenarioForBug.steps.length,
+      passed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'passed').length,
+      failed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'failed').length,
+      step_results: scenarioSteps,
+      evidence_count: scenarioSteps.filter(s => s.evidence_file).length,
+      evidence_files: scenarioSteps.map(s => s.evidence_file).filter(Boolean) as string[],
+      bug_ids: []
+    };
+  }, [selectedScenarioForBug, savedExecutionId, testCaseId, executionStatus, elapsedSeconds, uploadedEvidencePaths]);
 
   // Mark all steps in a scenario
   const handleMarkAllStepsInScenario = (scenarioIdx: number, status: 'passed' | 'failed') => {
@@ -507,32 +591,7 @@ export const TestRunnerModal: React.FC<Props> = ({
           testCaseId={testCaseId}
           testCaseTitle={testCaseTitle}
           userStoryId={userStoryId}
-          executionDetails={{
-            execution_id: savedExecutionId,
-            test_case_id: testCaseId,
-            executed_by: 'QA Tester',
-            execution_date: new Date().toISOString(),
-            status: executionStatus === 'IN_PROGRESS' ? 'BLOCKED' : executionStatus,
-            environment: 'QA',
-            version: '',
-            execution_time_minutes: elapsedSeconds / 60,
-            total_steps: totalSteps,
-            passed_steps: scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status === 'passed').length, 0),
-            failed_steps: scenarios.reduce((sum, s) => sum + s.steps.filter((st: any) => st.status === 'failed').length, 0),
-            step_results: scenarios.flatMap(scenario =>
-              scenario.steps.map((step: any) => ({
-                step_index: step.id,
-                keyword: step.keyword,
-                text: step.text,
-                status: step.status.toUpperCase(),
-                scenario_name: scenario.scenarioName,
-                evidence_file: uploadedEvidencePaths[step.id] || undefined
-              }))
-            ),
-            evidence_count: allUploadedFiles.length,
-            evidence_files: allUploadedFiles,
-            bug_ids: []
-          }}
+          executionDetails={generalExecutionDetails}
         />
       )}
 
@@ -574,32 +633,7 @@ export const TestRunnerModal: React.FC<Props> = ({
           testCaseTitle={testCaseTitle}
           userStoryId={userStoryId}
           scenarioName={selectedScenarioForBug.name}
-          executionDetails={{
-            execution_id: savedExecutionId || 0, // 0 indicates unsaved execution
-            test_case_id: testCaseId,
-            executed_by: 'QA Tester',
-            execution_date: new Date().toISOString(),
-            status: 'FAILED',
-            environment: 'QA',
-            version: '',
-            execution_time_minutes: elapsedSeconds / 60,
-            total_steps: selectedScenarioForBug.steps.length,
-            passed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'passed').length,
-            failed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'failed').length,
-            step_results: selectedScenarioForBug.steps.map((step: any) => ({
-              step_index: step.id,
-              keyword: step.keyword,
-              text: step.text,
-              status: step.status.toUpperCase(),
-              scenario_name: selectedScenarioForBug.name,
-              evidence_file: uploadedEvidencePaths[step.id] || undefined
-            })),
-            evidence_count: selectedScenarioForBug.steps.filter(s => uploadedEvidencePaths[s.id]).length,
-            evidence_files: selectedScenarioForBug.steps
-              .filter(s => uploadedEvidencePaths[s.id])
-              .map(s => uploadedEvidencePaths[s.id]),
-            bug_ids: []
-          }}
+          executionDetails={scenarioExecutionDetails}
         />
         );
       })()}

@@ -98,9 +98,8 @@ export const TestCasesPage = () => {
         // Only expand the specific suite from URL parameter
         setExpandedSuites(new Set([storyIdFromUrl]));
       } else {
-        // Auto-expand all suites initially
-        const allSuiteIds = new Set(tcData.map(tc => tc.user_story_id));
-        setExpandedSuites(allSuiteIds);
+        // Keep all suites collapsed by default
+        setExpandedSuites(new Set());
       }
 
       setError(null);
