@@ -116,6 +116,112 @@ class FileParser:
         except Exception as e:
             return ParseResult([], [f"Failed to parse file: {str(e)}"])
 
+    async def parse_async(self, file_path: str) -> ParseResult:
+        """
+        Parse user stories from file with PARALLEL AI processing
+
+        This method processes acceptance criteria extraction in parallel,
+        significantly improving performance for large Excel files.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            ParseResult with list of UserStory objects and any errors
+        """
+        import asyncio
+
+        try:
+            # Read file based on extension
+            file_path_obj = Path(file_path)
+            if not file_path_obj.exists():
+                return ParseResult([], [f"File not found: {file_path}"])
+
+            if file_path_obj.suffix.lower() in [".xlsx", ".xls"]:
+                df = pd.read_excel(file_path)
+            elif file_path_obj.suffix.lower() == ".csv":
+                df = pd.read_csv(file_path)
+            else:
+                return ParseResult(
+                    [], [f"Unsupported file format: {file_path_obj.suffix}"]
+                )
+
+            # Detect column mappings
+            self._detect_columns(df)
+
+            # Parse rows WITHOUT AI first (basic parsing)
+            print(f"📊 Step 1/2: Basic parsing of {len(df)} rows...")
+            user_stories = []
+            errors = []
+
+            for idx, row in df.iterrows():
+                try:
+                    user_story = self._parse_row(row, idx, use_ai=False)  # Disable AI in first pass
+                    if user_story:
+                        user_stories.append(user_story)
+                except Exception as e:
+                    errors.append(f"Row {idx + 2}: {str(e)}")
+
+            print(f"✅ Basic parsing complete: {len(user_stories)} stories parsed")
+
+            # If AI client available, refine acceptance criteria IN PARALLEL
+            if self.gemini_client and user_stories:
+                print(f"🤖 Step 2/2: Refining acceptance criteria with AI (PARALLEL processing)...")
+
+                # Process all stories in parallel
+                tasks = []
+                for story in user_stories:
+                    if story.acceptance_criteria:
+                        # Create async task for each story
+                        task = self._refine_criteria_async(story)
+                        tasks.append(task)
+
+                # Wait for all tasks to complete in parallel
+                if tasks:
+                    await asyncio.gather(*tasks)
+                    print(f"✅ AI refinement complete for {len(tasks)} stories")
+
+            return ParseResult(user_stories, errors)
+
+        except Exception as e:
+            return ParseResult([], [f"Failed to parse file: {str(e)}"])
+
+    async def _refine_criteria_async(self, user_story: UserStory):
+        """
+        Refine acceptance criteria for a single user story using AI (async)
+
+        This method is called in parallel for multiple stories to speed up processing.
+        """
+        if not user_story.acceptance_criteria:
+            return
+
+        # Reconstruct criteria text from parsed criteria
+        criteria_text = "\n".join([ac.description for ac in user_story.acceptance_criteria])
+
+        # Check if complex enough for AI
+        text_length = len(criteria_text)
+        line_count = criteria_text.count('\n')
+        has_markdown = '**' in criteria_text or '###' in criteria_text or '![' in criteria_text
+
+        use_ai = (text_length > 500 or line_count > 10 or has_markdown)
+
+        if use_ai:
+            print(f"   🤖 Refining story {user_story.id} criteria with AI...")
+            ai_criteria = await self.gemini_client.extract_acceptance_criteria_async(criteria_text)
+
+            if ai_criteria and len(ai_criteria) > 0:
+                # Replace with refined criteria
+                from backend.models import AcceptanceCriteria
+                user_story.acceptance_criteria = [
+                    AcceptanceCriteria(
+                        id=f"AC-{i + 1}",
+                        description=description,
+                        completed=False
+                    )
+                    for i, description in enumerate(ai_criteria)
+                ]
+                print(f"   ✅ Story {user_story.id}: Refined to {len(ai_criteria)} criteria")
+
     def _detect_columns(self, df: pd.DataFrame):
         """Detect which columns map to our model fields"""
         self.detected_columns = {}
@@ -130,8 +236,14 @@ class FileParser:
                     print(f"✅ Mapped '{field}' -> Excel column '{df_columns_lower[variation.lower()]}'")
                     break
 
-    def _parse_row(self, row: pd.Series, row_idx: int) -> Optional[UserStory]:
-        """Parse a single row into a UserStory object"""
+    def _parse_row(self, row: pd.Series, row_idx: int, use_ai: bool = True) -> Optional[UserStory]:
+        """Parse a single row into a UserStory object
+
+        Args:
+            row: Pandas Series representing a row from the Excel/CSV
+            row_idx: Row index for auto-generating IDs
+            use_ai: Whether to use AI for acceptance criteria extraction (default True)
+        """
 
         # Check if it's an Epic (skip Epics, only parse User Stories)
         work_item_type = self._get_value(row, "work_item_type")
@@ -154,7 +266,8 @@ class FileParser:
 
         # Parse acceptance criteria
         acceptance_criteria = self._parse_acceptance_criteria(
-            self._get_value(row, "acceptance_criteria")
+            self._get_value(row, "acceptance_criteria"),
+            use_ai=use_ai
         )
 
         # Parse priority
@@ -195,9 +308,14 @@ class FileParser:
         return None
 
     def _parse_acceptance_criteria(
-        self, criteria_text: Optional[str]
+        self, criteria_text: Optional[str], use_ai: bool = True
     ) -> List[AcceptanceCriteria]:
-        """Parse acceptance criteria from text"""
+        """Parse acceptance criteria from text
+
+        Args:
+            criteria_text: Raw text containing acceptance criteria
+            use_ai: Whether to use AI for extraction (default True)
+        """
         if not criteria_text or pd.isna(criteria_text):
             print(f"⚠️  No acceptance criteria text provided (empty or NaN)")
             return []
@@ -212,14 +330,16 @@ class FileParser:
         has_markdown = '**' in criteria_text or '###' in criteria_text or '![' in criteria_text
 
         # Use AI extraction if:
-        # 1. Gemini client is available
-        # 2. Text is complex (long, many lines, or has markdown)
-        use_ai = (
+        # 1. AI is enabled via parameter
+        # 2. Gemini client is available
+        # 3. Text is complex (long, many lines, or has markdown)
+        should_use_ai = (
+            use_ai and
             self.gemini_client is not None and
             (text_length > 500 or line_count > 10 or has_markdown)
         )
 
-        if use_ai:
+        if should_use_ai:
             print(f"🤖 Using AI to extract criteria (length={text_length}, lines={line_count}, markdown={has_markdown})")
             try:
                 ai_criteria = self.gemini_client.extract_acceptance_criteria(criteria_text)

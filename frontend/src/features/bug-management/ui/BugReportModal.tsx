@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle, Bug, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bugApi } from '@/entities/bug';
-import type { CreateBugDTO, BugSeverity, BugPriority, BugType, Bug as BugEntity } from '@/entities/bug';
+import type { CreateBugDTO, UpdateBugDTO, BugSeverity, BugPriority, BugType, Bug as BugEntity } from '@/entities/bug';
 import type { ExecutionDetails } from '@/entities/test-execution';
 import toast from 'react-hot-toast';
 import { Button } from '@/shared/ui/Button';
@@ -71,33 +71,72 @@ export const BugReportModal: React.FC<Props> = ({
   const [isLoadingBug, setIsLoadingBug] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Track if we've already pre-filled the form to prevent re-execution
+  const hasPreFilledRef = useRef(false);
+  // Track if we've already loaded the bug to prevent duplicate loads
+  const hasLoadedBugRef = useRef(false);
+  // Track if user has started editing to prevent overwriting their changes
+  const hasUserEditedRef = useRef(false);
+  // Track if initial form population is complete
+  const isInitialLoadCompleteRef = useRef(false);
+
   // Load existing bug in readonly or edit mode
   useEffect(() => {
-    if (shouldLoadExistingBug && isOpen) {
-      console.log(`📖 Loading existing bug (${mode} mode):`, existingBugId);
-      setIsLoadingBug(true);
+    // Prevent duplicate loads - only load once when modal opens
+    if (hasLoadedBugRef.current || !shouldLoadExistingBug || !isOpen) {
+      return;
+    }
 
-      bugApi.getById(existingBugId)
-        .then((bug) => {
-          console.log('✅ Bug loaded:', bug);
+    console.log(`📖 Loading existing bug (${mode} mode):`, existingBugId);
+    hasLoadedBugRef.current = true; // Mark as loaded immediately to prevent race conditions
+    setIsLoadingBug(true);
 
-          // Populate all fields with bug data
-          setTitle(bug.title);
-          setDescription(bug.description);
-          setStepsToReproduce(bug.steps_to_reproduce || ['']);
-          setExpectedBehavior(bug.expected_behavior);
-          setActualBehavior(bug.actual_behavior);
-          setSeverity(bug.severity);
-          setPriority(bug.priority);
-          setBugType(bug.bug_type);
-          setEnvironment(bug.environment);
-          setBrowser(bug.browser || '');
-          setOs(bug.os || '');
-          setVersion(bug.version || '');
-          setAssignedTo(bug.assigned_to || '');
-          // Load attachments/screenshots
-          setAttachments(bug.attachments || []);
-        })
+    bugApi.getById(existingBugId)
+      .then((bug) => {
+        console.log('✅ Bug loaded:', bug);
+
+        // CRITICAL: Check if user has typed in any fields while we were loading
+        // Compare current form state with initial/empty values
+        const hasUserInput = (
+          (title && title !== '') ||
+          (description && description !== '') ||
+          (expectedBehavior && expectedBehavior !== '') ||
+          (actualBehavior && actualBehavior !== '') ||
+          (browser && browser !== '') ||
+          (os && os !== '') ||
+          (version && version !== '') ||
+          (assignedTo && assignedTo !== '')
+        );
+
+        if (hasUserInput) {
+          console.log('⚠️  User has already typed data - skipping form population to preserve changes');
+          console.log('   Current state:', { title, expectedBehavior, actualBehavior, assignedTo });
+          setIsLoadingBug(false);
+          return;
+        }
+
+        console.log('📝 Populating form with loaded bug data...');
+        // Populate all fields with bug data
+        setTitle(bug.title);
+        setDescription(bug.description);
+        setStepsToReproduce(bug.steps_to_reproduce || ['']);
+        setExpectedBehavior(bug.expected_behavior);
+        setActualBehavior(bug.actual_behavior);
+        setSeverity(bug.severity);
+        setPriority(bug.priority);
+        setBugType(bug.bug_type);
+        setEnvironment(bug.environment);
+        setBrowser(bug.browser || '');
+        setOs(bug.os || '');
+        setVersion(bug.version || '');
+        setAssignedTo(bug.assigned_to || '');
+        // Load attachments/screenshots
+        setAttachments(bug.attachments || []);
+
+        // Mark initial load as complete - any subsequent changes are from user
+        isInitialLoadCompleteRef.current = true;
+        console.log('✅ Initial form population complete');
+      })
         .catch((error) => {
           console.error('❌ Error loading bug:', error);
           toast.error('Error al cargar el bug');
@@ -105,82 +144,118 @@ export const BugReportModal: React.FC<Props> = ({
         .finally(() => {
           setIsLoadingBug(false);
         });
-    }
-  }, [isReadonly, existingBugId, isOpen]);
+  }, [isReadonly, existingBugId, isOpen, mode]);
 
-  // Pre-fill data when execution details are provided (create mode)
+  // Reset flags when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasPreFilledRef.current = false;
+      hasLoadedBugRef.current = false;
+      hasUserEditedRef.current = false;
+      isInitialLoadCompleteRef.current = false;
+    }
+  }, [isOpen]);
+
+  // Detect when user edits form fields
+  // If initial load is complete and a field changes, mark as user-edited
+  useEffect(() => {
+    if (isInitialLoadCompleteRef.current && !hasUserEditedRef.current) {
+      // This useEffect runs when any dependency changes
+      // Since initial load is complete, this must be user input
+      hasUserEditedRef.current = true;
+      console.log('🖊️  User has started editing form');
+    }
+  }, [
+    title, description, expectedBehavior, actualBehavior,
+    severity, priority, bugType,
+    environment, browser, os, version, assignedTo
+  ]);
+
+  // Pre-fill data when execution details are provided (create mode ONLY)
+  // Only run once when modal opens in create mode, not on subsequent re-renders
   useEffect(() => {
     console.log('🔍 BugReportModal useEffect - Props:', {
       isOpen,
       mode,
       hasExecutionDetails: !!executionDetails,
+      hasPreFilled: hasPreFilledRef.current,
       scenarioName,
       testCaseTitle,
-      testCaseId,
-      executionDetails
+      testCaseId
     });
 
-    if (executionDetails && isOpen && mode === 'create') {
-      // Auto-fill environment and version from execution
-      setEnvironment(executionDetails.environment || 'QA');
-      setVersion(executionDetails.version || '');
-
-      // Extract failed steps for "Steps to Reproduce"
-      const failedSteps = executionDetails.step_results.filter(s => s.status === 'FAILED');
-      if (failedSteps.length > 0) {
-        const steps = failedSteps.map((step) =>
-          `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
-        );
-        setStepsToReproduce(steps.length > 0 ? steps : ['']);
-      } else {
-        setStepsToReproduce(['']);
-      }
-
-      // Suggest title based on scenario name and test case (ALWAYS)
-      if (scenarioName && testCaseTitle) {
-        setTitle(`Bug in Scenario: ${scenarioName}`);
-      } else if (testCaseTitle) {
-        setTitle(`Bug in: ${testCaseTitle}`);
-      } else if (scenarioName) {
-        setTitle(`Bug in: ${scenarioName}`);
-      }
-
-      // Pre-fill description with comprehensive execution context (ALWAYS)
-      let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
-
-      if (scenarioName) {
-        descriptionText += `📋 Scenario: ${scenarioName}\n`;
-      }
-      if (testCaseId) {
-        descriptionText += `🧪 Test Case: ${testCaseId}\n`;
-      }
-      descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
-      descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
-      descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
-      if (executionDetails.version) {
-        descriptionText += `📦 Version: ${executionDetails.version}\n`;
-      }
-      descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
-
-      if (failedSteps.length > 0 && failedSteps[0].actual_result) {
-        descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
-      }
-
-      setDescription(descriptionText);
-
-      // Extract and populate evidence files/attachments from step results
-      const evidenceFiles: string[] = [];
-      if (executionDetails.step_results) {
-        executionDetails.step_results.forEach(step => {
-          if (step.evidence_file) {
-            evidenceFiles.push(step.evidence_file);
-          }
-        });
-      }
-      setAttachments(evidenceFiles);
-      console.log('📸 Pre-populated attachments:', evidenceFiles);
+    // Only pre-fill in CREATE mode when modal first opens
+    // Don't run if:
+    // - Already pre-filled (prevents re-execution)
+    // - Not in create mode
+    // - Modal is not open
+    // - No execution details
+    if (hasPreFilledRef.current || !isOpen || mode !== 'create' || !executionDetails) {
+      return;
     }
-  }, [executionDetails, isOpen, scenarioName]);
+
+    console.log('🔄 Pre-filling bug form with execution details...');
+    hasPreFilledRef.current = true; // Mark as pre-filled
+
+    // Auto-fill environment and version from execution
+    setEnvironment(executionDetails.environment || 'QA');
+    setVersion(executionDetails.version || '');
+
+    // Extract failed steps for "Steps to Reproduce"
+    const failedSteps = executionDetails.step_results.filter(s => s.status === 'FAILED');
+    if (failedSteps.length > 0) {
+      const steps = failedSteps.map((step) =>
+        `${step.keyword} ${step.text}${step.actual_result ? ` - Actual: ${step.actual_result}` : ''}`
+      );
+      setStepsToReproduce(steps.length > 0 ? steps : ['']);
+    } else {
+      setStepsToReproduce(['']);
+    }
+
+    // Suggest title based on scenario name and test case (ALWAYS)
+    if (scenarioName && testCaseTitle) {
+      setTitle(`Bug in Scenario: ${scenarioName}`);
+    } else if (testCaseTitle) {
+      setTitle(`Bug in: ${testCaseTitle}`);
+    } else if (scenarioName) {
+      setTitle(`Bug in: ${scenarioName}`);
+    }
+
+    // Pre-fill description with comprehensive execution context (ALWAYS)
+    let descriptionText = `Bug found during test execution #${executionDetails.execution_id}\n\n`;
+
+    if (scenarioName) {
+      descriptionText += `📋 Scenario: ${scenarioName}\n`;
+    }
+    if (testCaseId) {
+      descriptionText += `🧪 Test Case: ${testCaseId}\n`;
+    }
+    descriptionText += `👤 Executed by: ${executionDetails.executed_by}\n`;
+    descriptionText += `📅 Date: ${new Date(executionDetails.execution_date).toLocaleString()}\n`;
+    descriptionText += `🌍 Environment: ${executionDetails.environment}\n`;
+    if (executionDetails.version) {
+      descriptionText += `📦 Version: ${executionDetails.version}\n`;
+    }
+    descriptionText += `\n❌ Failed steps: ${failedSteps.length}/${executionDetails.total_steps}\n`;
+
+    if (failedSteps.length > 0 && failedSteps[0].actual_result) {
+      descriptionText += `\n🔴 First Failed Result: ${failedSteps[0].actual_result}`;
+    }
+
+    setDescription(descriptionText);
+
+    // Extract and populate evidence files/attachments from step results
+    const evidenceFiles: string[] = [];
+    if (executionDetails.step_results) {
+      executionDetails.step_results.forEach(step => {
+        if (step.evidence_file) {
+          evidenceFiles.push(step.evidence_file);
+        }
+      });
+    }
+    setAttachments(evidenceFiles);
+    console.log('📸 Pre-populated attachments:', evidenceFiles);
+  }, [isOpen, mode, executionDetails, scenarioName, testCaseTitle, testCaseId]);
 
   const handleAddStep = () => {
     setStepsToReproduce([...stepsToReproduce, '']);
@@ -239,44 +314,57 @@ export const BugReportModal: React.FC<Props> = ({
     try {
       const validSteps = stepsToReproduce.filter(s => s.trim());
 
-      // Use attachments state (already populated from executionDetails or loaded bug)
-      const bugData: CreateBugDTO = {
-        title: title.trim(),
-        description: description.trim(),
-        steps_to_reproduce: validSteps,
-        expected_behavior: expectedBehavior.trim(),
-        actual_behavior: actualBehavior.trim(),
-        severity,
-        priority,
-        bug_type: bugType,
-        environment: environment.trim(),
-        browser: browser.trim() || undefined,
-        os: os.trim() || undefined,
-        version: version.trim() || undefined,
-        project_id: projectId,
-        user_story_id: userStoryId,
-        test_case_id: testCaseId,
-        scenario_name: scenarioName,
-        execution_id: executionDetails?.execution_id && executionDetails.execution_id > 0 ? executionDetails.execution_id : undefined,
-        reported_by: 'QA Tester', // TODO: Get from auth context
-        assigned_to: assignedTo.trim() || undefined,
-        screenshots: attachments.length > 0 ? attachments : undefined,
-      };
-
-      console.log('📤 Sending bug data:', bugData);
-      console.log('📸 Evidence files from attachments state:', attachments);
-
       let resultBug: BugEntity;
 
       if (isEditMode && existingBugId) {
-        // Update existing bug
-        console.log(`📝 Updating bug ${existingBugId}...`);
-        resultBug = await bugApi.update(existingBugId, bugData);
+        // Update existing bug - Use UpdateBugDTO (only allowed fields)
+        const updateData: UpdateBugDTO = {
+          title: title.trim(),
+          description: description.trim(),
+          steps_to_reproduce: validSteps,
+          expected_behavior: expectedBehavior.trim(),
+          actual_behavior: actualBehavior.trim(),
+          severity,
+          priority,
+          bug_type: bugType,
+          environment: environment.trim() || undefined,
+          browser: browser.trim() || undefined,
+          os: os.trim() || undefined,
+          version: version.trim() || undefined,
+          assigned_to: assignedTo.trim() || undefined,
+        };
+
+        console.log('📝 Updating bug with data:', updateData);
+        resultBug = await bugApi.update(existingBugId, updateData);
         toast.success(`Bug ${resultBug.id} updated successfully`);
       } else {
-        // Create new bug
-        console.log('📝 Creating new bug...');
-        resultBug = await bugApi.create(bugData);
+        // Create new bug - Use CreateBugDTO (all fields including context)
+        const createData: CreateBugDTO = {
+          title: title.trim(),
+          description: description.trim(),
+          steps_to_reproduce: validSteps,
+          expected_behavior: expectedBehavior.trim(),
+          actual_behavior: actualBehavior.trim(),
+          severity,
+          priority,
+          bug_type: bugType,
+          environment: environment.trim(),
+          browser: browser.trim() || undefined,
+          os: os.trim() || undefined,
+          version: version.trim() || undefined,
+          project_id: projectId,
+          user_story_id: userStoryId,
+          test_case_id: testCaseId,
+          scenario_name: scenarioName,
+          execution_id: executionDetails?.execution_id && executionDetails.execution_id > 0 ? executionDetails.execution_id : undefined,
+          reported_by: 'QA Tester', // TODO: Get from auth context
+          assigned_to: assignedTo.trim() || undefined,
+          screenshots: attachments.length > 0 ? attachments : undefined,
+        };
+
+        console.log('📤 Creating bug with data:', createData);
+        console.log('📸 Evidence files from attachments state:', attachments);
+        resultBug = await bugApi.create(createData);
         toast.success(`Bug ${resultBug.id} created successfully`);
       }
 

@@ -300,6 +300,13 @@ async def get_bug_by_id(
 
     import json
     screenshots_list = json.loads(bug.screenshots) if bug.screenshots else []
+
+    # Log critical fields being returned
+    print(f"   📤 Returning bug data:")
+    print(f"      expected_behavior: {bug.expected_behavior}")
+    print(f"      actual_behavior: {bug.actual_behavior}")
+    print(f"      assigned_to: {bug.assigned_to}")
+
     return {
         "id": bug.id,
         "title": bug.title,
@@ -500,6 +507,20 @@ async def update_bug(
 
     for field, value in bug_data.items():
         if field in allowed_fields and value is not None:
+            # Handle list fields that need to be converted to strings/JSON for SQLite
+            if field == "steps_to_reproduce" and isinstance(value, list):
+                import json
+                value = '\n'.join(value) if value else None
+                print(f"   Converting steps_to_reproduce list to newline-separated string")
+            elif field == "screenshots" and isinstance(value, list):
+                import json
+                value = json.dumps(value) if value else None
+                print(f"   Converting screenshots list to JSON string")
+            elif field == "logs" and isinstance(value, list):
+                import json
+                value = json.dumps(value) if value else None
+                print(f"   Converting logs list to JSON string")
+
             # Handle enum fields
             if field in ["severity", "priority", "bug_type", "status"]:
                 try:
