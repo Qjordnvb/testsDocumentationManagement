@@ -306,26 +306,30 @@ async def get_users(
 **Frontend:**
 - ✅ Login multi-step (4 componentes)
 - ✅ User management page (admin)
+- ✅ Projects List Page (landing page con grid de proyectos)
+- ✅ Create/Edit Project modals
+- ✅ Routing con `:projectId` (todas las rutas anidadas)
+- ✅ Project Context Provider (con localStorage persistence)
 - ✅ User Stories page con tabla y visualización
 - ✅ Test Cases page con CRUD completo
 - ✅ Generate Modal con configuración (1-10 tests, tipos)
 - ✅ Review Modal para aprobar sugerencias de IA
 - ✅ Gherkin Editor component
 - ✅ Test Case Form Modal (creación manual)
+- ✅ Bugs page con asignación de devs
+- ✅ Bug details page
 
-### ⚠️ En Progreso
+### 🔄 Mejoras Pendientes (Opcionales)
 
 **Backend:**
-- ⚠️ Actualizar endpoints existentes para requerir `project_id`
-- ⚠️ Crear endpoints específicos por proyecto (GET /projects/{id}/user-stories)
+- 💡 Endpoint para obtener usuarios por rol: `GET /users?role=dev`
+- 💡 Notificaciones cuando se asigna un bug
+- 💡 Dashboard de métricas para devs
 
 **Frontend:**
-- ⚠️ Projects List Page (landing page)
-- ⚠️ Create/Edit Project modals
-- ⚠️ Routing con `:projectId`
-- ⚠️ Actualizar todos los API calls con `projectId`
-- ⚠️ Eliminar polling de stats (usa refresh manual)
-- ⚠️ Project Context Provider
+- 💡 Dropdown de usuarios en vez de input libre para asignar bugs
+- 💡 Autocompletado de emails de usuarios
+- 💡 Dashboard personalizado por rol
 
 ---
 
