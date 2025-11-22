@@ -160,6 +160,12 @@ db-reset: ## 🗄️ Resetea base de datos COMPLETAMENTE (⚠️ NUCLEAR)
 db-status: ## 📊 Ver estadísticas de la base de datos
 	@PYTHONPATH=. python -c "from backend.database.db import SessionLocal; from backend.database.models import ProjectDB, UserStoryDB, TestCaseDB; db = SessionLocal(); print(f'\n📊 Database Statistics:\n'); print(f'Projects: {db.query(ProjectDB).count()}'); print(f'User Stories: {db.query(UserStoryDB).count()}'); print(f'Test Cases: {db.query(TestCaseDB).count()}\n'); db.close()"
 
+force-reset: ## 🔨 FUERZA detención + recrea base de datos (⚠️ SOLUCIÓN PROBLEMAS)
+	@bash ./force_reset.sh
+
+db-create-samples: ## 📁 Crea proyectos de ejemplo (PROJ-001, PROJ-002, PROJ-003)
+	@PYTHONPATH=. python create_sample_projects.py
+
 # ==================== Redis ====================
 redis-start: ## 🔴 Inicia solo Redis (Docker)
 	@(command -v docker-compose > /dev/null && docker-compose up redis -d) || (docker compose up redis -d)
