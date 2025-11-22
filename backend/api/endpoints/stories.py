@@ -74,8 +74,12 @@ async def upload_file(
         updated_stories = []
 
         for user_story in result.user_stories:
-            # Check if story already exists
-            existing_story = db.query(UserStoryDB).filter(UserStoryDB.id == user_story.id).first()
+            # Check if story already exists IN THIS PROJECT
+            # This allows the same story ID to exist in different projects
+            existing_story = db.query(UserStoryDB).filter(
+                UserStoryDB.id == user_story.id,
+                UserStoryDB.project_id == project_id
+            ).first()
 
             if existing_story:
                 # Update existing story
@@ -125,9 +129,12 @@ async def upload_file(
         db.commit()
         print(f"Database commit successful! Inserted: {len(saved_stories)}, Updated: {len(updated_stories)}")
 
-        # Fetch the saved stories with all data
+        # Fetch the saved stories with all data (from THIS PROJECT only)
         all_story_ids = [s.id for s in result.user_stories]
-        db_stories = db.query(UserStoryDB).filter(UserStoryDB.id.in_(all_story_ids)).all()
+        db_stories = db.query(UserStoryDB).filter(
+            UserStoryDB.id.in_(all_story_ids),
+            UserStoryDB.project_id == project_id
+        ).all()
 
         # Format stories with acceptance criteria
         formatted_stories = []
@@ -289,3 +296,146 @@ async def update_user_story(
         "completion_percentage": story.completion_percentage,
         "updated_date": story.updated_date.isoformat() if story.updated_date else None
     }
+
+
+# ==================== Async Excel Upload (Celery Background Processing) ====================
+
+@router.post("/upload/async")
+async def upload_file_async(
+    file: UploadFile = File(...),
+    project_id: str = Query(..., description="Project ID to associate user stories with"),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload Excel file for ASYNCHRONOUS processing (non-blocking)
+    Returns task_id for status polling
+
+    Use this endpoint for large Excel files (>50 rows) to avoid blocking the UI
+    """
+    from backend.tasks import process_excel_task
+
+    try:
+        # Validate that project exists
+        project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Project {project_id} not found. Please create the project first."
+            )
+
+        # Validate file extension
+        file_extension = Path(file.filename).suffix.lower()
+        if file_extension not in [".xlsx", ".xls", ".csv"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: {file_extension}. Please upload .xlsx or .csv file"
+            )
+
+        # Save uploaded file
+        settings.ensure_directories()
+        file_path = Path(settings.upload_dir) / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        print(f"📤 File saved: {file_path} ({file_path.stat().st_size} bytes)")
+        print(f"📦 Queueing Excel processing task for project {project_id}...")
+
+        # Queue the background task
+        task = process_excel_task.delay(
+            file_path=str(file_path),
+            project_id=project_id
+        )
+
+        print(f"✅ Task queued: {task.id}")
+
+        return {
+            "task_id": task.id,
+            "project_id": project_id,
+            "project_name": project.name,
+            "file_name": file.filename,
+            "status": "queued",
+            "message": "Excel file is being processed in background",
+            "status_url": f"/api/v1/upload/status/{task.id}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Upload error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error uploading file: {str(e)}"
+        )
+
+
+@router.get("/upload/status/{task_id}")
+async def get_upload_status(task_id: str):
+    """
+    Get status of background Excel processing task
+
+    Returns:
+        - status: "pending" | "processing" | "completed" | "failed"
+        - progress: 0-100
+        - result: Complete result when status=completed
+    """
+    from backend.celery_app import celery_app
+
+    task = celery_app.AsyncResult(task_id)
+
+    if task.state == 'PENDING':
+        return {
+            "task_id": task_id,
+            "status": "pending",
+            "progress": 0,
+            "message": "Task is waiting to start..."
+        }
+
+    elif task.state == 'PROGRESS':
+        # Task is running, return progress info
+        info = task.info or {}
+        return {
+            "task_id": task_id,
+            "status": "processing",
+            "progress": info.get('progress', 0),
+            "message": info.get('status', 'Processing Excel file...'),
+            "project_id": info.get('project_id'),
+            "project_name": info.get('project_name'),
+            "current_story": info.get('current_story'),
+            "total_stories": info.get('total_stories'),
+            "inserted": info.get('inserted'),
+            "updated": info.get('updated')
+        }
+
+    elif task.state == 'SUCCESS':
+        # Task completed successfully
+        result = task.result
+        return {
+            "task_id": task_id,
+            "status": "completed",
+            "progress": 100,
+            "message": "Excel file processed successfully",
+            "result": result
+        }
+
+    elif task.state == 'FAILURE':
+        # Task failed
+        error_info = str(task.info) if task.info else "Unknown error"
+        return {
+            "task_id": task_id,
+            "status": "failed",
+            "progress": 0,
+            "message": "Excel processing failed",
+            "error": error_info
+        }
+
+    else:
+        # Unknown state
+        return {
+            "task_id": task_id,
+            "status": "unknown",
+            "progress": 0,
+            "message": f"Unknown task state: {task.state}"
+        }

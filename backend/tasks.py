@@ -336,3 +336,201 @@ async def generate_batch_async(
 
     print(f"   ✅ Batch {batch_num}/{total_batches}: Got {len(scenarios)} scenarios")
     return scenarios
+
+
+@celery_app.task(bind=True, base=DatabaseTask)
+def process_excel_task(
+    self,
+    file_path: str,
+    project_id: str
+):
+    """
+    Background task to process Excel file and save user stories to database
+
+    Args:
+        self: Celery task instance (bound)
+        file_path: Path to uploaded Excel file
+        project_id: Project ID to associate stories with
+
+    Returns:
+        dict: Result with status and processed stories
+    """
+    from backend.parsers import FileParser
+    from backend.database.models import ProjectDB, UserStoryDB
+
+    try:
+        # Update progress: Starting
+        self.update_state(state='PROGRESS', meta={
+            'progress': 5,
+            'status': 'Starting Excel processing...',
+            'project_id': project_id
+        })
+
+        # Validate that project exists
+        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            return {
+                'status': 'failed',
+                'error': f'Project {project_id} not found'
+            }
+
+        # Update progress: Parsing file
+        self.update_state(state='PROGRESS', meta={
+            'progress': 10,
+            'status': 'Parsing Excel file...',
+            'project_id': project_id,
+            'project_name': project.name
+        })
+
+        # Initialize Gemini client for acceptance criteria parsing
+        gemini_client = GeminiClient(api_key=settings.gemini_api_key)
+
+        # Parse file
+        parser = FileParser(gemini_client=gemini_client)
+        result = parser.parse(file_path)
+
+        if not result.success:
+            return {
+                'status': 'failed',
+                'error': f'Parse errors: {result.errors}'
+            }
+
+        total_stories = len(result.user_stories)
+
+        # Update progress: Saving to database
+        self.update_state(state='PROGRESS', meta={
+            'progress': 30,
+            'status': f'Saving {total_stories} user stories to database...',
+            'project_id': project_id,
+            'project_name': project.name,
+            'total_stories': total_stories
+        })
+
+        saved_stories = []
+        updated_stories = []
+
+        for idx, user_story in enumerate(result.user_stories, 1):
+            # Update progress for each story
+            if idx % 10 == 0 or idx == total_stories:  # Update every 10 stories
+                progress = 30 + int((idx / total_stories) * 50)  # 30-80%
+                self.update_state(state='PROGRESS', meta={
+                    'progress': progress,
+                    'status': f'Processing story {idx}/{total_stories}...',
+                    'project_id': project_id,
+                    'project_name': project.name,
+                    'current_story': idx,
+                    'total_stories': total_stories
+                })
+
+            # Check if story already exists IN THIS PROJECT
+            existing_story = self.db.query(UserStoryDB).filter(
+                UserStoryDB.id == user_story.id,
+                UserStoryDB.project_id == project_id
+            ).first()
+
+            if existing_story:
+                # Update existing story
+                existing_story.title = user_story.title
+                existing_story.description = user_story.description
+                existing_story.priority = user_story.priority
+                existing_story.status = user_story.status
+                existing_story.epic = user_story.epic
+                existing_story.sprint = user_story.sprint
+                existing_story.story_points = user_story.story_points
+                existing_story.assigned_to = user_story.assigned_to
+                existing_story.acceptance_criteria = json.dumps(
+                    [ac.dict() for ac in user_story.acceptance_criteria]
+                ) if user_story.acceptance_criteria else None
+                existing_story.total_criteria = len(user_story.acceptance_criteria)
+                existing_story.completed_criteria = sum(1 for ac in user_story.acceptance_criteria if ac.completed)
+                existing_story.completion_percentage = user_story.get_completion_percentage()
+                existing_story.updated_date = datetime.now()
+                updated_stories.append(user_story.id)
+            else:
+                # Insert new story
+                db_story = UserStoryDB(
+                    id=user_story.id,
+                    project_id=project_id,
+                    title=user_story.title,
+                    description=user_story.description,
+                    priority=user_story.priority,
+                    status=user_story.status,
+                    epic=user_story.epic,
+                    sprint=user_story.sprint,
+                    story_points=user_story.story_points,
+                    assigned_to=user_story.assigned_to,
+                    acceptance_criteria=json.dumps(
+                        [ac.dict() for ac in user_story.acceptance_criteria]
+                    ) if user_story.acceptance_criteria else None,
+                    total_criteria=len(user_story.acceptance_criteria),
+                    completed_criteria=sum(1 for ac in user_story.acceptance_criteria if ac.completed),
+                    completion_percentage=user_story.get_completion_percentage()
+                )
+                self.db.add(db_story)
+                saved_stories.append(user_story.id)
+
+        # Update progress: Committing to database
+        self.update_state(state='PROGRESS', meta={
+            'progress': 85,
+            'status': 'Committing to database...',
+            'project_id': project_id,
+            'inserted': len(saved_stories),
+            'updated': len(updated_stories)
+        })
+
+        self.db.commit()
+
+        # Fetch the saved stories
+        all_story_ids = [s.id for s in result.user_stories]
+        db_stories = self.db.query(UserStoryDB).filter(
+            UserStoryDB.id.in_(all_story_ids),
+            UserStoryDB.project_id == project_id
+        ).all()
+
+        # Format stories
+        formatted_stories = []
+        for story in db_stories:
+            formatted_stories.append({
+                "id": story.id,
+                "title": story.title,
+                "description": story.description,
+                "acceptance_criteria": json.loads(story.acceptance_criteria) if story.acceptance_criteria else [],
+                "total_criteria": story.total_criteria,
+                "completed_criteria": story.completed_criteria,
+                "completion_percentage": story.completion_percentage,
+                "priority": story.priority.value if story.priority else None,
+                "status": story.status.value if story.status else None
+            })
+
+        # Update progress: Complete
+        self.update_state(state='PROGRESS', meta={
+            'progress': 95,
+            'status': 'Finalizing...',
+            'inserted': len(saved_stories),
+            'updated': len(updated_stories)
+        })
+
+        # Return result
+        return {
+            'status': 'completed',
+            'project_id': project_id,
+            'project_name': project.name,
+            'file_path': file_path,
+            'inserted': len(saved_stories),
+            'updated': len(updated_stories),
+            'total': len(result.user_stories),
+            'user_stories': formatted_stories,
+            'detected_columns': parser.get_detected_columns_info(),
+            'processed_at': datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        print(f"❌ Excel processing error: {e}")
+        import traceback
+        traceback.print_exc()
+
+        return {
+            'status': 'failed',
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }
