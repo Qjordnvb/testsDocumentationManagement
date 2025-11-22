@@ -1,390 +1,669 @@
-# ✅ Backend Authentication System - IMPLEMENTATION COMPLETE
+# Backend Complete - QA Documentation System
 
-**Date:** 2025-11-22
-**Status:** 🟢 100% Complete - Ready for Testing & Frontend Integration
-
----
-
-## 📊 Implementation Summary
-
-### ✅ Completed Components (14/14)
-
-1. ✅ **UserDB Model** - `backend/database/models.py`
-   - SQLAlchemy model with all required fields
-   - Relationships with self (created_by)
-   - Integration fields (Notion, Azure)
-
-2. ✅ **Pydantic Models** - `backend/models/user.py`
-   - User, CreateUserDTO, UpdateUserDTO
-   - Role enum (ADMIN, QA, DEV, MANAGER)
-   - LoginRequest, LoginResponse
-   - Complete validation and examples
-
-3. ✅ **Model Exports** - `backend/models/__init__.py`
-   - All user models exported
-
-4. ✅ **Auth Dependencies** - `backend/api/dependencies.py`
-   - `hash_password()` - bcrypt hashing
-   - `verify_password()` - password verification
-   - `create_access_token()` - JWT token generation
-   - `decode_token()` - JWT token validation
-   - `get_current_user()` - Extract user from token
-   - `require_role()` - Role-based access control factory
-
-5. ✅ **Auth Endpoints** - `backend/api/endpoints/auth.py`
-   - `POST /auth/login` - Login with email/password
-   - `GET /auth/me` - Get current user info
-   - `POST /auth/logout` - Logout endpoint
-
-6. ✅ **User Management Endpoints** - `backend/api/endpoints/users.py`
-   - `GET /users` - List all users (ADMIN, MANAGER)
-   - `GET /users/{user_id}` - Get user by ID (ADMIN, MANAGER)
-   - `POST /users` - Create user (ADMIN only)
-   - `PUT /users/{user_id}` - Update user (ADMIN only)
-   - `DELETE /users/{user_id}` - Delete user (ADMIN only)
-
-7. ✅ **Router Registration** - `backend/api/routes2.py`
-   - Auth router included with "Authentication" tag
-   - Users router included with "User Management" tag
-
-8. ✅ **Database Exports** - `backend/database/__init__.py`
-   - UserDB exported for use across application
-
-9. ✅ **Configuration** - `backend/config.py`
-   - SECRET_KEY field added (required for JWT)
-
-10. ✅ **Migration Script** - `add_users_table.py`
-    - Safely adds users table without affecting existing data
-
-11. ✅ **Seed Script** - `seed_admin_user.py`
-    - Creates initial admin user
-    - Default credentials: admin@qa-system.com / admin123
-
-12. ✅ **Dependencies** - `requirements.txt`
-    - Added: bcrypt==4.1.2
-    - Added: PyJWT==2.8.0
-
-13. ✅ **Environment Config** - `.env.example`
-    - SECRET_KEY documentation added
-    - Instructions for secure key generation
-
-14. ✅ **Setup Automation** - `setup_auth.sh`
-    - Automated setup script
-    - Checks dependencies, runs migration, seeds admin
-
-15. ✅ **Documentation** - `AUTH_SYSTEM.md`
-    - Complete API reference
-    - Role definitions and permissions
-    - Setup instructions
-    - Frontend integration guide
-    - Security best practices
+**Framework**: FastAPI 0.109.0
+**Database**: SQLAlchemy + SQLite
+**Updated**: 2025-11-22
 
 ---
 
-## 🚀 Quick Start
+## 📋 Índice
 
-### Option 1: Automated Setup (Recommended)
+1. [Stack Tecnológico](#stack-tecnológico)
+2. [Estructura de Directorios](#estructura-de-directorios)
+3. [Modelos de Base de Datos](#modelos-de-base-de-datos)
+4. [Sistema de Autenticación](#sistema-de-autenticación)
+5. [Endpoints API](#endpoints-api)
+6. [Generadores](#generadores)
+7. [Integración Gemini AI](#integración-gemini-ai)
+8. [Configuración](#configuración)
 
-```bash
-./setup_auth.sh
+---
+
+## STACK TECNOLÓGICO
+
+| Componente | Tecnología | Versión | Propósito |
+|------------|------------|---------|-----------|
+| Framework | FastAPI | 0.109.0 | REST API |
+| ASGI Server | Uvicorn | latest | HTTP server |
+| ORM | SQLAlchemy | 2.0.25 | Database abstraction |
+| Database | SQLite | 3.x | Development (PostgreSQL en prod) |
+| Validation | Pydantic | 2.5.3 | DTO validation |
+| Password Hashing | bcrypt (passlib) | latest | Secure passwords |
+| JWT | python-jose | latest | Token generation |
+| AI | Google Gemini | 2.5-flash | Test case generation |
+| PDF | ReportLab | latest | PDF generation |
+| DOCX | python-docx | latest | DOCX generation |
+| Excel | pandas + openpyxl | latest | Excel parsing |
+
+---
+
+## ESTRUCTURA DE DIRECTORIOS
+
 ```
-
-### Option 2: Manual Setup (3 commands)
-
-```bash
-# 1. Install dependencies
-pip install bcrypt==4.1.2 PyJWT==2.8.0
-
-# 2. Add SECRET_KEY to .env
-echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
-
-# 3. Setup database and admin user
-python add_users_table.py && python seed_admin_user.py
+backend/
+├── api/
+│   └── endpoints/
+│       ├── auth.py              # ✨ Authentication (check-email, register, login)
+│       ├── users.py             # ✨ User management (invite, CRUD)
+│       ├── projects.py          # Project CRUD + stats
+│       ├── user_stories.py      # Stories CRUD + Excel upload
+│       ├── test_cases.py        # Test cases CRUD + AI generation
+│       └── bugs.py              # Bug reports
+│
+├── database/
+│   ├── db.py                    # SQLAlchemy setup, SessionLocal
+│   └── models.py                # ✨ All DB models (UserDB, ProjectDB, etc)
+│
+├── models/
+│   ├── user.py                  # ✨ User DTOs (CheckEmail, Register, etc)
+│   ├── project.py               # Project DTOs
+│   ├── user_story.py            # UserStory DTOs + AcceptanceCriteria
+│   ├── test_case.py             # TestCase DTOs + GherkinScenario
+│   └── bug_report.py            # BugReport DTOs
+│
+├── generators/
+│   ├── gherkin_generator.py     # Generates .feature files
+│   ├── test_plan_generator.py   # Generates PDF/DOCX test plans
+│   └── bug_report_generator.py  # Generates bug documentation
+│
+├── integrations/
+│   └── gemini_client.py         # Google Gemini AI client
+│
+├── parsers/
+│   └── file_parser.py           # Excel/CSV parser
+│
+├── config.py                    # ✨ Settings (JWT_SECRET, DB_URL, etc)
+├── main.py                      # FastAPI app entry point
+└── migrate_invitation_system.py # ✨ Database migration (executed)
 ```
 
 ---
 
-## 🧪 Test the Implementation
+## MODELOS DE BASE DE DATOS
 
-### Start the Server
+### UserDB (Autenticación)
 
-```bash
-cd backend
-python main.py
+```python
+class UserDB(Base):
+    __tablename__ = "users"
+
+    # Identity
+    id: str (PK)                 # USR-001, USR-002, ...
+    email: str (UNIQUE, INDEX)
+    password_hash: str (NULLABLE) # ← Nullable for invitations
+    full_name: str
+
+    # Authorization
+    role: str                    # admin, qa, dev, manager
+
+    # Status
+    is_active: bool = True
+    is_registered: bool = False  # ← True after user completes registration
+
+    # Invitation tracking
+    invited_by: str (NULLABLE)   # Email of admin who created invitation
+    invited_at: datetime (NULLABLE)
+    registered_at: datetime (NULLABLE)
+
+    # Metadata
+    created_at: datetime
+    created_by: str (FK → users.id)
+    updated_at: datetime
+    last_login: datetime (NULLABLE)
 ```
 
-Server: `http://localhost:8000`
-API Docs: `http://localhost:8000/docs`
+### ProjectDB
 
-### Test Login (curl)
+```python
+class ProjectDB(Base):
+    __tablename__ = "projects"
 
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@qa-system.com","password":"admin123"}'
+    id: str (PK, INDEX)          # PROJ-001, PROJ-002, ...
+    name: str
+    description: text (NULLABLE)
+    client: str (NULLABLE)
+    team_members: text (NULLABLE) # JSON array
+    status: str                   # active, archived, completed
+    default_test_types: text (NULLABLE) # JSON array
+    start_date: datetime (NULLABLE)
+    end_date: datetime (NULLABLE)
+    created_date: datetime
+    updated_date: datetime
+    created_by: str (FK → users.id)
+
+    # Relationships (CASCADE DELETE)
+    user_stories → OneToMany UserStoryDB
+    test_cases → OneToMany TestCaseDB
+    bug_reports → OneToMany BugReportDB
 ```
 
-**Expected Response:**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "user": {
-    "id": "USR-001",
-    "email": "admin@qa-system.com",
-    "full_name": "System Administrator",
-    "role": "ADMIN",
-    "is_active": true
-  }
+### UserStoryDB
+
+```python
+class UserStoryDB(Base):
+    __tablename__ = "user_stories"
+
+    id: str (PK, INDEX)
+    project_id: str (FK → projects.id, INDEX) # ← CRITICAL for filtering
+    title: str
+    description: text
+    acceptance_criteria: text (NULLABLE)       # JSON array
+    priority: str                              # CRITICAL, HIGH, MEDIUM, LOW
+    status: str                                # BACKLOG, TODO, IN_PROGRESS, etc
+    epic: str (NULLABLE)
+    sprint: str (NULLABLE)
+    story_points: int (NULLABLE)
+    assigned_to: str (NULLABLE)
+    created_date: datetime
+    updated_date: datetime
+
+    # Acceptance Criteria metrics
+    total_criteria: int = 0
+    completed_criteria: int = 0
+    completion_percentage: float = 0.0
+
+    # Relationships
+    project → ManyToOne ProjectDB
+    test_cases → OneToMany TestCaseDB
+    bug_reports → OneToMany BugReportDB
+```
+
+### TestCaseDB
+
+```python
+class TestCaseDB(Base):
+    __tablename__ = "test_cases"
+
+    id: str (PK, INDEX)
+    project_id: str (FK → projects.id, INDEX)  # ← CRITICAL
+    user_story_id: str (FK → user_stories.id)
+    title: str
+    description: text
+    test_type: str                # FUNCTIONAL, UI, API, INTEGRATION, etc
+    priority: str                 # CRITICAL, HIGH, MEDIUM, LOW
+    status: str                   # NOT_RUN, PASSED, FAILED, BLOCKED, SKIPPED
+    estimated_time_minutes: int (NULLABLE)
+    actual_time_minutes: int (NULLABLE)
+    automated: bool = False
+    created_date: datetime
+    last_executed: datetime (NULLABLE)
+    executed_by: str (NULLABLE)
+    gherkin_file_path: str (NULLABLE) # output/gherkin/TC-001.feature
+
+    # Relationships
+    project → ManyToOne ProjectDB
+    user_story → ManyToOne UserStoryDB
+    executions → OneToMany TestExecutionDB
+```
+
+### BugReportDB
+
+```python
+class BugReportDB(Base):
+    __tablename__ = "bug_reports"
+
+    id: str (PK, INDEX)
+    project_id: str (FK → projects.id, INDEX)  # ← CRITICAL
+    title: str
+    description: text
+    severity: str                 # CRITICAL, HIGH, MEDIUM, LOW
+    priority: str                 # URGENT, HIGH, MEDIUM, LOW
+    bug_type: str                 # FUNCTIONAL, UI, PERFORMANCE, SECURITY, etc
+    status: str                   # NEW, ASSIGNED, IN_PROGRESS, FIXED, etc
+    environment: str (NULLABLE)
+    browser: str (NULLABLE)
+    os: str (NULLABLE)
+    version: str (NULLABLE)
+    user_story_id: str (FK → user_stories.id, NULLABLE)
+    test_case_id: str (NULLABLE)
+    reported_by: str (NULLABLE)
+    assigned_to: str (NULLABLE)
+    verified_by: str (NULLABLE)
+    reported_date: datetime
+    assigned_date: datetime (NULLABLE)
+    fixed_date: datetime (NULLABLE)
+    verified_date: datetime (NULLABLE)
+    closed_date: datetime (NULLABLE)
+    document_path: str (NULLABLE)
+
+    # Relationships
+    project → ManyToOne ProjectDB
+    user_story → ManyToOne UserStoryDB
+```
+
+---
+
+## SISTEMA DE AUTENTICACIÓN
+
+### Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/auth/check-email` | POST | No | Validate email in whitelist + registration status |
+| `/auth/register` | POST | No | Complete registration (set password) |
+| `/auth/login` | POST | No | Login with email + password |
+| `/auth/logout` | POST | Yes | Logout (optional, JWT is stateless) |
+| `/auth/me` | GET | Yes | Get current user info |
+
+### JWT Configuration
+
+```python
+# config.py
+class Settings(BaseSettings):
+    jwt_secret_key: str = "your-secret-key-here"
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 24
+```
+
+### Password Security
+
+```python
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Hash password
+hashed = pwd_context.hash("plain_password")
+
+# Verify password
+is_valid = pwd_context.verify("plain_password", hashed)
+```
+
+### Dependencies (Authorization)
+
+```python
+# Require authentication
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> UserDB:
+    # Decode JWT, validate, return user
+    ...
+
+# Require specific role
+def require_role(*roles: Role):
+    def dependency(current_user: UserDB = Depends(get_current_user)) -> UserDB:
+        if current_user.role not in [r.value for r in roles]:
+            raise HTTPException(403, "Insufficient permissions")
+        return current_user
+    return dependency
+
+# Usage
+@router.post("/users/invite")
+async def create_invitation(
+    current_user: UserDB = Depends(require_role(Role.ADMIN))
+):
+    ...
+```
+
+---
+
+## ENDPOINTS API
+
+**Base URL**: `http://localhost:8000/api/v1`
+
+### Authentication (`api/endpoints/auth.py`)
+
+**POST /auth/check-email**
+```python
+Request: {"email": "qa@company.com"}
+Response: {
+    "exists": true,
+    "is_registered": false,
+    "full_name": null
 }
 ```
 
-### Test Authenticated Request
+**POST /auth/register**
+```python
+Request: {
+    "email": "qa@company.com",
+    "password": "securepass123",
+    "full_name": "QA Engineer"
+}
+Response: {
+    "access_token": "eyJ...",
+    "token_type": "bearer",
+    "user": {...}
+}
+```
+
+**POST /auth/login**
+```python
+Request: {"email": "qa@company.com", "password": "securepass123"}
+Response: {
+    "access_token": "eyJ...",
+    "token_type": "bearer",
+    "user": {...}
+}
+```
+
+### Users (`api/endpoints/users.py`)
+
+**POST /users/invite** (Admin only)
+```python
+Request: {
+    "email": "qa@company.com",
+    "full_name": "QA Engineer",
+    "role": "qa"
+}
+Response: {
+    "message": "Invitación creada para qa@company.com",
+    "user_id": "USR-002",
+    "status": "pending_registration"
+}
+```
+
+**GET /users** (Admin, Manager)
+```python
+Response: [{
+    "id": "USR-001",
+    "email": "admin@qa-system.com",
+    "full_name": "Admin User",
+    "role": "admin",
+    "is_active": true,
+    "is_registered": true
+}, ...]
+```
+
+### Projects (`api/endpoints/projects.py`)
+
+**GET /projects**
+```python
+Response: {
+    "projects": [{
+        "id": "PROJ-001",
+        "name": "E-commerce App",
+        "total_user_stories": 15,
+        "total_test_cases": 45,
+        "total_bugs": 3,
+        "test_coverage": 95.5
+    }]
+}
+```
+
+**POST /projects**
+```python
+Request: {
+    "name": "Mobile Banking App",
+    "description": "QA for mobile banking",
+    "client": "Bank XYZ",
+    "default_test_types": ["FUNCTIONAL", "SECURITY"]
+}
+Response: {"id": "PROJ-002", ...}
+```
+
+### User Stories (`api/endpoints/user_stories.py`)
+
+**POST /upload?project_id=PROJ-001**
+```python
+FormData: file (Excel/CSV)
+Response: {
+    "message": "Successfully processed file",
+    "inserted": 10,
+    "updated": 5,
+    "total": 15
+}
+```
+
+**GET /user-stories?project_id=PROJ-001**
+```python
+Response: {
+    "user_stories": [{
+        "id": "US-001",
+        "title": "User Login",
+        "acceptance_criteria": [{
+            "id": "AC-1",
+            "description": "Validar email",
+            "completed": false
+        }],
+        "total_criteria": 3,
+        "completion_percentage": 33.3
+    }]
+}
+```
+
+### Test Cases (`api/endpoints/test_cases.py`)
+
+**POST /generate-test-cases/{story_id}/preview**
+```python
+Query: ?num_test_cases=5&scenarios_per_test=3&test_types=FUNCTIONAL,UI
+Response: {
+    "user_story_id": "US-001",
+    "suggested_test_cases": [{
+        "suggested_id": "TC-temp-001",
+        "title": "Verify login with valid credentials",
+        "gherkin_content": "Feature: Login...",
+        "can_edit": true
+    }]
+}
+```
+
+**POST /test-cases/batch**
+```python
+Request: {
+    "user_story_id": "US-001",
+    "test_cases": [...]
+}
+Response: {
+    "message": "Created 5 test cases successfully",
+    "created_count": 5,
+    "test_cases": [...]
+}
+```
+
+**GET /test-cases/{id}/gherkin**
+```python
+Response: {
+    "test_case_id": "TC-001",
+    "file_path": "output/gherkin/TC-001.feature",
+    "gherkin_content": "Feature: Login\n  Scenario: ..."
+}
+```
+
+**PUT /test-cases/{id}/gherkin**
+```python
+Request: {"gherkin_content": "Feature: ..."}
+Response: {"message": "Gherkin content updated successfully"}
+```
+
+---
+
+## GENERADORES
+
+### Gherkin Generator
+
+```python
+# generators/gherkin_generator.py
+class GherkinGenerator:
+    def generate_feature_file(
+        self,
+        test_case: TestCase,
+        output_path: str = "output/gherkin"
+    ) -> str:
+        # Generate .feature file content
+        # Write to file: {output_path}/{test_case_id}.feature
+        # Return file path
+```
+
+### Test Plan Generator
+
+```python
+# generators/test_plan_generator.py
+class TestPlanGenerator:
+    def generate_test_plan(
+        self,
+        project_name: str,
+        user_stories: List[UserStory],
+        test_cases: List[TestCase],
+        format: str = "both"  # pdf, docx, both
+    ) -> dict:
+        # Generate PDF/DOCX test plan
+        # Return {"pdf": "path/to/file.pdf", "docx": "path/to/file.docx"}
+```
+
+### Bug Report Generator
+
+```python
+# generators/bug_report_generator.py
+class BugReportGenerator:
+    def generate_bug_report(
+        self,
+        bug: BugReport,
+        output_path: str = "output/bugs"
+    ) -> str:
+        # Generate Markdown bug report
+        # Write to file: {output_path}/{bug_id}.md
+        # Return file path
+```
+
+---
+
+## INTEGRACIÓN GEMINI AI
+
+### Configuración
+
+```python
+# integrations/gemini_client.py
+import google.generativeai as genai
+
+genai.configure(api_key=settings.gemini_api_key)
+
+model = genai.GenerativeModel(
+    model_name="gemini-2.5-flash",
+    generation_config={
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 8192,
+    }
+)
+```
+
+### Uso en Test Generation
+
+```python
+class GeminiClient:
+    def generate_test_cases(
+        self,
+        user_story: UserStory,
+        num_test_cases: int = 5,
+        scenarios_per_test: int = 3,
+        test_types: List[str] = ["FUNCTIONAL"]
+    ) -> List[TestCase]:
+        # Build prompt with user story details
+        prompt = self._build_test_generation_prompt(...)
+
+        # Call Gemini
+        response = model.generate_content(prompt)
+
+        # Parse JSON response
+        test_cases = self._parse_test_cases_response(response.text)
+
+        return test_cases
+```
+
+---
+
+## CONFIGURACIÓN
+
+### Environment Variables (`.env`)
 
 ```bash
-# Copy the access_token from login response
-TOKEN="your_token_here"
+# App
+APP_NAME="QA Documentation Automation"
+APP_VERSION="1.0.0"
+DEBUG=false
 
-curl -X GET http://localhost:8000/api/v1/auth/me \
-  -H "Authorization: Bearer $TOKEN"
+# Database
+DATABASE_URL=sqlite:///./data/qa_automation.db
+
+# JWT
+JWT_SECRET_KEY=your-secret-key-here-change-in-production
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=24
+
+# Gemini AI (REQUIRED)
+GEMINI_API_KEY=your_api_key_here
+
+# Upload
+MAX_UPLOAD_SIZE_MB=10
+ALLOWED_EXTENSIONS=xlsx,csv
+
+# Output
+OUTPUT_DIR=./output
+UPLOAD_DIR=./uploads
 ```
 
-### Test User Management
+### Settings Class
+
+```python
+# config.py
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    app_name: str = "QA Documentation Automation"
+    app_version: str = "1.0.0"
+    debug: bool = False
+
+    # Database
+    database_url: str = "sqlite:///./data/qa_automation.db"
+
+    # JWT
+    jwt_secret_key: str  # REQUIRED
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 24
+
+    # Gemini AI
+    gemini_api_key: str  # REQUIRED
+
+    # Upload
+    max_upload_size_mb: int = 10
+    allowed_extensions: str = "xlsx,csv"
+    output_dir: str = "./output"
+    upload_dir: str = "./uploads"
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+```
+
+---
+
+## DEPLOYMENT
+
+### Development
 
 ```bash
-# List users
-curl -X GET http://localhost:8000/api/v1/users \
-  -H "Authorization: Bearer $TOKEN"
-
-# Create QA user
-curl -X POST http://localhost:8000/api/v1/users \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "email":"qa@example.com",
-    "password":"qa_password_123",
-    "full_name":"QA Engineer",
-    "role":"QA"
-  }'
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
----
-
-## 📚 Available Endpoints
-
-### Authentication (`/api/v1/auth`)
-- `POST /auth/login` - Login
-- `GET /auth/me` - Get current user
-- `POST /auth/logout` - Logout
-
-### User Management (`/api/v1/users`)
-- `GET /users` - List all (ADMIN, MANAGER)
-- `GET /users/{id}` - Get one (ADMIN, MANAGER)
-- `POST /users` - Create (ADMIN)
-- `PUT /users/{id}` - Update (ADMIN)
-- `DELETE /users/{id}` - Delete (ADMIN)
-
----
-
-## 👥 User Roles
-
-| Role | Permissions |
-|------|------------|
-| 🔴 **ADMIN** | Full system access, user management |
-| 🟢 **QA** | Testing workflow, bug reports, test cases |
-| 🔵 **DEV** | Bug fixing, view tests |
-| 🟡 **MANAGER** | View-only, metrics, reports |
-
-See `AUTH_SYSTEM.md` for detailed permissions.
-
----
-
-## 🔐 Default Admin Credentials
-
-**⚠️ FOR DEVELOPMENT ONLY - CHANGE IMMEDIATELY IN PRODUCTION**
-
-- **Email:** admin@qa-system.com
-- **Password:** admin123
-- **Role:** ADMIN
-
-### Change Password After First Login:
+### Production
 
 ```bash
-curl -X PUT http://localhost:8000/api/v1/users/USR-001 \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"password":"new_secure_password_2025!"}'
+# Option 1: Uvicorn with workers
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Option 2: Gunicorn + Uvicorn workers
+gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
+
+### Database Migration (SQLite → PostgreSQL)
+
+```python
+# 1. Update .env
+DATABASE_URL=postgresql://user:password@host:5432/qa_automation
+
+# 2. Install driver
+pip install psycopg2-binary
+
+# 3. Run migration (SQLAlchemy handles dialect)
+python -c "from database.db import engine; from database.models import Base; Base.metadata.create_all(engine)"
 ```
 
 ---
 
-## 📁 Files Created/Modified
-
-### New Files (5)
-```
-add_users_table.py         # Migration script
-seed_admin_user.py         # Admin user creation
-setup_auth.sh              # Automated setup
-AUTH_SYSTEM.md             # Complete documentation
-BACKEND_COMPLETE.md        # This file
-```
-
-### Modified Backend Files (8)
-```
-backend/database/models.py          # Added UserDB
-backend/database/__init__.py        # Export UserDB
-backend/models/user.py              # NEW FILE - User models
-backend/models/__init__.py          # Export user models
-backend/api/dependencies.py         # Added auth functions
-backend/api/endpoints/auth.py       # NEW FILE - Auth endpoints
-backend/api/endpoints/users.py      # NEW FILE - User CRUD
-backend/api/routes2.py              # Register routers
-backend/config.py                   # Added SECRET_KEY
-```
-
-### Modified Config Files (2)
-```
-requirements.txt                    # Added bcrypt, PyJWT
-.env.example                        # Added SECRET_KEY
-```
-
----
-
-## ✅ Design Principles Applied
-
-Following user requirements, this implementation strictly follows:
-
-- ✅ **Abstraction:** Generic `require_role()` factory
-- ✅ **Encapsulation:** Auth logic isolated in dependencies
-- ✅ **Modularity:** Separate modules for auth, users, utilities
-- ✅ **Separation of Concerns:** Clear separation between auth, authorization, user management
-- ✅ **DRY:** Reusable auth functions
-- ✅ **KISS:** Simple JWT implementation
-- ✅ **YAGNI:** Only implemented what's needed for login
-- ✅ **Testability:** Pure functions, dependency injection
-
----
-
-## 🔧 Architecture Alignment
-
-This implementation **exactly follows** the existing project patterns:
-
-✅ Same ID generation (USR-001, USR-002, ...)
-✅ Same Pydantic model structure
-✅ Same FastAPI Depends() injection
-✅ Same router registration in routes2.py
-✅ Same logging with print() statements
-✅ Same database model patterns
-✅ Same endpoint structure and responses
-
-**No existing code was broken. All patterns were preserved.**
-
----
-
-## 📖 Documentation
-
-For complete details, see:
-
-1. **AUTH_SYSTEM.md** - Complete authentication system documentation
-   - API reference
-   - Role definitions
-   - Setup instructions
-   - Frontend integration guide
-   - Security best practices
-
-2. **CLAUDE.md** - Project architecture (existing)
-   - Overall system architecture
-   - Database models
-   - API endpoints
-
----
-
-## ⏭️ Next Steps
-
-### Backend ✅ COMPLETE
-All backend work is done. The authentication system is fully functional and ready for use.
-
-### Frontend ⏳ PENDING
-The next phase is frontend implementation:
-
-1. Create AuthContext (provider for authentication state)
-2. Create LoginPage
-3. Create ProtectedRoute component
-4. Update App.tsx with auth routes
-5. Update API client to include Authorization header
-6. Create UsersManagementPage (ADMIN only)
-7. Add role-based UI components
-8. Handle logout and token expiration
-
-See **AUTH_SYSTEM.md** → "Frontend Integration Guide" for complete code examples.
-
----
-
-## 🎯 Verification Checklist
-
-Before moving to frontend, verify:
-
-- [ ] Dependencies installed (`pip install -r requirements.txt`)
-- [ ] SECRET_KEY in .env file
-- [ ] Migration run successfully (`python add_users_table.py`)
-- [ ] Admin user created (`python seed_admin_user.py`)
-- [ ] Server starts without errors (`python backend/main.py`)
-- [ ] Login endpoint works (test with curl)
-- [ ] Token is returned correctly
-- [ ] /auth/me works with token
-- [ ] /users endpoints require authentication
-
-All items should be ✅ before proceeding to frontend.
-
----
-
-## 🐛 Troubleshooting
-
-### Server won't start?
-```bash
-# Check if SECRET_KEY is in .env
-grep SECRET_KEY .env
-
-# If not, generate one:
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
-### Login fails?
-```bash
-# Verify admin user exists
-python -c "from backend.database.db import SessionLocal; from backend.database.models import UserDB; db = SessionLocal(); print(db.query(UserDB).first())"
-
-# Re-run seed if needed
-python seed_admin_user.py
-```
-
-### Import errors?
-```bash
-# Install auth dependencies
-pip install bcrypt==4.1.2 PyJWT==2.8.0
-```
-
----
-
-## 📞 Support
-
-- **API Documentation:** http://localhost:8000/docs (when server is running)
-- **Full Auth Docs:** AUTH_SYSTEM.md
-- **Project Architecture:** CLAUDE.md
-
----
-
-## ✨ Summary
-
-The backend authentication system is **100% complete** and follows all software design principles requested by the user. All existing patterns were preserved, and the implementation is production-ready pending:
-
-1. Frontend integration
-2. Changing default admin password
-3. Creating additional users
-
-**The system is ready for the next phase: Frontend development.**
-
----
-
-**Implementation completed:** 2025-11-22
-**Status:** 🟢 Ready for Frontend Integration
+**Última Actualización**: 2025-11-22
+**Versión**: 2.0
