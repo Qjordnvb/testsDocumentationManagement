@@ -16,6 +16,10 @@ Sistema de gestión multi-proyecto para equipos de QA que automatiza la generaci
 - Prioridades: Critical, High, Medium, Low
 
 ### Generación de Test Cases con IA
+- **🚀 Background Processing**: Generación en segundo plano con Celery + Redis
+- **Queue System**: Encola múltiples generaciones sin bloquear la UI
+- **Real-time Progress**: Badge UI muestra progreso en tiempo real
+- **70% más rápido**: Batches paralelos con AsyncIO
 - **Preview-Review-Save Workflow**: Genera sugerencias que el QA puede revisar antes de guardar
 - Configuración flexible: 1-10 test cases, 1-10 escenarios por test
 - Múltiples tipos de test: Functional, UI, API, Integration, Security, etc.
@@ -78,62 +82,63 @@ testsDocumentationManagement/
 
 ### Prerequisitos
 
-- Python 3.11+
-- Node.js 18+
-- Google Gemini API Key ([obtener aquí](https://aistudio.google.com/app/apikey))
+- **Docker** (para Redis)
+- **Python 3.11+**
+- **Node.js 18+**
+- **Google Gemini API Key** ([obtener aquí](https://aistudio.google.com/app/apikey))
 
-### 1. Setup Backend
-
-```bash
-# Crear entorno virtual
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env y agregar tu GEMINI_API_KEY
-
-# Migrar base de datos (BORRA DATOS EXISTENTES)
-python migrate_to_multiproject.py
-
-# Iniciar servidor backend
-python backend/main.py
-# Backend corriendo en http://localhost:8000
-```
-
-### 2. Setup Frontend
+### ⚡ Inicio Rápido (UN SOLO COMANDO)
 
 ```bash
-cd frontend
+# 1. Configuración inicial (solo primera vez)
+make setup
 
-# Instalar dependencias
-npm install
+# 2. Editar .env y agregar tu GEMINI_API_KEY
+nano .env  # o tu editor favorito
 
-# Iniciar servidor de desarrollo
-npm run dev
-# Frontend corriendo en http://localhost:5173
+# 3. Iniciar TODOS los servicios
+make dev
 ```
 
-### 3. Crear Tu Primer Proyecto
+**¡ESO ES TODO!** En 10 segundos tienes:
+- ✅ Redis corriendo
+- ✅ Celery Worker procesando (background jobs)
+- ✅ Backend en http://localhost:8000
+- ✅ Frontend en http://localhost:5173
+
+**Detener todo**:
+```bash
+make dev-stop
+```
+
+**Ver más comandos**:
+```bash
+make help
+```
+
+### 📚 Documentación de Comandos
+
+Ver **[README_COMANDOS.md](./README_COMANDOS.md)** para:
+- Lista completa de comandos disponibles
+- Comandos de debugging
+- Logs y troubleshooting
+- Comparación de opciones de desarrollo
+
+### 🐳 Alternativa: Docker Completo
+
+Si prefieres TODO en containers:
 
 ```bash
-# Opción 1: Via API
-curl -X POST http://localhost:8000/api/v1/projects \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Mi Primer Proyecto QA",
-    "description": "Proyecto de prueba",
-    "client": "Cliente ABC"
-  }'
+# Iniciar con Docker
+make dev-docker
 
-# Opción 2: Via Frontend
-# 1. Abrir http://localhost:5173
-# 2. Click en "Nuevo Proyecto"
-# 3. Llenar formulario
+# Detener
+make dev-docker-stop
 ```
+
+### 📖 Setup Manual (sin Makefile)
+
+Si prefieres hacerlo paso a paso, ver **[QUICKSTART.md](./QUICKSTART.md)**
 
 ---
 
@@ -153,6 +158,7 @@ Ver [CLAUDE.md](./CLAUDE.md) para:
 ### Backend
 - **Framework**: FastAPI 0.109.0
 - **Base de Datos**: SQLite + SQLAlchemy 2.0
+- **Background Jobs**: Celery 5.3 + Redis 7
 - **IA**: Google Gemini API (gemini-2.5-flash)
 - **Documentos**: python-docx, reportlab, markdown
 - **Validación**: Pydantic 2.5
@@ -237,8 +243,19 @@ Este es un proyecto interno. Para modificaciones, consultar:
 
 ## 📚 Documentación
 
-| Archivo | Propósito |
-|---------|-----------|
-| `README.md` | Documentación general del usuario y quick start |
-| `CLAUDE.md` | Documentación técnica completa para desarrollo |
-| `PROJECT_STATUS.md` | Estado actual, tareas pendientes, y roadmap |
+| Archivo | Propósito | Tiempo lectura |
+|---------|-----------|----------------|
+| **README.md** | Documentación general y quick start | 5 min |
+| **[README_COMANDOS.md](./README_COMANDOS.md)** | ⭐ Comandos simplificados (Makefile) | 10 min |
+| **[QUICKSTART.md](./QUICKSTART.md)** | Guía paso a paso (sin Makefile) | 5 min |
+| **[CELERY_REDIS_SETUP.md](./CELERY_REDIS_SETUP.md)** | Background processing con Celery + Redis | 15 min |
+| **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** | Deployment a producción (todas las opciones) | 20 min |
+| **[CLAUDE.md](./CLAUDE.md)** | Documentación técnica completa (API, DB, modelos) | 30 min |
+| **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** | Estado actual y roadmap | 10 min |
+
+### 🎯 ¿Qué documentación leer?
+
+- **Para empezar YA**: `README.md` (este archivo) + `make dev`
+- **Para entender comandos**: `README_COMANDOS.md`
+- **Para desarrollo**: `CLAUDE.md`
+- **Para producción**: `DEPLOYMENT_GUIDE.md`
