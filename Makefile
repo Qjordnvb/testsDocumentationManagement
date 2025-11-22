@@ -62,27 +62,22 @@ dev-stop: ## 🛑 Detiene desarrollo local
 	@echo "  🐳 Deteniendo Redis (Docker)..."
 	@(command -v docker-compose > /dev/null && docker-compose down) || (docker compose down) || true
 	@echo "  🔄 Deteniendo Celery Worker..."
-	@pkill -f "celery.*worker" || true
-	@sleep 1
-	@pgrep -f "celery.*worker" > /dev/null && pkill -9 -f "celery.*worker" || true
-	@echo "  🐍 Deteniendo Backend (Uvicorn)..."
-	@for pid in $$(pgrep -f "uvicorn.*main:app" 2>/dev/null); do kill $$pid 2>/dev/null || true; done
-	@sleep 1
-	@for pid in $$(pgrep -f "uvicorn.*main:app" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
-	@for pid in $$(pgrep -f "python.*main:app" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
-	@echo "  ⚛️  Deteniendo Frontend (Vite)..."
-	@pkill -f "node.*vite" || true
-	@pkill -f "npm.*dev" || true
-	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill $$pid 2>/dev/null || true; done
-	@sleep 1
-	@for pid in $$(pgrep -f "vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
-	@for pid in $$(pgrep -f "node.*vite" 2>/dev/null); do kill -9 $$pid 2>/dev/null || true; done
-	@echo "  🧹 Liberando puertos (3000, 8000, 6379)..."
-	@sleep 1
-	@lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@pkill -9 -f "celery.*worker" 2>/dev/null || true
+	@echo "  🐍 Deteniendo Backend (Puerto 8000)..."
 	@lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
-	@lsof -ti:6379 2>/dev/null | xargs kill -9 2>/dev/null || true
-	@echo "✅ Servicios detenidos correctamente"
+	@pkill -9 -f "uvicorn" 2>/dev/null || true
+	@pkill -9 -f "python.*main:app" 2>/dev/null || true
+	@echo "  ⚛️  Deteniendo Frontend (Puertos 3000/5173)..."
+	@lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@pkill -9 -f "vite" 2>/dev/null || true
+	@pkill -9 -f "npm.*dev" 2>/dev/null || true
+	@echo "  🧹 Verificando limpieza..."
+	@sleep 0.5
+	@if lsof -i:8000 >/dev/null 2>&1; then echo "⚠️  Puerto 8000 aún ocupado"; else echo "  ✓ Puerto 8000 libre"; fi
+	@if lsof -i:3000 >/dev/null 2>&1; then echo "⚠️  Puerto 3000 aún ocupado"; else echo "  ✓ Puerto 3000 libre"; fi
+	@if lsof -i:5173 >/dev/null 2>&1; then echo "⚠️  Puerto 5173 aún ocupado"; else echo "  ✓ Puerto 5173 libre"; fi
+	@echo "✅ Servicios detenidos"
 
 # ==================== Development (Docker) ====================
 dev-docker: ## 🐳 DESARROLLO con Docker (todo containerizado)
@@ -211,14 +206,14 @@ status: ## 📊 Muestra estado de todos los servicios
 	@echo "🐳 Docker Containers:"
 	@docker ps --filter "name=qa_" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || echo "No containers running"
 	@echo ""
+	@echo "🐍 Backend (Puerto 8000):"
+	@if lsof -i:8000 >/dev/null 2>&1; then echo "✅ Backend running"; else echo "❌ Backend NOT running"; fi
+	@echo ""
+	@echo "⚛️  Frontend (Puertos 3000/5173):"
+	@if lsof -i:3000 >/dev/null 2>&1 || lsof -i:5173 >/dev/null 2>&1; then echo "✅ Frontend running"; else echo "❌ Frontend NOT running"; fi
+	@echo ""
 	@echo "🔄 Celery Workers:"
-	@pgrep -f "celery.*worker" > /dev/null && echo "✅ Celery worker running" || echo "❌ Celery worker NOT running"
-	@echo ""
-	@echo "🐍 Backend:"
-	@pgrep -f "uvicorn.*main:app" > /dev/null && echo "✅ Backend running" || echo "❌ Backend NOT running"
-	@echo ""
-	@echo "⚛️  Frontend:"
-	@pgrep -f "vite" > /dev/null && echo "✅ Frontend running" || echo "❌ Frontend NOT running"
+	@if ps aux | grep "[c]elery -A backend.celery_app worker" > /dev/null 2>&1; then echo "✅ Celery worker running"; else echo "❌ Celery worker NOT running"; fi
 
 check: ## ✅ Verifica que todo esté listo para desarrollo
 	@echo "✅ Verificando configuración..."
