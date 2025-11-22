@@ -16,10 +16,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0', // Necesario para Docker
     port: 3000,
+    strictPort: true, // Falla si el puerto está ocupado
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://backend:8000', // Usar nombre del servicio en Docker network
         changeOrigin: true,
       },
     },
