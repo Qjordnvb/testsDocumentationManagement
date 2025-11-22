@@ -300,6 +300,13 @@ async def get_bug_by_id(
 
     import json
     screenshots_list = json.loads(bug.screenshots) if bug.screenshots else []
+
+    # Log critical fields being returned
+    print(f"   📤 Returning bug data:")
+    print(f"      expected_behavior: {bug.expected_behavior}")
+    print(f"      actual_behavior: {bug.actual_behavior}")
+    print(f"      assigned_to: {bug.assigned_to}")
+
     return {
         "id": bug.id,
         "title": bug.title,
