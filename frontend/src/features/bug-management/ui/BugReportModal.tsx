@@ -115,7 +115,6 @@ export const BugReportModal: React.FC<Props> = ({
         .finally(() => {
           setIsLoadingBug(false);
         });
-    }
   }, [isReadonly, existingBugId, isOpen, mode]);
 
   // Reset flags when modal closes
