@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios';
-import type { User, CreateUserDTO, UpdateUserDTO } from '../model/types';
+import type { User, CreateUserDTO, UpdateUserDTO, CreateUserInvitationDTO } from '../model/types';
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -41,7 +41,19 @@ export const usersApi = {
   },
 
   /**
-   * Create a new user (ADMIN only)
+   * Create a user invitation (ADMIN only)
+   * Creates invitation without password - user will register later
+   */
+  createInvitation: async (invitation: CreateUserInvitationDTO, token: string): Promise<any> => {
+    const { data } = await api.post('/users/invite', invitation, {
+      headers: getAuthHeader(token),
+    });
+    return data;
+  },
+
+  /**
+   * Create a new user (ADMIN only - LEGACY)
+   * Prefer using createInvitation for new implementations
    */
   create: async (user: CreateUserDTO, token: string): Promise<User> => {
     const { data } = await api.post<User>('/users', user, {

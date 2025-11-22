@@ -1,33 +1,106 @@
 /**
  * Login Page
- * Authentication page for user login
+ * Multi-step authentication page with invitation-based registration
+ *
+ * Flow:
+ * 1. User enters email → POST /auth/check-email
+ * 2a. Email not in whitelist → Access Denied
+ * 2b. Email in whitelist but not registered → Registration Form
+ * 2c. Email in whitelist and registered → Password Login
  */
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/app/providers';
-import { LogIn, AlertCircle } from 'lucide-react';
+import { authApi } from '@/entities/user';
+import { LogIn } from 'lucide-react';
+import {
+  LoginEmailStep,
+  RegisterStep,
+  LoginPasswordStep,
+  AccessDeniedPage,
+} from '@/features/authentication';
+
+type LoginStep = 'email' | 'register' | 'password' | 'access-denied';
 
 export const LoginPage = () => {
+  const [currentStep, setCurrentStep] = useState<LoginStep>('email');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Get the page user was trying to access (or default to dashboard)
   const from = (location.state as any)?.from?.pathname || '/';
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  /**
+   * Step 1: Check email status
+   */
+  const handleEmailSubmit = async (submittedEmail: string) => {
+    setEmail(submittedEmail);
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await authApi.checkEmail({ email: submittedEmail });
+
+      if (!response.exists) {
+        // Email not in whitelist → Access Denied
+        setCurrentStep('access-denied');
+      } else if (!response.is_registered) {
+        // Email in whitelist but not registered → Registration Form
+        setCurrentStep('register');
+      } else {
+        // Email in whitelist and registered → Password Login
+        setFullName(response.full_name || '');
+        setCurrentStep('password');
+      }
+    } catch (err: any) {
+      console.error('Check email error:', err);
+      setError(err.response?.data?.detail || 'Error al verificar el email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Step 2a: Complete registration (invited user sets password)
+   */
+  const handleRegister = async (userFullName: string, password: string) => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await register({
+        email,
+        password,
+        full_name: userFullName,
+      });
+
+      // Auto-login after registration (AuthContext handles token storage)
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setError(err.response?.data?.detail || 'Error al completar el registro');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Step 2b: Login with password (registered user)
+   */
+  const handleLogin = async (password: string) => {
     setError('');
     setIsLoading(true);
 
     try {
       await login({ email, password });
+
       // Redirect to the page they were trying to access
       navigate(from, { replace: true });
     } catch (err: any) {
@@ -36,6 +109,16 @@ export const LoginPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Go back to email step
+   */
+  const handleBack = () => {
+    setCurrentStep('email');
+    setEmail('');
+    setFullName('');
+    setError('');
   };
 
   return (
@@ -50,96 +133,46 @@ export const LoginPage = () => {
             QA Documentation System
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Inicia sesión para continuar
+            {currentStep === 'email' && 'Inicia sesión para continuar'}
+            {currentStep === 'register' && 'Completa tu registro'}
+            {currentStep === 'password' && 'Bienvenido de vuelta'}
+            {currentStep === 'access-denied' && 'Acceso Denegado'}
           </p>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="text-sm text-red-700">{error}</div>
-              </div>
-            )}
+        {/* Multi-Step Form */}
+        {currentStep === 'email' && (
+          <LoginEmailStep
+            onNext={handleEmailSubmit}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
 
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                autoFocus
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="admin@qa-system.com"
-                disabled={isLoading}
-              />
-            </div>
+        {currentStep === 'register' && (
+          <RegisterStep
+            email={email}
+            onRegister={handleRegister}
+            onBack={handleBack}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
 
-            {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="••••••••"
-                disabled={isLoading}
-              />
-            </div>
+        {currentStep === 'password' && (
+          <LoginPasswordStep
+            email={email}
+            fullName={fullName}
+            onLogin={handleLogin}
+            onBack={handleBack}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Iniciando sesión...
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-5 h-5 mr-2" />
-                  Iniciar Sesión
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center mb-2">Credenciales de prueba:</p>
-            <div className="bg-gray-50 rounded-md p-3 text-xs text-gray-600 space-y-1">
-              <div className="flex justify-between">
-                <span className="font-medium">Email:</span>
-                <span className="font-mono">admin@qa-system.com</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Password:</span>
-                <span className="font-mono">admin123</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {currentStep === 'access-denied' && (
+          <AccessDeniedPage email={email} onBack={handleBack} />
+        )}
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-500">

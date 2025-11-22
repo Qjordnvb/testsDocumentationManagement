@@ -254,7 +254,13 @@ class TestExecutionDB(Base):
 
 
 class UserDB(Base):
-    """User database model - Authentication and Authorization"""
+    """User database model - Authentication and Authorization
+
+    Supports invitation-based registration flow:
+    1. Admin creates user invitation (email + role, NO password)
+    2. User receives invitation and completes registration (sets password)
+    3. User can login with email + password
+    """
     __tablename__ = "users"
 
     # Primary Key
@@ -262,7 +268,7 @@ class UserDB(Base):
 
     # Authentication
     email = Column(String, unique=True, nullable=False, index=True)
-    password_hash = Column(String, nullable=False)
+    password_hash = Column(String, nullable=True)  # Nullable until user completes registration
 
     # Profile
     full_name = Column(String, nullable=False)
@@ -270,6 +276,12 @@ class UserDB(Base):
 
     # Status
     is_active = Column(Boolean, default=True)
+    is_registered = Column(Boolean, default=False)  # True after user completes registration
+
+    # Invitation tracking
+    invited_by = Column(String, nullable=True)  # Email of admin who created invitation
+    invited_at = Column(DateTime, nullable=True)
+    registered_at = Column(DateTime, nullable=True)  # When user completed registration
 
     # Metadata
     created_at = Column(DateTime, default=datetime.now)

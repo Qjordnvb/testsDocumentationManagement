@@ -39,3 +39,35 @@ export interface LoginResponse {
   token_type: string;
   user: User;
 }
+
+// ============================================================================
+// Invitation-Based Registration DTOs
+// ============================================================================
+
+export interface CheckEmailRequest {
+  email: string;
+}
+
+export interface CheckEmailResponse {
+  exists: boolean;
+  is_registered: boolean;
+  full_name: string | null;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name: string;
+}
+
+export interface RegisterResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface CreateUserInvitationDTO {
+  email: string;
+  full_name: string;
+  role: Role;
+}

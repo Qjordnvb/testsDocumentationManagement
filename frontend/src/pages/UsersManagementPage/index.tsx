@@ -1,20 +1,19 @@
 /**
  * Users Management Page (ADMIN Only)
- * CRUD operations for user management
+ * CRUD operations for user management with invitation-based registration
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/providers';
 import { usersApi } from '@/entities/user';
-import type { User, CreateUserDTO, Role } from '@/entities/user';
-import { Users, Plus, Edit, Trash2, X } from 'lucide-react';
+import type { User, CreateUserInvitationDTO, Role } from '@/entities/user';
+import { Users, Plus, Trash2, X, Mail, CheckCircle2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const UsersManagementPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const { token, user: currentUser } = useAuth();
 
   useEffect(() => {
@@ -34,15 +33,15 @@ export const UsersManagementPage = () => {
     }
   };
 
-  const handleCreateUser = async (userData: CreateUserDTO) => {
+  const handleCreateInvitation = async (invitation: CreateUserInvitationDTO) => {
     if (!token) return;
     try {
-      await usersApi.create(userData, token);
-      toast.success('Usuario creado exitosamente');
+      await usersApi.createInvitation(invitation, token);
+      toast.success(`Invitación creada para ${invitation.email}`);
       setShowCreateModal(false);
       loadUsers();
     } catch (error: any) {
-      toast.error(error.message || 'Error al crear usuario');
+      toast.error(error.response?.data?.detail || 'Error al crear invitación');
     }
   };
 
@@ -77,14 +76,14 @@ export const UsersManagementPage = () => {
             <Users className="w-8 h-8 text-blue-600" />
             Gestión de Usuarios
           </h1>
-          <p className="text-gray-600 mt-1">Administrar cuentas de usuario del sistema</p>
+          <p className="text-gray-600 mt-1">Administrar invitaciones y usuarios del sistema</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           <Plus className="w-5 h-5" />
-          Nuevo Usuario
+          Crear Invitación
         </button>
       </div>
 
@@ -98,6 +97,7 @@ export const UsersManagementPage = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registro</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
           </thead>
@@ -121,6 +121,9 @@ export const UsersManagementPage = () => {
                     </span>
                   )}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <RegistrationStatusBadge user={user} />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={() => handleDeleteUser(user.id)}
@@ -134,13 +137,19 @@ export const UsersManagementPage = () => {
             ))}
           </tbody>
         </table>
+
+        {users.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            No hay usuarios registrados. Crea tu primera invitación.
+          </div>
+        )}
       </div>
 
-      {/* Create User Modal */}
+      {/* Create Invitation Modal */}
       {showCreateModal && (
-        <CreateUserModal
+        <CreateInvitationModal
           onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateUser}
+          onSubmit={handleCreateInvitation}
         />
       )}
     </div>
@@ -163,16 +172,37 @@ const RoleBadge = ({ role }: { role: Role }) => {
   );
 };
 
-// Create User Modal Component
-interface CreateUserModalProps {
+// Registration Status Badge Component
+const RegistrationStatusBadge = ({ user }: { user: any }) => {
+  // Check if user has registered (simplified - you may need to add is_registered field to User type)
+  const isRegistered = user.last_login !== null && user.last_login !== undefined;
+
+  if (isRegistered) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+        <CheckCircle2 className="w-3 h-3" />
+        Registrado
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+      <Clock className="w-3 h-3" />
+      Pendiente
+    </span>
+  );
+};
+
+// Create Invitation Modal Component
+interface CreateInvitationModalProps {
   onClose: () => void;
-  onSubmit: (user: CreateUserDTO) => Promise<void>;
+  onSubmit: (invitation: CreateUserInvitationDTO) => Promise<void>;
 }
 
-const CreateUserModal = ({ onClose, onSubmit }: CreateUserModalProps) => {
-  const [formData, setFormData] = useState<CreateUserDTO>({
+const CreateInvitationModal = ({ onClose, onSubmit }: CreateInvitationModalProps) => {
+  const [formData, setFormData] = useState<CreateUserInvitationDTO>({
     email: '',
-    password: '',
     full_name: '',
     role: 'qa',
   });
@@ -192,10 +222,21 @@ const CreateUserModal = ({ onClose, onSubmit }: CreateUserModalProps) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Crear Nuevo Usuario</h2>
+          <div className="flex items-center gap-2">
+            <Mail className="w-6 h-6 text-blue-600" />
+            <h2 className="text-xl font-bold">Crear Invitación</h2>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        {/* Info Box */}
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-md p-3">
+          <p className="text-xs text-blue-800">
+            <span className="font-medium">Nota:</span> El usuario recibirá una invitación y
+            deberá completar su registro creando una contraseña cuando ingrese al sistema.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -208,19 +249,6 @@ const CreateUserModal = ({ onClose, onSubmit }: CreateUserModalProps) => {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               placeholder="user@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="••••••••"
-              minLength={6}
             />
           </div>
 
@@ -243,7 +271,7 @@ const CreateUserModal = ({ onClose, onSubmit }: CreateUserModalProps) => {
               onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
-              <option value="qa">QA - Engineer</option>
+              <option value="qa">QA - Quality Assurance Engineer</option>
               <option value="dev">DEV - Developer</option>
               <option value="manager">MANAGER - Project Manager</option>
               <option value="admin">ADMIN - Administrator</option>
@@ -254,9 +282,16 @@ const CreateUserModal = ({ onClose, onSubmit }: CreateUserModalProps) => {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? 'Creando...' : 'Crear Usuario'}
+              {submitting ? (
+                'Creando...'
+              ) : (
+                <>
+                  <Mail className="w-4 h-4" />
+                  Crear Invitación
+                </>
+              )}
             </button>
             <button
               type="button"

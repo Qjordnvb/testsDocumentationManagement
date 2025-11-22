@@ -5,7 +5,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi } from '@/entities/user';
-import type { User, LoginRequest, Role } from '@/entities/user';
+import type { User, LoginRequest, RegisterRequest, Role } from '@/entities/user';
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
+  register: (request: RegisterRequest) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: Role[]) => boolean;
 }
@@ -69,6 +70,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Register function (completes invitation-based registration)
+  const register = async (request: RegisterRequest) => {
+    try {
+      const response = await authApi.register(request);
+
+      setToken(response.access_token);
+      setUser(response.user);
+
+      // Persist to sessionStorage (auto-login after registration)
+      sessionStorage.setItem('auth_token', response.access_token);
+      sessionStorage.setItem('auth_user', JSON.stringify(response.user));
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
+  };
+
   // Logout function
   const logout = () => {
     // Call logout endpoint if token exists (optional, JWT is stateless)
@@ -96,6 +114,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isAuthenticated: !!token && !!user,
     isLoading,
     login,
+    register,
     logout,
     hasRole,
   };

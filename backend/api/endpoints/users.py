@@ -1,5 +1,11 @@
 """
 User management endpoints
+
+Supports invitation-based user creation:
+- POST /users/invite - Create user invitation (email + role, NO password)
+- GET /users - List all users with registration status
+- PUT /users/{user_id} - Update user (admin only)
+- DELETE /users/{user_id} - Delete user (admin only)
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,7 +18,7 @@ from backend.api.dependencies import (
     require_role,
     hash_password
 )
-from backend.models import User, CreateUserDTO, UpdateUserDTO, Role
+from backend.models import User, CreateUserDTO, UpdateUserDTO, CreateUserInvitationDTO, Role
 
 router = APIRouter()
 
@@ -81,6 +87,84 @@ async def get_user_by_id(
     return user
 
 
+@router.post("/users/invite", status_code=status.HTTP_201_CREATED)
+async def create_user_invitation(
+    invitation_data: CreateUserInvitationDTO,
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(require_role(Role.ADMIN))
+):
+    """
+    Create a user invitation (whitelist entry)
+
+    Creates a user invitation without password. The invited user will
+    complete their registration by setting their password.
+
+    Only ADMIN role can create invitations.
+
+    Args:
+        invitation_data: User invitation data (email + role, NO password)
+        db: Database session
+        current_user: Current authenticated user (ADMIN)
+
+    Returns:
+        Created user object with invitation status
+
+    Raises:
+        HTTPException: If email already exists
+    """
+    print(f"📨 POST /users/invite - Creating invitation: {invitation_data.email}")
+    print(f"   Created by: {current_user.id} ({current_user.email})")
+
+    # Check if email already exists
+    existing_user = db.query(UserDB).filter(UserDB.email == invitation_data.email).first()
+    if existing_user:
+        print(f"   ❌ Email already exists: {invitation_data.email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El email {invitation_data.email} ya tiene una invitación"
+        )
+
+    # Generate new user ID
+    last_user = db.query(UserDB).order_by(UserDB.id.desc()).first()
+    if last_user:
+        last_num = int(last_user.id.split('-')[1])
+        new_id = f"USR-{last_num + 1:03d}"
+    else:
+        new_id = "USR-001"
+
+    # Create new user invitation (NO password)
+    new_user = UserDB(
+        id=new_id,
+        email=invitation_data.email,
+        password_hash=None,  # No password until user registers
+        full_name=invitation_data.full_name,
+        role=invitation_data.role.value,
+        is_active=True,
+        is_registered=False,  # Pending registration
+        invited_by=current_user.email,
+        invited_at=datetime.utcnow(),
+        created_by=current_user.id
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    print(f"   ✅ Invitation created: {new_user.id} - {new_user.email} ({new_user.role})")
+    print(f"   ⏳ Status: Pending registration")
+
+    return {
+        "message": f"Invitación creada para {new_user.email}",
+        "user_id": new_user.id,
+        "email": new_user.email,
+        "full_name": new_user.full_name,
+        "role": new_user.role,
+        "status": "pending_registration",
+        "invited_by": current_user.email,
+        "invited_at": new_user.invited_at.isoformat()
+    }
+
+
 @router.post("/users", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: CreateUserDTO,
@@ -88,7 +172,10 @@ async def create_user(
     current_user: UserDB = Depends(require_role(Role.ADMIN))
 ):
     """
-    Create a new user
+    Create a new user (LEGACY - use /users/invite instead)
+
+    This endpoint is kept for backward compatibility.
+    New implementations should use POST /users/invite to create invitations.
 
     Only ADMIN role can create users.
 
@@ -126,15 +213,19 @@ async def create_user(
     # Hash password
     password_hash = hash_password(user_data.password)
 
-    # Create new user
+    # Create new user (fully registered)
     new_user = UserDB(
         id=new_id,
         email=user_data.email,
         password_hash=password_hash,
         full_name=user_data.full_name,
         role=user_data.role.value,
-        created_by=current_user.id,
-        is_active=True
+        is_active=True,
+        is_registered=True,  # Already registered (has password)
+        registered_at=datetime.utcnow(),
+        invited_by=current_user.email,
+        invited_at=datetime.utcnow(),
+        created_by=current_user.id
     )
 
     db.add(new_user)

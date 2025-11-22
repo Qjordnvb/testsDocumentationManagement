@@ -108,3 +108,89 @@ class LoginResponse(BaseModel):
                 }
             }
         }
+
+
+# ============================================================================
+# Invitation-Based Registration DTOs
+# ============================================================================
+
+class CheckEmailRequest(BaseModel):
+    """DTO for checking email status in whitelist"""
+    email: EmailStr = Field(..., description="Email to check")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@company.com"
+            }
+        }
+
+
+class CheckEmailResponse(BaseModel):
+    """DTO for email check response"""
+    exists: bool = Field(..., description="Whether email exists in whitelist")
+    is_registered: bool = Field(..., description="Whether user completed registration")
+    full_name: Optional[str] = Field(None, description="User's full name (if registered)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "exists": True,
+                "is_registered": False,
+                "full_name": None
+            }
+        }
+
+
+class RegisterRequest(BaseModel):
+    """DTO for completing user registration (invited user sets password)"""
+    email: EmailStr = Field(..., description="User email (must be in whitelist)")
+    password: str = Field(..., min_length=8, description="Password (min 8 chars)")
+    full_name: str = Field(..., min_length=1, max_length=200, description="User's full name")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@company.com",
+                "password": "SecurePass123",
+                "full_name": "John Doe"
+            }
+        }
+
+
+class RegisterResponse(BaseModel):
+    """DTO for registration response"""
+    access_token: str = Field(..., description="JWT access token")
+    token_type: str = Field(default="bearer", description="Token type")
+    user: dict = Field(..., description="User information")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer",
+                "user": {
+                    "id": "USR-002",
+                    "email": "user@company.com",
+                    "full_name": "John Doe",
+                    "role": "qa",
+                    "is_active": True
+                }
+            }
+        }
+
+
+class CreateUserInvitationDTO(BaseModel):
+    """DTO for creating a user invitation (admin-only, NO password)"""
+    email: EmailStr = Field(..., description="User email address")
+    full_name: str = Field(..., min_length=1, max_length=200, description="User's full name")
+    role: Role = Field(..., description="User role")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "newuser@company.com",
+                "full_name": "New User",
+                "role": "qa"
+            }
+        }
