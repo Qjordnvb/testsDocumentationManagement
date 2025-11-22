@@ -51,7 +51,7 @@ dev: ## 🚀 DESARROLLO LOCAL (4 terminales) - RECOMENDADO
 	@echo "║    3. Backend (FastAPI)                                       ║"
 	@echo "║    4. Frontend (React)                                        ║"
 	@echo "║                                                               ║"
-	@echo "║  Frontend: http://localhost:5173                              ║"
+	@echo "║  Frontend: http://localhost:3000                              ║"
 	@echo "║  Backend:  http://localhost:8000                              ║"
 	@echo "║  API Docs: http://localhost:8000/docs                         ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
@@ -90,7 +90,7 @@ dev-docker: ## 🐳 DESARROLLO con Docker (todo containerizado)
 	@echo "║    - Backend (FastAPI)                                        ║"
 	@echo "║    - Frontend (React)                                         ║"
 	@echo "║                                                               ║"
-	@echo "║  Frontend: http://localhost:5173                              ║"
+	@echo "║  Frontend: http://localhost:3000                              ║"
 	@echo "║  Backend:  http://localhost:8000                              ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
 	@(command -v docker-compose > /dev/null && docker-compose -f docker-compose.full.yml up -d) || (docker compose -f docker-compose.full.yml up -d)

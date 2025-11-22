@@ -23,10 +23,9 @@ echo "3️⃣  Matando procesos Redis..."
 pkill -9 -f "redis-server" 2>/dev/null || true
 
 # 2. Liberar puertos
-echo "4️⃣  Liberando puertos 8000, 5173, 3000, 6379..."
-lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
-lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+echo "4️⃣  Liberando puertos 3000, 8000, 6379..."
 lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
 lsof -ti:6379 2>/dev/null | xargs kill -9 2>/dev/null || true
 
 # 3. Esperar un momento
@@ -36,15 +35,14 @@ sleep 2
 # 4. Verificar que los puertos están libres
 echo ""
 echo "📊 Verificando puertos..."
-PORTS_IN_USE=$(lsof -i :8000 -i :5173 -i :3000 -i :6379 2>/dev/null | wc -l)
+PORTS_IN_USE=$(lsof -i :3000 -i :8000 -i :6379 2>/dev/null | wc -l)
 if [ "$PORTS_IN_USE" -gt 0 ]; then
     echo "⚠️  ADVERTENCIA: Algunos puertos aún están en uso:"
-    lsof -i :8000 -i :5173 -i :3000 -i :6379 2>/dev/null || true
+    lsof -i :3000 -i :8000 -i :6379 2>/dev/null || true
     echo ""
     echo "⚠️  Intentando matar de nuevo..."
-    lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
-    lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
     lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+    lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
     lsof -ti:6379 2>/dev/null | xargs kill -9 2>/dev/null || true
     sleep 1
 fi
