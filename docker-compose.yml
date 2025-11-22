@@ -1,6 +1,11 @@
-version: '3.8'
+# ============================================
+# Quality Mission Control - Docker Compose
+# ============================================
+# UN SOLO archivo para desarrollo Y producción
+# Uso: docker compose up -d
 
 services:
+  # ==================== Redis ====================
   redis:
     image: redis:7-alpine
     container_name: qa_redis
@@ -15,25 +20,94 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    networks:
+      - qa_network
 
-  celery_worker:
+  # ==================== Celery Worker ====================
+  celery:
     build:
       context: .
       dockerfile: Dockerfile.celery
-    container_name: qa_celery_worker
+    container_name: qa_celery
     depends_on:
       redis:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/qa_automation.db}
+      - DATABASE_URL=sqlite:///./data/qa_automation.db
+      - PYTHONPATH=/app
     volumes:
       - ./backend:/app/backend
       - ./data:/app/data
       - ./output:/app/output
+      - ./.env:/app/.env
     command: celery -A backend.celery_app worker --loglevel=info --concurrency=4
     restart: unless-stopped
+    networks:
+      - qa_network
 
+  # ==================== Backend (FastAPI) ====================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: qa_backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery:
+        condition: service_started
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATABASE_URL=sqlite:///./data/qa_automation.db
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./uploads:/app/uploads
+      - ./.env:/app/.env
+    ports:
+      - "8000:8000"
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - qa_network
+
+  # ==================== Frontend (React + Vite) ====================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: qa_frontend
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:5173"
+    command: npm run dev -- --host 0.0.0.0
+    restart: unless-stopped
+    networks:
+      - qa_network
+
+# ==================== Volumes ====================
 volumes:
   redis_data:
+    driver: local
+
+# ==================== Networks ====================
+networks:
+  qa_network:
+    driver: bridge
