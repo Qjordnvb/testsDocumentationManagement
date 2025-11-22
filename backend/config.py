@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     app_version: str = Field(default="1.0.0", env="APP_VERSION")
     debug: bool = Field(default=False, env="DEBUG")
 
+    # Security (JWT Authentication)
+    SECRET_KEY: str = Field(..., env="SECRET_KEY")
+
     # AI Configuration
     gemini_api_key: str = Field(..., env="GEMINI_API_KEY")
 
