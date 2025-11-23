@@ -14,17 +14,16 @@ export const UsersManagementPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { token, user: currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     loadUsers();
   }, []);
 
   const loadUsers = async () => {
-    if (!token) return;
     try {
       setLoading(true);
-      const data = await usersApi.getAll(token);
+      const data = await usersApi.getAll();  // Token auto-injected by apiClient
       setUsers(data);
     } catch (error) {
       toast.error('Error al cargar usuarios');
@@ -34,9 +33,8 @@ export const UsersManagementPage = () => {
   };
 
   const handleCreateInvitation = async (invitation: CreateUserInvitationDTO) => {
-    if (!token) return;
     try {
-      await usersApi.createInvitation(invitation, token);
+      await usersApi.createInvitation(invitation);  // Token auto-injected by apiClient
       toast.success(`Invitación creada para ${invitation.email}`);
       setShowCreateModal(false);
       loadUsers();
@@ -46,7 +44,6 @@ export const UsersManagementPage = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!token) return;
     if (userId === currentUser?.id) {
       toast.error('No puedes eliminar tu propio usuario');
       return;
@@ -55,7 +52,7 @@ export const UsersManagementPage = () => {
     if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
 
     try {
-      await usersApi.delete(userId, token);
+      await usersApi.delete(userId);  // Token auto-injected by apiClient
       toast.success('Usuario eliminado exitosamente');
       loadUsers();
     } catch (error: any) {

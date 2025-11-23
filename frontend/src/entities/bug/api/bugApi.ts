@@ -1,11 +1,5 @@
-import axios from 'axios';
+import { api } from '@/shared/api/apiClient';
 import type { Bug, CreateBugDTO, UpdateBugDTO, BugFilters, GroupedBugsResponse } from '../model/types';
-
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
 
 export const bugApi = {
   /**

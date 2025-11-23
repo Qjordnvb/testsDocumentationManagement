@@ -3,14 +3,8 @@
  * API functions for Bug Report operations
  */
 
-import axios from 'axios';
+import { api } from '@/shared/api/apiClient';
 import type { BugReport, CreateBugReportDTO } from '../model/types';
-
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
 
 export const bugApi = {
   getAll: async (): Promise<BugReport[]> => {

@@ -3,14 +3,8 @@
  * API functions for Project CRUD operations
  */
 
-import axios from 'axios';
+import { api } from '@/shared/api/apiClient';
 import type { Project, CreateProjectDTO, UpdateProjectDTO, ProjectStats } from '../model/types';
-
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
 
 // API Response Types
 interface GetProjectsResponse {
