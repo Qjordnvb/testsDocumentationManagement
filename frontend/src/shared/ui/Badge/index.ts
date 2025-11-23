@@ -1,2 +1,2 @@
-export { Badge, PriorityBadge, StatusBadge, TestStatusBadge, BugSeverityBadge, BugStatusBadge } from './Badge';
+export { Badge, PriorityBadge, StatusBadge, TestStatusBadge, BugSeverityBadge, BugStatusBadge, RoleBadge } from './Badge';
 export type { BadgeProps } from './Badge';

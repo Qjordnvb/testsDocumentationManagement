@@ -307,7 +307,16 @@ export const getSeverityClasses = (severity: Severity | string): string => {
 // BUTTON VARIANT CLASSES
 // ============================================================================
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'ghost';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'danger'
+  | 'success'
+  | 'warning'
+  | 'ghost'
+  | 'outline-primary'
+  | 'outline-danger'
+  | 'outline-success';
 
 const buttonVariantMap: Record<ButtonVariant, string> = {
   primary: 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg hover:scale-105 active:scale-100',
@@ -316,6 +325,9 @@ const buttonVariantMap: Record<ButtonVariant, string> = {
   success: 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg',
   warning: 'bg-orange-600 text-white hover:bg-orange-700 hover:shadow-lg',
   ghost: 'bg-transparent text-gray-700 hover:bg-gray-100',
+  'outline-primary': 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50',
+  'outline-danger': 'bg-white text-red-600 border-2 border-red-600 hover:bg-red-50',
+  'outline-success': 'bg-white text-green-600 border-2 border-green-600 hover:bg-green-50',
 };
 
 /**
