@@ -204,54 +204,91 @@ export const ManagerDashboardPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="card">
+      <div className="card bg-gradient-to-r from-blue-50 to-purple-50">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-64">
-            <input
-              type="text"
-              placeholder="Buscar proyectos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="🔍 Buscar proyectos por nombre..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button
               variant={showOnlyActive ? 'primary' : 'outline-primary'}
-              size="sm"
-              onClick={() => setShowOnlyActive(!showOnlyActive)}
+              size="md"
+              onClick={() => {
+                setShowOnlyActive(!showOnlyActive);
+                if (!showOnlyActive) {
+                  setShowOnlyAtRisk(false);
+                  toast.success(`Filtrando solo proyectos activos (${projects.filter(p => p.status === 'active').length})`);
+                } else {
+                  toast('Mostrando todos los proyectos', { icon: 'ℹ️' });
+                }
+              }}
               leftIcon={<Filter size={16} />}
+              className="shadow-sm"
             >
-              Solo Activos
+              {showOnlyActive ? '✓ Activos' : 'Solo Activos'}
             </Button>
             <Button
               variant={showOnlyAtRisk ? 'danger' : 'outline-danger'}
-              size="sm"
-              onClick={() => setShowOnlyAtRisk(!showOnlyAtRisk)}
+              size="md"
+              onClick={() => {
+                setShowOnlyAtRisk(!showOnlyAtRisk);
+                if (!showOnlyAtRisk) {
+                  setShowOnlyActive(false);
+                  toast(`Filtrando proyectos en riesgo (${getProjectsAtRisk().length})`, { icon: '⚠️' });
+                } else {
+                  toast('Mostrando todos los proyectos', { icon: 'ℹ️' });
+                }
+              }}
               leftIcon={<AlertCircle size={16} />}
+              className="shadow-sm"
             >
-              En Riesgo
+              {showOnlyAtRisk ? '⚠️ En Riesgo' : 'En Riesgo'}
             </Button>
             {(searchQuery || showOnlyActive || showOnlyAtRisk) && (
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => {
                   setSearchQuery('');
                   setShowOnlyActive(false);
                   setShowOnlyAtRisk(false);
+                  toast('Filtros eliminados - Mostrando todos los proyectos', { icon: 'ℹ️' });
                 }}
                 leftIcon={<X size={16} />}
+                className="border-2 border-gray-300"
               >
-                Limpiar
+                Limpiar Filtros
               </Button>
             )}
           </div>
         </div>
-        {filteredProjects.length !== projects.length && (
-          <p className="text-sm text-gray-500 mt-2">
-            Mostrando {filteredProjects.length} de {projects.length} proyectos
-          </p>
+        {(searchQuery || showOnlyActive || showOnlyAtRisk) && (
+          <div className="mt-4 p-3 bg-white rounded-lg border-l-4 border-blue-500">
+            <p className="text-sm font-semibold text-gray-700">
+              📊 Mostrando <span className="text-blue-600">{filteredProjects.length}</span> de <span className="text-gray-900">{projects.length}</span> proyectos
+            </p>
+            {searchQuery && (
+              <p className="text-xs text-gray-600 mt-1">
+                Búsqueda: "{searchQuery}"
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -560,7 +597,7 @@ export const ManagerDashboardPage = () => {
 
         {/* Archived Projects */}
         <button
-          onClick={() => toast.info('Mostrando solo proyectos archivados')}
+          onClick={() => toast('Mostrando solo proyectos archivados', { icon: 'ℹ️' })}
           className="card hover:shadow-lg transition-shadow cursor-pointer"
         >
           <div className="flex items-center gap-4">

@@ -13,7 +13,7 @@ import { CreateProjectModal } from '@/features/project-management';
 import type { Project } from '@/entities/project';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import { AlertCircle } from 'lucide-react';
-import { LoadingSpinner, EmptyState, Button } from '@/shared/ui';
+import { LoadingSpinner } from '@/shared/ui';
 
 export const ProjectsListPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
