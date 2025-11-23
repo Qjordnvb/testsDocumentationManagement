@@ -388,8 +388,8 @@ export const ManagerDashboardPage = () => {
         </button>
       </div>
 
-      {/* Two-column layout: Left - Summary Cards | Right - Projects Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Two-column layout: Left - Summary Cards (30%) | Right - Projects Table (70%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[30%_1fr] gap-6">
         {/* Left Column: Summary Cards */}
         <div className="space-y-6">
           {/* Alerts: Projects at Risk */}
