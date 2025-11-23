@@ -12,6 +12,7 @@ import { useProject } from '@/app/providers/ProjectContext';
 import { useAuth } from '@/app/providers';
 import { projectApi, type ProjectStats } from '@/entities/project';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
+import { LoadingSpinner } from '@/shared/ui';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -159,10 +160,7 @@ export const Dashboard = () => {
   if (isLoadingStats) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin text-6xl mb-4">⚙️</div>
-          <p className={`${body.className} ${colors.gray.text600}`}>Loading dashboard...</p>
-        </div>
+        <LoadingSpinner size="xl" variant="emoji" label="Loading dashboard..." center />
       </div>
     );
   }

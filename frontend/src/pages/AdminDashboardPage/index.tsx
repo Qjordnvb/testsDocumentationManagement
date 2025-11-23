@@ -11,6 +11,7 @@ import { usersApi } from '@/entities/user';
 import type { User } from '@/entities/user';
 import { Users, UserPlus, CheckCircle2, Clock, Shield, Code, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { LoadingSpinner, RoleBadge, Badge, Button } from '@/shared/ui';
 
 export const AdminDashboardPage = () => {
   const { user, hasRole } = useAuth();
@@ -75,43 +76,10 @@ export const AdminDashboardPage = () => {
     });
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return <Shield size={20} className="text-purple-600" />;
-      case 'qa':
-        return <CheckCircle2 size={20} className="text-blue-600" />;
-      case 'dev':
-        return <Code size={20} className="text-green-600" />;
-      case 'manager':
-        return <Briefcase size={20} className="text-orange-600" />;
-      default:
-        return <Users size={20} className="text-gray-600" />;
-    }
-  };
-
-  const getRoleBadgeClass = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'qa':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'dev':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case 'manager':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando panel de administración...</p>
-        </div>
+        <LoadingSpinner size="lg" label="Cargando panel de administración..." center />
       </div>
     );
   }
@@ -130,13 +98,13 @@ export const AdminDashboardPage = () => {
           </p>
         </div>
 
-        <button
+        <Button
+          variant="primary"
+          leftIcon={<UserPlus size={20} />}
           onClick={() => navigate('/admin/users')}
-          className="btn btn-primary flex items-center gap-2"
         >
-          <UserPlus size={20} />
-          <span>Gestionar Usuarios</span>
-        </button>
+          Gestionar Usuarios
+        </Button>
       </div>
 
       {/* Stats Grid */}
@@ -295,27 +263,12 @@ export const AdminDashboardPage = () => {
                     <div className="text-sm text-gray-900">{u.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${getRoleBadgeClass(
-                        u.role
-                      )}`}
-                    >
-                      {getRoleIcon(u.role)}
-                      {u.role.toUpperCase()}
-                    </span>
+                    <RoleBadge role={u.role as 'admin' | 'qa' | 'dev' | 'manager'} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {u.last_login ? (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
-                        <CheckCircle2 size={14} />
-                        Registrado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
-                        <Clock size={14} />
-                        Pendiente
-                      </span>
-                    )}
+                    <Badge variant={u.last_login ? 'success' : 'warning'}>
+                      {u.last_login ? 'Registrado' : 'Pendiente'}
+                    </Badge>
                   </td>
                 </tr>
               ))}

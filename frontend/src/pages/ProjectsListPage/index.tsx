@@ -13,6 +13,7 @@ import { CreateProjectModal } from '@/features/project-management';
 import type { Project } from '@/entities/project';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import { AlertCircle } from 'lucide-react';
+import { LoadingSpinner, EmptyState, Button } from '@/shared/ui';
 
 export const ProjectsListPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -74,10 +75,7 @@ export const ProjectsListPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center animate-fade-in-up">
-          <div className="animate-spin text-6xl mb-4">⚙️</div>
-          <p className={`${colors.gray.text600} ${body.className}`}>Cargando proyectos...</p>
-        </div>
+        <LoadingSpinner size="xl" variant="emoji" label="Cargando proyectos..." center />
       </div>
     );
   }
