@@ -126,7 +126,7 @@ export const UserStoryCard: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Acceptance Criteria Progress */}
+      {/* Acceptance Criteria Progress - Readonly for DEV */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className={`${bodySmall.className} ${colors.gray.text700} font-medium`}>

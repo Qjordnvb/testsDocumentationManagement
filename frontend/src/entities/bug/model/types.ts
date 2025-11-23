@@ -69,6 +69,9 @@ export interface Bug {
   document_path?: string;
   attachments?: string[];
 
+  // Fix Documentation (for DEV)
+  fix_description?: string;
+
   // External
   notion_page_id?: string;
   azure_bug_id?: string;

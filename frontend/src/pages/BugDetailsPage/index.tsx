@@ -18,6 +18,7 @@ import { bugApi } from '@/entities/bug';
 import { testCaseApi } from '@/entities/test-case';
 import { apiService } from '@/shared/api/apiClient';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
@@ -44,6 +45,8 @@ import {
 export const BugDetailsPage = () => {
   const { projectId, bugId } = useParams<{ projectId: string; bugId: string }>();
   const { currentProject } = useProject();
+  const { hasRole } = useAuth();
+  const isDev = hasRole('dev');
   const navigate = useNavigate();
 
   const [bug, setBug] = useState<Bug | null>(null);
@@ -117,7 +120,10 @@ export const BugDetailsPage = () => {
 
     try {
       setUpdatingStatus(true);
-      const updated = await bugApi.updateStatus(bugId, newStatus);
+      // Use devUpdate endpoint for DEV role (restricted to status, fix_description, screenshots)
+      const updated = isDev
+        ? await bugApi.devUpdate(bugId, { status: newStatus })
+        : await bugApi.updateStatus(bugId, newStatus);
       setBug(updated);
       toast.success(`Estado actualizado a ${newStatus}`);
     } catch (err: any) {
@@ -309,9 +315,9 @@ export const BugDetailsPage = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-6 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <button
             onClick={() => navigate(`/projects/${projectId}/bugs`)}
@@ -320,17 +326,18 @@ export const BugDetailsPage = () => {
             <ArrowLeft size={24} />
           </button>
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               {getStatusIcon(bug.status)}
-              <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900}`}>{bug.title}</h1>
+              <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900} break-words`}>{bug.title}</h1>
             </div>
             <p className={`${bodySmall.className} ${colors.gray.text600} font-mono`}>{bug.id}</p>
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-3">
-          {testCase && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Re-ejecutar Test: Only QA can retest */}
+          {testCase && !isDev && (
             <Button
               variant="success"
               size="md"
@@ -340,14 +347,17 @@ export const BugDetailsPage = () => {
               Re-ejecutar Test
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={() => setShowEditModal(true)}
-            leftIcon={<Edit size={18} />}
-          >
-            Editar
-          </Button>
+          {/* Edit button: Hidden for DEV (they use status dropdown + fix section) */}
+          {!isDev && (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => setShowEditModal(true)}
+              leftIcon={<Edit size={18} />}
+            >
+              Editar
+            </Button>
+          )}
         </div>
       </div>
 
@@ -365,16 +375,27 @@ export const BugDetailsPage = () => {
                 updatingStatus ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               }`}
             >
-              <option value="New">New</option>
-              <option value="Assigned">Assigned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Fixed">Fixed</option>
-              <option value="Testing">Testing</option>
-              <option value="Verified">Verified</option>
-              <option value="Closed">Closed</option>
-              <option value="Reopened">Reopened</option>
-              <option value="Won't Fix">Won't Fix</option>
-              <option value="Duplicate">Duplicate</option>
+              {/* DEV role: Only allow In Progress, Fixed, Testing */}
+              {isDev ? (
+                <>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Fixed">Fixed</option>
+                  <option value="Testing">Testing</option>
+                </>
+              ) : (
+                <>
+                  <option value="New">New</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Fixed">Fixed</option>
+                  <option value="Testing">Testing</option>
+                  <option value="Verified">Verified</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Reopened">Reopened</option>
+                  <option value="Won't Fix">Won't Fix</option>
+                  <option value="Duplicate">Duplicate</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -575,12 +596,93 @@ export const BugDetailsPage = () => {
         </div>
       </div>
 
+      {/* DEV: Fix Documentation Section */}
+      {isDev && (
+        <div className="card bg-blue-50 border-l-4 border-blue-500">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Edit size={18} className="text-blue-600" />
+            Documentación del Fix (Solo DEV)
+          </h2>
+          <div className="space-y-4">
+            {/* Fix Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descripción del Fix
+              </label>
+              <textarea
+                value={bug.fix_description || ''}
+                onChange={(e) => {
+                  // Update bug state locally
+                  setBug(prev => prev ? {...prev, fix_description: e.target.value} : null);
+                }}
+                onBlur={async (e) => {
+                  // Save on blur
+                  if (!bugId) return;
+                  try {
+                    await bugApi.devUpdate(bugId, { fix_description: e.target.value });
+                    toast.success('Descripción del fix guardada');
+                  } catch (err) {
+                    toast.error('Error al guardar descripción');
+                  }
+                }}
+                placeholder="Describe cómo solucionaste el bug, cambios realizados, etc..."
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Upload Screenshots of Fix */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Evidencia del Fix (Screenshots)
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Sube capturas de pantalla que demuestren que el bug fue solucionado
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files || files.length === 0 || !bugId) return;
+
+                  try {
+                    const formData = new FormData();
+                    Array.from(files).forEach(file => formData.append('files', file));
+
+                    toast.loading('Subiendo evidencia...');
+                    await bugApi.devUpdate(bugId, { screenshots: formData } as any);
+                    toast.dismiss();
+                    toast.success('Evidencia subida correctamente');
+
+                    // Reload bug to show new screenshots
+                    const updated = await bugApi.getById(bugId);
+                    setBug(updated);
+                  } catch (err) {
+                    toast.dismiss();
+                    toast.error('Error al subir evidencia');
+                  }
+                }}
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-lg file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100
+                  cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Evidence & Attachments */}
       {bug.attachments && bug.attachments.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <ImageIcon size={18} />
-            Evidencia ({bug.attachments.length})
+            Evidencia Original ({bug.attachments.length})
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bug.attachments.map((attachment, index) => {

@@ -81,6 +81,28 @@ export const ManagerDashboardPage = () => {
     });
   };
 
+  // Identify projects at risk
+  const getProjectsAtRisk = () => {
+    return projects.filter(p =>
+      p.test_coverage < 50 || // Low coverage
+      p.total_bugs > 10 ||      // Too many bugs
+      (p.total_user_stories > 0 && p.total_test_cases === 0) // Stories without tests
+    ).sort((a, b) => {
+      // Sort by severity: bugs > low coverage > no tests
+      const scoreA = (a.total_bugs * 10) + (100 - a.test_coverage);
+      const scoreB = (b.total_bugs * 10) + (100 - b.test_coverage);
+      return scoreB - scoreA;
+    });
+  };
+
+  // Get top performing projects
+  const getTopProjects = () => {
+    return [...projects]
+      .filter(p => p.total_user_stories > 0) // Only projects with work
+      .sort((a, b) => b.test_coverage - a.test_coverage)
+      .slice(0, 3);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -166,11 +188,79 @@ export const ManagerDashboardPage = () => {
         </div>
       </div>
 
+      {/* Alerts: Projects at Risk */}
+      {getProjectsAtRisk().length > 0 && (
+        <div className="card bg-red-50 border-l-4 border-red-500">
+          <h2 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
+            <AlertCircle size={24} className="text-red-600" />
+            Proyectos que Requieren Atención ({getProjectsAtRisk().length})
+          </h2>
+          <div className="space-y-3">
+            {getProjectsAtRisk().slice(0, 5).map(project => {
+              const issues = [];
+              if (project.test_coverage < 50) issues.push(`Coverage bajo (${project.test_coverage.toFixed(0)}%)`);
+              if (project.total_bugs > 10) issues.push(`${project.total_bugs} bugs activos`);
+              if (project.total_user_stories > 0 && project.total_test_cases === 0) issues.push('Sin test cases');
+
+              return (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-200 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/projects/${project.id}/dashboard`)}
+                >
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{project.name}</h3>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {issues.map((issue, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
+                          {issue}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Ver Detalles
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top Performers */}
+      {getTopProjects().length > 0 && (
+        <div className="card bg-green-50 border-l-4 border-green-500">
+          <h2 className="text-xl font-bold text-green-900 mb-4 flex items-center gap-2">
+            <CheckCircle2 size={24} className="text-green-600" />
+            Proyectos con Mejor Desempeño
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {getTopProjects().map((project, idx) => (
+              <div
+                key={project.id}
+                className="p-4 bg-white rounded-lg border border-green-200 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/projects/${project.id}/dashboard`)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl font-bold text-gray-900">#{idx + 1}</span>
+                  <span className="text-3xl font-bold text-green-600">{project.test_coverage.toFixed(0)}%</span>
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-1">{project.name}</h3>
+                <p className="text-sm text-gray-600">
+                  {project.total_test_cases} tests · {project.total_bugs} bugs
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Projects Performance */}
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <TrendingUp size={24} />
-          Rendimiento por Proyecto
+          Todos los Proyectos ({projects.length})
         </h2>
 
         <div className="overflow-x-auto">

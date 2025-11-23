@@ -84,7 +84,13 @@ export const BugsPage = () => {
         })
       ]);
 
-      setBugs(bugsData);
+      // DEV role: Filter to only show bugs assigned to this user
+      const isDev = hasRole('dev');
+      const filteredBugs = isDev
+        ? bugsData.filter(bug => bug.assigned_to === user?.email)
+        : bugsData;
+
+      setBugs(filteredBugs);
       setGroupedBugs(groupedData.grouped_bugs || []);
     } catch (err: any) {
       console.error('Error loading bugs:', err);

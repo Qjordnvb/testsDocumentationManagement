@@ -49,14 +49,30 @@ export const Sidebar = () => {
       ];
     }
 
-    // Manager: Only Dashboard (no projects)
-    if (hasRole('manager')) {
+    // Manager: Dashboard + Project metrics when inside a project
+    if (hasRole('manager') && projectId) {
       return [
-        { path: '/manager/dashboard', label: 'Dashboard', icon: '📊' },
+        { path: `/projects/${projectId}/dashboard`, label: 'Métricas', icon: '📊' },
       ];
     }
 
-    // QA/Dev: Project navigation (when inside a project)
+    // Manager: Global dashboard when not in project
+    if (hasRole('manager')) {
+      return [
+        { path: '/manager/dashboard', label: 'Dashboard General', icon: '📊' },
+      ];
+    }
+
+    // DEV: Simplified view (readonly access to Stories and Tests)
+    if (hasRole('dev') && projectId) {
+      return [
+        { path: `/projects/${projectId}/stories`, label: 'User Stories', icon: '📝' },
+        { path: `/projects/${projectId}/tests`, label: 'Test Cases', icon: '✅' },
+        { path: `/projects/${projectId}/bugs`, label: 'Mis Bugs', icon: '🐛' },
+      ];
+    }
+
+    // QA: Full project navigation
     if (projectId) {
       return [
         { path: `/projects/${projectId}/dashboard`, label: 'Dashboard', icon: '📊' },
