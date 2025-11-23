@@ -115,7 +115,7 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
         {historyData.executions.map((execution) => (
           <div
             key={execution.execution_id}
-            onClick={() => onSelectExecution?.(execution.execution_id)}
+            onClick={() => execution.execution_id !== null && onSelectExecution?.(execution.execution_id)}
             className={`border ${colors.gray.border200} ${borderRadius.lg} p-3 hover:bg-gray-50 cursor-pointer transition-colors group`}
           >
             <div className="flex items-start justify-between">

@@ -3,7 +3,8 @@
  * Registration form for invited users to set their password
  */
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { UserPlus, AlertCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 interface RegisterStepProps {

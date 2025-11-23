@@ -3,7 +3,8 @@
  * First step of multi-step login flow - email input
  */
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
 interface LoginEmailStepProps {

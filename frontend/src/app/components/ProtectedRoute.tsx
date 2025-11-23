@@ -3,7 +3,7 @@
  * Wraps routes that require authentication and optionally specific roles
  */
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/app/providers';
 import type { Role } from '@/entities/user';

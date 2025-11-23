@@ -3,7 +3,8 @@
  * Password input for registered users
  */
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 interface LoginPasswordStepProps {
