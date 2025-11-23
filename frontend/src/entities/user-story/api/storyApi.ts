@@ -3,14 +3,8 @@
  * API functions for User Story CRUD operations
  */
 
-import axios from 'axios';
+import { api } from '@/shared/api/apiClient';
 import type { UserStory, CreateUserStoryDTO } from '../model/types';
-
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
 
 // API Response Types
 interface GetStoriesResponse {

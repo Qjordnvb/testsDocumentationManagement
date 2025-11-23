@@ -3,7 +3,7 @@
  * API calls for test execution operations with client-side validation
  */
 
-import axios from 'axios';
+import { api } from '@/shared/api/apiClient';
 import type {
   CreateExecutionRequest,
   ExecutionDetails,
@@ -11,13 +11,6 @@ import type {
   StepExecutionResult,
   GherkinKeyword,
 } from '../model/types';
-
-// Create axios instance
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 60000,
-});
 
 /**
  * Validation error class for execution data

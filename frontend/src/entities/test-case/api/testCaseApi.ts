@@ -3,14 +3,8 @@
  * API functions for Test Case operations
  */
 
-import axios from 'axios';
+import { api } from '@/shared/api/apiClient';
 import type { TestCase, CreateTestCaseDTO, TestExecution } from '../model/types';
-
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
 
 export const testCaseApi = {
   /**

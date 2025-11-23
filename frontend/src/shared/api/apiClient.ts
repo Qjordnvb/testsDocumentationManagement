@@ -63,6 +63,9 @@ api.interceptors.response.use(
 
 // ==================== Health & Info ====================
 
+// Export the raw axios instance for use in entity APIs
+export { api };
+
 export const apiService = {
   // Get app info
   getAppInfo: async (): Promise<AppInfoResponse> => {

@@ -1,272 +1,182 @@
+"""
+Projects API Endpoints (Refactored with Service Layer)
+
+This module contains HTTP endpoints for project management.
+Business logic has been extracted to ProjectService following SOLID principles.
+
+Benefits of this refactoring:
+- Thin controllers: Only handle HTTP concerns (requests, responses, status codes)
+- Testability: Business logic can be unit tested independently
+- Reusability: Service layer can be used in CLI, background jobs, etc.
+- Maintainability: Changes to business logic don't affect API layer
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
-import json
+from typing import Optional
 
-from backend.database import get_db, ProjectDB, UserStoryDB, TestCaseDB, BugReportDB
-from backend.models import CreateProjectDTO, UpdateProjectDTO, ProjectStatus
+from backend.database import get_db
+from backend.models import CreateProjectDTO, UpdateProjectDTO
+from backend.services.project_service import ProjectService
 
 router = APIRouter()
+
+
+def get_project_service_dependency(db: Session = Depends(get_db)) -> ProjectService:
+    """Dependency injection for ProjectService"""
+    return ProjectService(db)
+
 
 @router.get("/projects")
 async def get_projects(
     assigned_to: Optional[str] = Query(None, description="Filter projects by bugs assigned to user email"),
-    db: Session = Depends(get_db)
+    service: ProjectService = Depends(get_project_service_dependency)
 ):
-    """Get all projects, optionally filtered by assigned bugs"""
-    # If assigned_to filter is provided, get only projects with bugs assigned to that user
-    if assigned_to:
-        # Query distinct project_ids from bugs assigned to the user
-        project_ids_with_bugs = db.query(BugReportDB.project_id).filter(
-            BugReportDB.assigned_to == assigned_to
-        ).distinct().all()
+    """
+    Get all projects with metrics, optionally filtered by assigned bugs
 
-        project_ids = [pid[0] for pid in project_ids_with_bugs]
+    Args:
+        assigned_to: Optional email filter for projects with assigned bugs
+        service: Injected ProjectService instance
 
-        if not project_ids:
-            # User has no assigned bugs in any project
-            return {"projects": []}
-
-        # Get only those projects
-        projects = db.query(ProjectDB).filter(ProjectDB.id.in_(project_ids)).all()
-    else:
-        # Get all projects
-        projects = db.query(ProjectDB).all()
-
-    # Calculate metrics for each project
-    result = []
-    for project in projects:
-        total_stories = db.query(UserStoryDB).filter(UserStoryDB.project_id == project.id).count()
-        total_tests = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
-        total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
-
-        # Calculate test coverage: % of stories that have at least 1 test case
-        # OLD (WRONG): coverage = min((total_tests / total_stories * 100), 100.0) - could give >100%
-        # NEW (CORRECT): Count stories with at least one test case
-        stories_with_tests = 0
-        if total_stories > 0:
-            # Get distinct user_story_ids that have test cases
-            story_ids_with_tests = db.query(TestCaseDB.user_story_id).filter(
-                TestCaseDB.project_id == project.id
-            ).distinct().all()
-            stories_with_tests = len(story_ids_with_tests)
-            coverage = (stories_with_tests / total_stories) * 100
-        else:
-            coverage = 0.0
-
-        result.append({
-            "id": project.id,
-            "name": project.name,
-            "description": project.description,
-            "client": project.client,
-            "team_members": json.loads(project.team_members) if project.team_members else [],
-            "status": project.status.value,
-            "default_test_types": json.loads(project.default_test_types) if project.default_test_types else [],
-            "start_date": project.start_date.isoformat() if project.start_date else None,
-            "end_date": project.end_date.isoformat() if project.end_date else None,
-            "created_date": project.created_date.isoformat(),
-            "updated_date": project.updated_date.isoformat(),
-            "total_user_stories": total_stories,
-            "total_test_cases": total_tests,
-            "total_bugs": total_bugs,
-            "test_coverage": round(coverage, 2)
-        })
-
-    return {"projects": result}
+    Returns:
+        Dictionary with projects list
+    """
+    projects = service.get_all_projects(assigned_to=assigned_to)
+    return {"projects": projects}
 
 
 @router.get("/projects/{project_id}")
-async def get_project(project_id: str, db: Session = Depends(get_db)):
-    """Get project by ID"""
-    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+async def get_project(
+    project_id: str,
+    service: ProjectService = Depends(get_project_service_dependency)
+):
+    """
+    Get project by ID with metrics
+
+    Args:
+        project_id: Project ID to fetch
+        service: Injected ProjectService instance
+
+    Returns:
+        Project dictionary with metrics
+
+    Raises:
+        HTTPException: 404 if project not found
+    """
+    project = service.get_project_by_id(project_id)
+
     if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project {project_id} not found"
+        )
 
-    # Calculate metrics
-    total_stories = db.query(UserStoryDB).filter(UserStoryDB.project_id == project.id).count()
-    total_tests = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
-    total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
-
-    # Calculate test coverage: % of stories that have at least 1 test case
-    stories_with_tests = 0
-    if total_stories > 0:
-        # Get distinct user_story_ids that have test cases
-        story_ids_with_tests = db.query(TestCaseDB.user_story_id).filter(
-            TestCaseDB.project_id == project.id
-        ).distinct().all()
-        stories_with_tests = len(story_ids_with_tests)
-        coverage = (stories_with_tests / total_stories) * 100
-    else:
-        coverage = 0.0
-
-    return {
-        "id": project.id,
-        "name": project.name,
-        "description": project.description,
-        "client": project.client,
-        "team_members": json.loads(project.team_members) if project.team_members else [],
-        "status": project.status.value,
-        "default_test_types": json.loads(project.default_test_types) if project.default_test_types else [],
-        "start_date": project.start_date.isoformat() if project.start_date else None,
-        "end_date": project.end_date.isoformat() if project.end_date else None,
-        "created_date": project.created_date.isoformat(),
-        "updated_date": project.updated_date.isoformat(),
-        "total_user_stories": total_stories,
-        "total_test_cases": total_tests,
-        "total_bugs": total_bugs,
-        "test_coverage": round(coverage, 2)
-    }
+    return project
 
 
 @router.post("/projects")
-async def create_project(project_data: CreateProjectDTO, db: Session = Depends(get_db)):
-    """Create new project"""
-    # Generate project ID
-    project_count = db.query(ProjectDB).count()
-    project_id = f"PROJ-{str(project_count + 1).zfill(3)}"
+async def create_project(
+    project_data: CreateProjectDTO,
+    service: ProjectService = Depends(get_project_service_dependency)
+):
+    """
+    Create a new project
 
-    # Check if ID already exists
-    while db.query(ProjectDB).filter(ProjectDB.id == project_id).first():
-        project_count += 1
-        project_id = f"PROJ-{str(project_count + 1).zfill(3)}"
+    Args:
+        project_data: Project creation data
+        service: Injected ProjectService instance
 
-    # Create project
-    new_project = ProjectDB(
-        id=project_id,
-        name=project_data.name,
-        description=project_data.description,
-        client=project_data.client,
-        team_members=json.dumps(project_data.team_members) if project_data.team_members else None,
-        default_test_types=json.dumps(project_data.default_test_types) if project_data.default_test_types else None,
-        start_date=project_data.start_date,
-        end_date=project_data.end_date,
-        status=ProjectStatus.ACTIVE,
-        created_date=datetime.now(),
-        updated_date=datetime.now()
-    )
-
-    db.add(new_project)
-    db.commit()
-    db.refresh(new_project)
-
-    return {
-        "id": new_project.id,
-        "name": new_project.name,
-        "description": new_project.description,
-        "client": new_project.client,
-        "team_members": json.loads(new_project.team_members) if new_project.team_members else [],
-        "status": new_project.status.value,
-        "default_test_types": json.loads(new_project.default_test_types) if new_project.default_test_types else [],
-        "start_date": new_project.start_date.isoformat() if new_project.start_date else None,
-        "end_date": new_project.end_date.isoformat() if new_project.end_date else None,
-        "created_date": new_project.created_date.isoformat(),
-        "updated_date": new_project.updated_date.isoformat(),
-        "total_user_stories": 0,
-        "total_test_cases": 0,
-        "total_bugs": 0,
-        "test_coverage": 0.0
-    }
+    Returns:
+        Created project with metrics
+    """
+    return service.create_project(project_data)
 
 
 @router.put("/projects/{project_id}")
 async def update_project(
     project_id: str,
     updates: UpdateProjectDTO,
-    db: Session = Depends(get_db)
+    service: ProjectService = Depends(get_project_service_dependency)
 ):
-    """Update project"""
-    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    """
+    Update an existing project
 
-    # Update fields
-    if updates.name is not None:
-        project.name = updates.name
-    if updates.description is not None:
-        project.description = updates.description
-    if updates.client is not None:
-        project.client = updates.client
-    if updates.team_members is not None:
-        project.team_members = json.dumps(updates.team_members)
-    if updates.status is not None:
-        project.status = updates.status
-    if updates.default_test_types is not None:
-        project.default_test_types = json.dumps(updates.default_test_types)
-    if updates.start_date is not None:
-        project.start_date = updates.start_date
-    if updates.end_date is not None:
-        project.end_date = updates.end_date
+    Args:
+        project_id: Project ID to update
+        updates: Fields to update
+        service: Injected ProjectService instance
 
-    project.updated_date = datetime.now()
+    Returns:
+        Updated project dictionary
 
-    db.commit()
-    db.refresh(project)
+    Raises:
+        HTTPException: 404 if project not found
+    """
+    updated_project = service.update_project(project_id, updates)
 
-    return {
-        "id": project.id,
-        "name": project.name,
-        "description": project.description,
-        "client": project.client,
-        "team_members": json.loads(project.team_members) if project.team_members else [],
-        "status": project.status.value,
-        "message": "Project updated successfully"
-    }
+    if not updated_project:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project {project_id} not found"
+        )
+
+    return updated_project
 
 
 @router.delete("/projects/{project_id}")
-async def delete_project(project_id: str, db: Session = Depends(get_db)):
-    """Delete project and all related data"""
-    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+async def delete_project(
+    project_id: str,
+    service: ProjectService = Depends(get_project_service_dependency)
+):
+    """
+    Delete a project (cascades to related data)
 
-    # Delete project (cascade will delete user stories, test cases, bugs)
-    db.delete(project)
-    db.commit()
+    Args:
+        project_id: Project ID to delete
+        service: Injected ProjectService instance
+
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: 404 if project not found
+    """
+    deleted = service.delete_project(project_id)
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project {project_id} not found"
+        )
 
     return {"message": f"Project {project_id} deleted successfully"}
 
 
 @router.get("/projects/{project_id}/stats")
-async def get_project_stats(project_id: str, db: Session = Depends(get_db)):
-    """Get project statistics"""
-    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+async def get_project_stats(
+    project_id: str,
+    service: ProjectService = Depends(get_project_service_dependency)
+):
+    """
+    Get detailed statistics for a project
 
-    total_stories = db.query(UserStoryDB).filter(UserStoryDB.project_id == project_id).count()
-    total_test_cases = db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).count()
-    total_bugs = db.query(BugReportDB).filter(BugReportDB.project_id == project_id).count()
+    Args:
+        project_id: Project ID
+        service: Injected ProjectService instance
 
-    # Calculate test coverage: % of stories that have at least 1 test case
-    stories_with_tests = 0
-    if total_stories > 0:
-        # Get distinct user_story_ids that have test cases
-        story_ids_with_tests = db.query(TestCaseDB.user_story_id).filter(
-            TestCaseDB.project_id == project_id
-        ).distinct().all()
-        stories_with_tests = len(story_ids_with_tests)
-        coverage = (stories_with_tests / total_stories) * 100
-    else:
-        coverage = 0.0
+    Returns:
+        Project statistics dictionary
 
-    # Stories by status
-    stories_by_status = {}
-    for status in ["Backlog", "To Do", "In Progress", "Testing", "Done"]:
-        count = db.query(UserStoryDB).filter(
-            UserStoryDB.project_id == project_id,
-            UserStoryDB.status == status
-        ).count()
-        stories_by_status[status] = count
+    Raises:
+        HTTPException: 404 if project not found
+    """
+    stats = service.get_project_stats(project_id)
 
-    return {
-        "project_id": project_id,
-        "project_name": project.name,
-        "total_user_stories": total_stories,
-        "total_test_cases": total_test_cases,
-        "total_bugs": total_bugs,
-        "test_coverage": round(coverage, 2),
-        "stories_by_status": stories_by_status,
-        "timestamp": datetime.now().isoformat()
-    }
+    if not stats:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Project {project_id} not found"
+        )
+
+    return stats
