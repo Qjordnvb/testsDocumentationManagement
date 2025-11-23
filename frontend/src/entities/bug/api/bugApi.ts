@@ -65,6 +65,14 @@ export const bugApi = {
   },
 
   /**
+   * Dev-restricted update: only status, fix_description, screenshots
+   */
+  devUpdate: async (bugId: string, updates: { status?: Bug['status']; fix_description?: string; screenshots?: string[] }): Promise<Bug> => {
+    const { data } = await api.patch<Bug>(`/bugs/${bugId}/dev-update`, updates);
+    return data;
+  },
+
+  /**
    * Get bugs grouped by test case and scenario
    */
   getGrouped: async (projectId: string): Promise<GroupedBugsResponse> => {

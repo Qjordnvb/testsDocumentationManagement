@@ -19,10 +19,11 @@ interface GetProjectsResponse {
 
 export const projectApi = {
   /**
-   * Get all projects
+   * Get all projects, optionally filtered by assigned bugs
    */
-  getAll: async (): Promise<Project[]> => {
-    const { data } = await api.get<GetProjectsResponse>('/projects');
+  getAll: async (assignedTo?: string): Promise<Project[]> => {
+    const params = assignedTo ? `?assigned_to=${encodeURIComponent(assignedTo)}` : '';
+    const { data } = await api.get<GetProjectsResponse>(`/projects${params}`);
     return data.projects;
   },
 

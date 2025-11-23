@@ -13,6 +13,8 @@ import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { Layout } from '@/widgets/header/Layout';
 import { LoginPage } from '@/pages/LoginPage';
 import { UsersManagementPage } from '@/pages/UsersManagementPage';
+import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
+import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage';
 import { ProjectsListPage } from '@/pages/ProjectsListPage';
 import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
@@ -53,12 +55,30 @@ function App() {
                       {/* Landing: Project Selection */}
                       <Route path="/" element={<ProjectsListPage />} />
 
-                      {/* Admin Only: User Management */}
+                      {/* Admin Only Routes */}
+                      <Route
+                        path="/admin/dashboard"
+                        element={
+                          <ProtectedRoute requiredRoles={['admin']}>
+                            <AdminDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/admin/users"
                         element={
                           <ProtectedRoute requiredRoles={['admin']}>
                             <UsersManagementPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Manager Only Routes */}
+                      <Route
+                        path="/manager/dashboard"
+                        element={
+                          <ProtectedRoute requiredRoles={['manager']}>
+                            <ManagerDashboardPage />
                           </ProtectedRoute>
                         }
                       />
