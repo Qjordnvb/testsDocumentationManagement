@@ -112,7 +112,7 @@ export const TestRunnerModal: React.FC<Props> = ({
 
   // Memoized execution details for scenario-specific bug modal
   const scenarioExecutionDetails = useMemo(() => {
-    if (!selectedScenarioForBug) return null;
+    if (!selectedScenarioForBug) return undefined;
 
     const scenarioSteps = selectedScenarioForBug.steps.map((step: any) => ({
       step_index: step.id,

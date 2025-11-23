@@ -13,7 +13,7 @@ import { Users, UserPlus, CheckCircle2, Clock, Shield, Code, Briefcase } from 'l
 import toast from 'react-hot-toast';
 
 export const AdminDashboardPage = () => {
-  const { user, hasRole } = useAuth();
+  const { user, token, hasRole } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +43,15 @@ export const AdminDashboardPage = () => {
   }, []);
 
   const loadUsers = async () => {
+    if (!token) {
+      toast.error('No hay token de autenticación');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await usersApi.getAll();
+      const data = await usersApi.getAll(token);
       setUsers(data);
       calculateStats(data);
     } catch (error) {

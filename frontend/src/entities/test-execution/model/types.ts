@@ -29,7 +29,7 @@ export interface StepExecutionResult {
 }
 
 export interface ExecutionSummary {
-  execution_id: number;
+  execution_id: number | null;  // null until execution is saved
   executed_by: string;
   execution_date: string;
   status: TestStatus;

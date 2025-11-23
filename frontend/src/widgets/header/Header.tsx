@@ -7,7 +7,7 @@ import { useProject } from '@/app/providers/ProjectContext';
 import { useAuth } from '@/app/providers';
 import { Link, useNavigate } from 'react-router-dom';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
-import { LogOut, User, Users } from 'lucide-react';
+import { LogOut, Users } from 'lucide-react';
 
 export const Header = () => {
   const { currentProject } = useProject();
