@@ -414,3 +414,269 @@ async def generate_test_execution_report(
             "Content-Disposition": f"attachment; filename={filename}"
         }
     )
+
+
+@router.get("/reports/consolidated")
+async def generate_consolidated_report(
+    db: Session = Depends(get_db)
+):
+    """
+    Generate Consolidated Report for Manager
+    Returns a Word document with metrics from all projects
+    """
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Inches
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    # Get all projects
+    projects = db.query(ProjectDB).all()
+
+    if not projects:
+        raise HTTPException(status_code=404, detail="No projects found")
+
+    # Collect metrics for each project
+    project_metrics = []
+    total_stories = 0
+    total_test_cases = 0
+    total_bugs = 0
+    total_coverage = 0
+
+    for project in projects:
+        # Get counts for this project
+        stories_count = db.query(UserStoryDB).filter(UserStoryDB.project_id == project.id).count()
+        test_cases_count = db.query(TestCaseDB).filter(TestCaseDB.project_id == project.id).count()
+        bugs_count = db.query(BugReportDB).filter(BugReportDB.project_id == project.id).count()
+
+        # Calculate test coverage (stories with tests)
+        stories_with_tests = db.query(UserStoryDB).filter(
+            UserStoryDB.project_id == project.id,
+            UserStoryDB.id.in_(
+                db.query(TestCaseDB.user_story_id).filter(TestCaseDB.project_id == project.id)
+            )
+        ).count()
+
+        coverage = (stories_with_tests / stories_count * 100) if stories_count > 0 else 0
+
+        # Calculate health score (same formula as frontend)
+        coverage_score = (coverage / 100) * 40
+        bug_score = max(0, (1 - (bugs_count / (stories_count or 1))) * 30)
+        test_score = max(0, ((test_cases_count / (stories_count or 1)) / 3) * 30)
+        health_score = min(100, coverage_score + bug_score + test_score)
+
+        # Determine risk level
+        risk_factors = []
+        if coverage < 50:
+            risk_factors.append('baja cobertura')
+        if bugs_count > stories_count * 0.3:
+            risk_factors.append('alto número de bugs')
+        if test_cases_count < stories_count:
+            risk_factors.append('pocos test cases')
+
+        if len(risk_factors) >= 2:
+            risk_level = 'ALTO'
+        elif len(risk_factors) == 1:
+            risk_level = 'MEDIO'
+        else:
+            risk_level = 'BAJO'
+
+        project_metrics.append({
+            'name': project.name,
+            'id': project.id,
+            'status': project.status,
+            'stories': stories_count,
+            'test_cases': test_cases_count,
+            'bugs': bugs_count,
+            'coverage': coverage,
+            'health_score': health_score,
+            'risk_level': risk_level,
+            'risk_factors': risk_factors
+        })
+
+        # Accumulate totals
+        total_stories += stories_count
+        total_test_cases += test_cases_count
+        total_bugs += bugs_count
+        total_coverage += coverage
+
+    # Calculate averages
+    avg_coverage = total_coverage / len(projects) if projects else 0
+    avg_health = sum(p['health_score'] for p in project_metrics) / len(projects) if projects else 0
+
+    # Sort projects by health score
+    projects_by_health = sorted(project_metrics, key=lambda p: p['health_score'], reverse=True)
+    at_risk_projects = [p for p in project_metrics if p['risk_level'] in ['ALTO', 'MEDIO']]
+
+    # Create document
+    doc = Document()
+
+    # Title
+    title = doc.add_heading("Reporte Consolidado de Proyectos", 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Header info
+    info_para = doc.add_paragraph()
+    info_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    info_para.add_run(f"Quality Mission Control System\n").bold = True
+    info_para.add_run(f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+    info_para.add_run(f"Total de Proyectos: {len(projects)}")
+
+    # Executive Summary
+    doc.add_heading("Resumen Ejecutivo", level=1)
+
+    summary_para = doc.add_paragraph()
+    summary_para.add_run(f"Proyectos Totales: {len(projects)}\n")
+    summary_para.add_run(f"User Stories Totales: {total_stories}\n")
+    summary_para.add_run(f"Test Cases Totales: {total_test_cases}\n")
+    summary_para.add_run(f"Bugs Totales: {total_bugs}\n")
+    summary_para.add_run(f"Cobertura Promedio: {avg_coverage:.1f}%\n")
+    summary_para.add_run(f"Health Score Promedio: {avg_health:.1f}/100")
+
+    # At-Risk Projects
+    doc.add_heading("Proyectos que Requieren Atención", level=1)
+
+    if at_risk_projects:
+        risk_para = doc.add_paragraph()
+        risk_para.add_run(f"{len(at_risk_projects)} proyecto(s) identificado(s) con riesgo medio o alto.\n\n").bold = True
+        risk_para.runs[0].font.color.rgb = RGBColor(255, 0, 0)
+
+        for proj in at_risk_projects:
+            risk_item = doc.add_paragraph(style='List Bullet')
+            risk_run = risk_item.add_run(f"{proj['name']} - Riesgo {proj['risk_level']}")
+            if proj['risk_level'] == 'ALTO':
+                risk_run.font.color.rgb = RGBColor(255, 0, 0)
+            else:
+                risk_run.font.color.rgb = RGBColor(255, 165, 0)
+            risk_run.font.bold = True
+
+            if proj['risk_factors']:
+                risk_item.add_run(f"\n  Factores: {', '.join(proj['risk_factors'])}")
+    else:
+        doc.add_paragraph("No hay proyectos en riesgo. ¡Excelente trabajo!")
+
+    # Detailed Metrics Table
+    doc.add_heading("Métricas por Proyecto", level=1)
+
+    # Create table
+    table = doc.add_table(rows=1, cols=7)
+    table.style = "Light Grid Accent 1"
+
+    # Header row
+    headers = ["Proyecto", "Stories", "Tests", "Bugs", "Cobertura", "Health Score", "Riesgo"]
+    header_cells = table.rows[0].cells
+    for i, header in enumerate(headers):
+        header_cells[i].text = header
+        header_cells[i].paragraphs[0].runs[0].font.bold = True
+        header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Add projects (sorted by health score)
+    for proj in projects_by_health:
+        row_cells = table.add_row().cells
+        row_cells[0].text = proj['name']
+        row_cells[1].text = str(proj['stories'])
+        row_cells[2].text = str(proj['test_cases'])
+        row_cells[3].text = str(proj['bugs'])
+
+        # Coverage with color coding
+        coverage_cell = row_cells[4]
+        coverage_cell.text = f"{proj['coverage']:.1f}%"
+        coverage_run = coverage_cell.paragraphs[0].runs[0]
+        if proj['coverage'] >= 70:
+            coverage_run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+        elif proj['coverage'] >= 50:
+            coverage_run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+        else:
+            coverage_run.font.color.rgb = RGBColor(255, 0, 0)  # Red
+
+        # Health Score with color coding
+        health_cell = row_cells[5]
+        health_cell.text = f"{proj['health_score']:.0f}/100"
+        health_run = health_cell.paragraphs[0].runs[0]
+        if proj['health_score'] >= 70:
+            health_run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+        elif proj['health_score'] >= 50:
+            health_run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+        else:
+            health_run.font.color.rgb = RGBColor(255, 0, 0)  # Red
+
+        # Risk Level with color coding
+        risk_cell = row_cells[6]
+        risk_cell.text = proj['risk_level']
+        risk_run = risk_cell.paragraphs[0].runs[0]
+        risk_run.font.bold = True
+        if proj['risk_level'] == 'ALTO':
+            risk_run.font.color.rgb = RGBColor(255, 0, 0)  # Red
+        elif proj['risk_level'] == 'MEDIO':
+            risk_run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+        else:
+            risk_run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+
+        # Center align numeric columns
+        for i in range(1, 7):
+            row_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Top Performers
+    doc.add_heading("Proyectos con Mejor Desempeño", level=1)
+
+    top_projects = projects_by_health[:3]  # Top 3
+    top_para = doc.add_paragraph()
+    top_para.add_run(f"Top {len(top_projects)} proyectos por Health Score:\n\n").bold = True
+    top_para.runs[0].font.color.rgb = RGBColor(0, 128, 0)
+
+    for i, proj in enumerate(top_projects, 1):
+        top_item = doc.add_paragraph(style='List Number')
+        top_run = top_item.add_run(f"{proj['name']} - {proj['health_score']:.0f}/100")
+        top_run.font.bold = True
+        top_run.font.color.rgb = RGBColor(0, 128, 0)
+        top_item.add_run(f"\n  Cobertura: {proj['coverage']:.1f}% | Tests: {proj['test_cases']} | Bugs: {proj['bugs']}")
+
+    # Recommendations
+    doc.add_heading("Recomendaciones", level=1)
+
+    recommendations = []
+
+    if avg_coverage < 60:
+        recommendations.append("Incrementar la cobertura de tests en todos los proyectos. Objetivo: 70%+")
+
+    if total_bugs > total_stories * 0.2:
+        recommendations.append("Reducir la cantidad de bugs. Considerar sesiones de revisión de código y testing más exhaustivo.")
+
+    low_coverage_projects = [p['name'] for p in project_metrics if p['coverage'] < 50]
+    if low_coverage_projects:
+        recommendations.append(f"Priorizar cobertura de tests en: {', '.join(low_coverage_projects)}")
+
+    high_bug_projects = [p['name'] for p in project_metrics if p['bugs'] > p['stories'] * 0.3]
+    if high_bug_projects:
+        recommendations.append(f"Enfocar esfuerzos de QA en: {', '.join(high_bug_projects)}")
+
+    if not recommendations:
+        recommendations.append("Excelente trabajo. Todos los proyectos están en buen estado.")
+
+    for rec in recommendations:
+        rec_para = doc.add_paragraph(rec, style='List Bullet')
+        if "Excelente" in rec:
+            rec_para.runs[0].font.color.rgb = RGBColor(0, 128, 0)
+
+    # Footer
+    doc.add_paragraph()
+    footer = doc.add_paragraph("Reporte generado automáticamente por Quality Mission Control System")
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer.runs[0].font.size = Pt(9)
+    footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
+
+    # Save document
+    output_dir = Path("output/reports")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"Consolidated_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    file_path = output_dir / filename
+
+    doc.save(str(file_path))
+
+    # Return file
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )

@@ -159,18 +159,29 @@ export const ManagerDashboardPage = () => {
       setDownloadingReport(true);
       toast.loading('Generando reporte consolidado de todos los proyectos...');
 
-      // TODO: Backend endpoint needs to be created: GET /api/v1/reports/consolidated
-      // For now, we'll simulate the download
+      const response = await fetch('/api/v1/reports/consolidated');
 
-      // Simulate delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to generate consolidated report');
+      }
+
+      // Download file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Consolidated_Report_${new Date().toISOString().split('T')[0]}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
 
       toast.dismiss();
-      toast.success('🚧 Endpoint pendiente: /api/v1/reports/consolidated');
-      toast('Esta funcionalidad estará disponible próximamente', { icon: 'ℹ️' });
+      toast.success('✅ Reporte consolidado descargado exitosamente!');
     } catch (error) {
       toast.dismiss();
-      toast.error('Error al generar reporte consolidado');
+      toast.error(error instanceof Error ? error.message : 'Error al generar reporte consolidado');
     } finally {
       setDownloadingReport(false);
     }
