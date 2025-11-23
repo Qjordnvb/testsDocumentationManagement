@@ -52,14 +52,15 @@ export const Sidebar = () => {
     // Manager: Dashboard + Project metrics when inside a project
     if (hasRole('manager') && projectId) {
       return [
-        { path: `/projects/${projectId}/dashboard`, label: 'Métricas', icon: '📊' },
+        { path: '/manager/dashboard', label: 'Dashboard Global', icon: '🏠' },
+        { path: `/projects/${projectId}/dashboard`, label: 'Métricas Proyecto', icon: '📊' },
       ];
     }
 
     // Manager: Global dashboard when not in project
     if (hasRole('manager')) {
       return [
-        { path: '/manager/dashboard', label: 'Dashboard General', icon: '📊' },
+        { path: '/manager/dashboard', label: 'Dashboard Global', icon: '🏠' },
       ];
     }
 
@@ -92,9 +93,12 @@ export const Sidebar = () => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // Load projects when viewing all projects (only for QA/Dev)
+  // Load projects when viewing all projects (for QA/Dev/Manager)
   useEffect(() => {
-    if (!projectId && !hasRole('admin', 'manager')) {
+    // Manager always loads projects, QA/Dev only when not in a project
+    const shouldLoadProjects = hasRole('manager') || (!projectId && !hasRole('admin'));
+
+    if (shouldLoadProjects) {
       const loadProjects = async () => {
         try {
           // DEV role: filter by assigned bugs only
@@ -160,7 +164,7 @@ export const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      {hasRole('admin', 'manager') || (projectId && projectId !== '') ? (
+      {hasRole('admin') || (projectId && projectId !== '') || hasRole('manager') ? (
         <>
           <nav className="p-4 space-y-2">
             {navItems.map((item) => (
@@ -179,6 +183,44 @@ export const Sidebar = () => {
               </Link>
             ))}
           </nav>
+
+          {/* Projects list for Manager */}
+          {hasRole('manager') && allProjects.length > 0 && !sidebarCollapsed && (
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+              <div className="pb-2 border-b border-white/10">
+                <h3 className={`${bodySmall.className} font-semibold text-white/70 uppercase tracking-wider`}>
+                  Proyectos
+                </h3>
+              </div>
+              <nav className="flex-1 overflow-y-auto pt-2 space-y-1">
+                {allProjects.map((project) => (
+                  <Link
+                    key={project.id}
+                    to={`/projects/${project.id}/dashboard`}
+                    onClick={() => handleProjectClick(project)}
+                    className={`block p-3 ${borderRadius.lg} ${
+                      currentProject?.id === project.id
+                        ? 'bg-white/20 border border-white/30'
+                        : 'hover:bg-purple-600/20'
+                    } hover:scale-105 transition-all duration-200 group text-white`}
+                  >
+                    <div className={`font-medium truncate group-hover:text-white/95`}>
+                      {project.name}
+                    </div>
+                    <div className={`${bodySmall.className} text-white/60 group-hover:text-white/80 mt-0.5 flex items-center gap-2`}>
+                      <span>{project.test_coverage.toFixed(0)}% coverage</span>
+                      {project.total_bugs > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="text-red-300">{project.total_bugs} bugs</span>
+                        </>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          )}
 
           {/* Settings and Back (only for QA/Dev in projects) */}
           {projectId && !hasRole('admin', 'manager') && (
