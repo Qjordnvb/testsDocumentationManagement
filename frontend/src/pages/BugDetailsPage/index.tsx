@@ -23,7 +23,7 @@ import type { Bug, BugStatus } from '@/entities/bug';
 import type { TestCase } from '@/entities/test-case';
 import { TestRunnerModal } from '@/features/test-execution/ui';
 import { EditBugModal } from '@/features/bug-management/ui';
-import { Button } from '@/shared/ui/Button';
+import { Button, LoadingSpinner } from '@/shared/ui';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
   Bug as BugIcon,
@@ -294,7 +294,7 @@ export const BugDetailsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className={`${body.className} ${colors.gray.text600}`}>Cargando detalles del bug...</div>
+        <LoadingSpinner size="lg" label="Cargando detalles del bug..." center />
       </div>
     );
   }

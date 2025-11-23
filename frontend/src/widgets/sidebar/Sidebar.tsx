@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { projectApi } from '@/entities/project';
 import type { Project } from '@/entities/project';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface NavItem {
   path: string;
@@ -38,6 +39,7 @@ export const Sidebar = () => {
   const { currentProject, setCurrentProject } = useProject();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [projectsExpanded, setProjectsExpanded] = useState(true); // Manager projects section
 
   // Role-based navigation items
   const getNavItems = (): NavItem[] => {
@@ -49,17 +51,10 @@ export const Sidebar = () => {
       ];
     }
 
-    // Manager: Dashboard + Project metrics when inside a project
-    if (hasRole('manager') && projectId) {
-      return [
-        { path: `/projects/${projectId}/dashboard`, label: 'Métricas', icon: '📊' },
-      ];
-    }
-
-    // Manager: Global dashboard when not in project
+    // Manager: Always show Dashboard Global (projects shown separately)
     if (hasRole('manager')) {
       return [
-        { path: '/manager/dashboard', label: 'Dashboard General', icon: '📊' },
+        { path: '/manager/dashboard', label: 'Dashboard Global', icon: '🏠' },
       ];
     }
 
@@ -92,9 +87,12 @@ export const Sidebar = () => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // Load projects when viewing all projects (only for QA/Dev)
+  // Load projects when viewing all projects (for QA/Dev/Manager)
   useEffect(() => {
-    if (!projectId && !hasRole('admin', 'manager')) {
+    // Manager always loads projects, QA/Dev only when not in a project
+    const shouldLoadProjects = hasRole('manager') || (!projectId && !hasRole('admin'));
+
+    if (shouldLoadProjects) {
       const loadProjects = async () => {
         try {
           // DEV role: filter by assigned bugs only
@@ -160,7 +158,7 @@ export const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      {hasRole('admin', 'manager') || (projectId && projectId !== '') ? (
+      {hasRole('admin') || (projectId && projectId !== '') || hasRole('manager') ? (
         <>
           <nav className="p-4 space-y-2">
             {navItems.map((item) => (
@@ -179,6 +177,57 @@ export const Sidebar = () => {
               </Link>
             ))}
           </nav>
+
+          {/* Projects section for Manager - Collapsible */}
+          {hasRole('manager') && allProjects.length > 0 && !sidebarCollapsed && (
+            <div className="px-4 pb-4">
+              {/* Collapsible header */}
+              <button
+                onClick={() => setProjectsExpanded(!projectsExpanded)}
+                className="w-full flex items-center justify-between py-3 border-b border-white/10 hover:bg-white/5 rounded-t-lg transition-colors"
+              >
+                <h3 className={`${bodySmall.className} font-semibold text-white/70 uppercase tracking-wider`}>
+                  📁 Proyectos ({allProjects.length})
+                </h3>
+                {projectsExpanded ? (
+                  <ChevronDown size={16} className="text-white/70" />
+                ) : (
+                  <ChevronRight size={16} className="text-white/70" />
+                )}
+              </button>
+
+              {/* Projects list */}
+              {projectsExpanded && (
+                <nav className="pt-2 space-y-1 max-h-80 overflow-y-auto custom-scrollbar">
+                  {allProjects.map((project) => (
+                    <Link
+                      key={project.id}
+                      to={`/projects/${project.id}/dashboard`}
+                      onClick={() => handleProjectClick(project)}
+                      className={`block p-2.5 ${borderRadius.lg} ${
+                        currentProject?.id === project.id
+                          ? 'bg-white/20 border border-white/30'
+                          : 'hover:bg-purple-600/20'
+                      } transition-all duration-200 group text-white`}
+                    >
+                      <div className={`text-sm font-medium truncate group-hover:text-white/95`}>
+                        {project.name}
+                      </div>
+                      <div className={`text-xs text-white/60 group-hover:text-white/80 mt-0.5 flex items-center gap-2`}>
+                        <span>{project.test_coverage.toFixed(0)}%</span>
+                        {project.total_bugs > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="text-red-300">{project.total_bugs} bugs</span>
+                          </>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </nav>
+              )}
+            </div>
+          )}
 
           {/* Settings and Back (only for QA/Dev in projects) */}
           {projectId && !hasRole('admin', 'manager') && (

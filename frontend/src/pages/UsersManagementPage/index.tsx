@@ -7,8 +7,18 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/providers';
 import { usersApi } from '@/entities/user';
 import type { User, CreateUserInvitationDTO, Role } from '@/entities/user';
-import { Users, Plus, Trash2, X, Mail, CheckCircle2, Clock } from 'lucide-react';
+import { Users, Plus, Trash2, X, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  LoadingSpinner,
+  EmptyState,
+  RoleBadge,
+  Badge,
+  FormGroup,
+  Input,
+  Select,
+  Button,
+} from '@/shared/ui';
 
 export const UsersManagementPage = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -61,7 +71,11 @@ export const UsersManagementPage = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-12">Cargando usuarios...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="lg" label="Cargando usuarios..." center />
+      </div>
+    );
   }
 
   return (
@@ -75,13 +89,13 @@ export const UsersManagementPage = () => {
           </h1>
           <p className="text-gray-600 mt-1">Administrar invitaciones y usuarios del sistema</p>
         </div>
-        <button
+        <Button
+          variant="primary"
+          leftIcon={<Plus className="w-5 h-5" />}
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
-          <Plus className="w-5 h-5" />
           Crear Invitación
-        </button>
+        </Button>
       </div>
 
       {/* Users Table */}
@@ -105,18 +119,12 @@ export const UsersManagementPage = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.full_name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <RoleBadge role={user.role} />
+                  <RoleBadge role={user.role as 'admin' | 'qa' | 'dev' | 'manager'} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {user.is_active ? (
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                      Activo
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                      Inactivo
-                    </span>
-                  )}
+                  <Badge variant={user.is_active ? 'success' : 'default'}>
+                    {user.is_active ? 'Activo' : 'Inactivo'}
+                  </Badge>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <RegistrationStatusBadge user={user} />
@@ -136,9 +144,20 @@ export const UsersManagementPage = () => {
         </table>
 
         {users.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No hay usuarios registrados. Crea tu primera invitación.
-          </div>
+          <EmptyState
+            icon={<Users className="w-full h-full" />}
+            message="No hay usuarios registrados"
+            description="Crea tu primera invitación para agregar usuarios al sistema"
+            action={
+              <Button
+                variant="primary"
+                leftIcon={<Plus />}
+                onClick={() => setShowCreateModal(true)}
+              >
+                Crear Invitación
+              </Button>
+            }
+          />
         )}
       </div>
 
@@ -153,42 +172,15 @@ export const UsersManagementPage = () => {
   );
 };
 
-// Role Badge Component
-const RoleBadge = ({ role }: { role: Role }) => {
-  const colors = {
-    admin: 'bg-red-100 text-red-800',
-    qa: 'bg-green-100 text-green-800',
-    dev: 'bg-blue-100 text-blue-800',
-    manager: 'bg-yellow-100 text-yellow-800',
-  };
-
-  return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[role]}`}>
-      {role.toUpperCase()}
-    </span>
-  );
-};
-
 // Registration Status Badge Component
 const RegistrationStatusBadge = ({ user }: { user: any }) => {
-  // Check if user has registered (simplified - you may need to add is_registered field to User type)
   const isRegistered = user.last_login !== null && user.last_login !== undefined;
 
   if (isRegistered) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-        <CheckCircle2 className="w-3 h-3" />
-        Registrado
-      </span>
-    );
+    return <Badge variant="success">Registrado</Badge>;
   }
 
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-      <Clock className="w-3 h-3" />
-      Pendiente
-    </span>
-  );
+  return <Badge variant="warning">Pendiente</Badge>;
 };
 
 // Create Invitation Modal Component
@@ -237,66 +229,61 @@ const CreateInvitationModal = ({ onClose, onSubmit }: CreateInvitationModalProps
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
+          <FormGroup label="Email" htmlFor="email" required>
+            <Input
+              id="email"
               type="email"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
               placeholder="user@example.com"
             />
-          </div>
+          </FormGroup>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-            <input
+          <FormGroup label="Nombre Completo" htmlFor="fullName" required>
+            <Input
+              id="fullName"
               type="text"
               required
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
               placeholder="John Doe"
             />
-          </div>
+          </FormGroup>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-            <select
+          <FormGroup label="Rol" htmlFor="role" required>
+            <Select
+              id="role"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="qa">QA - Quality Assurance Engineer</option>
-              <option value="dev">DEV - Developer</option>
-              <option value="manager">MANAGER - Project Manager</option>
-              <option value="admin">ADMIN - Administrator</option>
-            </select>
-          </div>
+              options={[
+                { value: 'qa', label: 'QA - Quality Assurance Engineer' },
+                { value: 'dev', label: 'DEV - Developer' },
+                { value: 'manager', label: 'MANAGER - Project Manager' },
+                { value: 'admin', label: 'ADMIN - Administrator' },
+              ]}
+            />
+          </FormGroup>
 
           <div className="flex gap-2 pt-4">
-            <button
+            <Button
               type="submit"
+              variant="primary"
               disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              isLoading={submitting}
+              leftIcon={<Mail className="w-4 h-4" />}
+              className="flex-1"
             >
-              {submitting ? (
-                'Creando...'
-              ) : (
-                <>
-                  <Mail className="w-4 h-4" />
-                  Crear Invitación
-                </>
-              )}
-            </button>
-            <button
+              Crear Invitación
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
               onClick={onClose}
-              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300"
+              className="flex-1"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         </form>
       </div>

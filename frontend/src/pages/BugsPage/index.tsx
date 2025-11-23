@@ -31,6 +31,7 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
+import { LoadingSpinner, EmptyState, FormError } from '@/shared/ui';
 
 export const BugsPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -274,7 +275,7 @@ export const BugsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Cargando bugs...</div>
+        <LoadingSpinner size="lg" label="Cargando bugs..." center />
       </div>
     );
   }
@@ -282,7 +283,7 @@ export const BugsPage = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-red-600">Error: {error}</div>
+        <FormError message={`Error: ${error}`} variant="box" />
       </div>
     );
   }
@@ -451,14 +452,16 @@ export const BugsPage = () => {
         <>
           {/* List View */}
           {filteredBugs.length === 0 ? (
-            <div className="card text-center py-12">
-              <BugIcon size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron bugs</h3>
-              <p className="text-gray-600">
-                {activeFiltersCount > 0
-                  ? 'Intenta ajustar los filtros para ver más resultados'
-                  : 'Los bugs reportados desde ejecuciones aparecerán aquí'}
-              </p>
+            <div className="card">
+              <EmptyState
+                icon={<BugIcon className="w-full h-full" />}
+                message="No se encontraron bugs"
+                description={
+                  activeFiltersCount > 0
+                    ? 'Intenta ajustar los filtros para ver más resultados'
+                    : 'Los bugs reportados desde ejecuciones aparecerán aquí'
+                }
+              />
             </div>
           ) : (
             <div className="card overflow-hidden">
@@ -586,12 +589,12 @@ export const BugsPage = () => {
         <>
           {/* Grouped View */}
           {groupedBugs.length === 0 ? (
-            <div className="card text-center py-12">
-              <BugIcon size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron bugs agrupados</h3>
-              <p className="text-gray-600">
-                Los bugs se agruparán automáticamente por Test Case y Scenario cuando sean reportados
-              </p>
+            <div className="card">
+              <EmptyState
+                icon={<BugIcon className="w-full h-full" />}
+                message="No se encontraron bugs agrupados"
+                description="Los bugs se agruparán automáticamente por Test Case y Scenario cuando sean reportados"
+              />
             </div>
           ) : (
             <div className="space-y-4">

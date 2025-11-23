@@ -203,3 +203,37 @@ export const BugStatusBadge = ({
     </Badge>
   );
 };
+
+// Role Badge
+export const RoleBadge = ({
+  role,
+}: {
+  role: 'admin' | 'qa' | 'dev' | 'manager';
+}) => {
+  const variantMap = {
+    admin: 'danger' as const,
+    qa: 'success' as const,
+    dev: 'primary' as const,
+    manager: 'warning' as const,
+  };
+
+  const iconMap = {
+    admin: '🔑',
+    qa: '🧪',
+    dev: '💻',
+    manager: '👔',
+  };
+
+  const labelMap = {
+    admin: 'ADMIN',
+    qa: 'QA',
+    dev: 'DEV',
+    manager: 'MANAGER',
+  };
+
+  return (
+    <Badge variant={variantMap[role]} icon={iconMap[role]}>
+      {labelMap[role]}
+    </Badge>
+  );
+};

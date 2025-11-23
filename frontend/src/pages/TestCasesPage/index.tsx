@@ -13,7 +13,7 @@ import { useProject } from '@/app/providers/ProjectContext';
 import { useAuth } from '@/app/providers';
 import type { TestCase } from '@/entities/test-case';
 import type { UserStory } from '@/entities/user-story';
-import { Modal } from '@/shared/ui/Modal';
+import { Modal, EmptyState } from '@/shared/ui';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor';
 import { TestCaseFormModal } from '@/features/test-case-management/ui';
 import { TestRunnerModal, ExecutionHistory, ExecutionDetailsModal } from '@/features/test-execution/ui';
@@ -450,17 +450,20 @@ export const TestCasesPage = () => {
 
       {/* Test Suites (Grouped by User Story) */}
       {testSuites.length === 0 ? (
-        <div className="card text-center py-12">
-          <div className="text-gray-400 text-lg mb-2">
-            {searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL'
-              ? 'No se encontraron test cases'
-              : 'No hay test cases'}
-          </div>
-          <p className="text-gray-500 text-sm">
-            {searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL'
-              ? 'Intenta ajustar los filtros o limpiarlos'
-              : 'Genera test cases desde las user stories'}
-          </p>
+        <div className="card">
+          <EmptyState
+            icon={<FileCheck className="w-full h-full" />}
+            message={
+              searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL'
+                ? 'No se encontraron test cases'
+                : 'No hay test cases'
+            }
+            description={
+              searchQuery || selectedTestType !== 'ALL' || selectedStatus !== 'ALL' || selectedPriority !== 'ALL'
+                ? 'Intenta ajustar los filtros o limpiarlos'
+                : 'Genera test cases desde las user stories'
+            }
+          />
         </div>
       ) : (
         <div className="space-y-4">
