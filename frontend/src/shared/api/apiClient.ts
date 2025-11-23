@@ -29,10 +29,31 @@ const api = axios.create({
   timeout: 60000, // 60 seconds for AI operations
 });
 
+// Request interceptor to add Authorization header if token exists
+api.interceptors.request.use(
+  (config) => {
+    const token = sessionStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
+    // Handle 401 Unauthorized - redirect to login
+    if (error.response?.status === 401) {
+      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_user');
+      window.location.href = '/login';
+    }
+
     if (error.response?.data?.detail) {
       throw new Error(error.response.data.detail);
     }

@@ -1,14 +1,18 @@
 /**
  * Main App Component
  * Configures React Router and wraps pages with Layout
- * Implements multi-project architecture
- * UPDATED: Added test generation polling hook
+ * Implements multi-project architecture with authentication
+ * UPDATED: Added authentication with role-based access control
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from '@/app/providers';
+import { ProtectedRoute } from '@/app/components';
 import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { Layout } from '@/widgets/header/Layout';
+import { LoginPage } from '@/pages/LoginPage';
+import { UsersManagementPage } from '@/pages/UsersManagementPage';
 import { ProjectsListPage } from '@/pages/ProjectsListPage';
 import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
@@ -33,55 +37,81 @@ function App() {
 
   return (
     <BrowserRouter>
-      <ProjectProvider>
-        <Layout>
-          <Routes>
-            {/* Landing: Project Selection (now with Layout) */}
-            <Route path="/" element={<ProjectsListPage />} />
+      <AuthProvider>
+        <Routes>
+          {/* Public Route: Login */}
+          <Route path="/login" element={<LoginPage />} />
 
-            {/* Project-scoped routes */}
-            <Route path="/projects/:projectId">
-              {/* Redirect /projects/:id to /projects/:id/dashboard */}
-              <Route index element={<Navigate to="dashboard" replace />} />
+          {/* Protected Routes: Require Authentication */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <ProjectProvider>
+                  <Layout>
+                    <Routes>
+                      {/* Landing: Project Selection */}
+                      <Route path="/" element={<ProjectsListPage />} />
 
-              {/* Project pages */}
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="stories" element={<StoriesPage />} />
-              <Route path="tests" element={<TestCasesPage />} />
-              <Route path="bugs" element={<BugsPage />} />
-              <Route path="bugs/:bugId" element={<BugDetailsPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Routes>
-        </Layout>
-      </ProjectProvider>
-      {/* Toast notifications */}
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
+                      {/* Admin Only: User Management */}
+                      <Route
+                        path="/admin/users"
+                        element={
+                          <ProtectedRoute requiredRoles={['admin']}>
+                            <UsersManagementPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Project-scoped routes */}
+                      <Route path="/projects/:projectId">
+                        {/* Redirect /projects/:id to /projects/:id/dashboard */}
+                        <Route index element={<Navigate to="dashboard" replace />} />
+
+                        {/* Project pages */}
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="stories" element={<StoriesPage />} />
+                        <Route path="tests" element={<TestCasesPage />} />
+                        <Route path="bugs" element={<BugsPage />} />
+                        <Route path="bugs/:bugId" element={<BugDetailsPage />} />
+                        <Route path="reports" element={<ReportsPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                      </Route>
+                    </Routes>
+                  </Layout>
+                </ProjectProvider>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+
+        {/* Toast notifications */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
             },
-          },
-          error: {
-            duration: 5000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
             },
-          },
-        }}
-      />
+            error: {
+              duration: 5000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

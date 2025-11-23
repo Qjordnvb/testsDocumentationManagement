@@ -14,6 +14,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { bugApi } from '@/entities/bug';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import type { Bug, BugSeverity, BugPriority, BugStatus, TestCaseGroup } from '@/entities/bug';
 import {
   Bug as BugIcon,
@@ -34,6 +35,7 @@ import {
 export const BugsPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { currentProject } = useProject();
+  const { user, hasRole } = useAuth();
   const navigate = useNavigate();
 
   const [bugs, setBugs] = useState<Bug[]>([]);
@@ -117,6 +119,11 @@ export const BugsPage = () => {
   // Filter bugs
   const filteredBugs = useMemo(() => {
     return bugs.filter((bug) => {
+      // Role-based filter - DEV users only see bugs assigned to them
+      if (hasRole('dev') && bug.assigned_to !== user?.email) {
+        return false;
+      }
+
       // Search filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
@@ -139,7 +146,7 @@ export const BugsPage = () => {
 
       return matchesSearch && matchesSeverity && matchesPriority && matchesStatus && matchesType;
     });
-  }, [bugs, searchQuery, selectedSeverity, selectedPriority, selectedStatus, selectedType]);
+  }, [bugs, searchQuery, selectedSeverity, selectedPriority, selectedStatus, selectedType, hasRole, user]);
 
   // Get status badge class
   const getStatusBadgeClass = (status: BugStatus): string => {

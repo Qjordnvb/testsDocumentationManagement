@@ -8,6 +8,8 @@ from backend.config import settings
 
 # Import routers
 from backend.api.endpoints import (
+    auth,
+    users,
     projects,
     stories,
     test_cases,
@@ -35,6 +37,11 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 # ==================== Include Routers ====================
+# Authentication & Users (NEW)
+router.include_router(auth.router, tags=["Authentication"])
+router.include_router(users.router, tags=["User Management"])
+
+# Existing Routers
 router.include_router(projects.router, tags=["Projects"])
 router.include_router(stories.router, tags=["User Stories"])
 router.include_router(test_cases.router, tags=["Test Cases"])

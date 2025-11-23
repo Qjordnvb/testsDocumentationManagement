@@ -1,656 +1,548 @@
-# 🏗️ Frontend Architecture - Quality Mission Control
+# Frontend Architecture - QA Documentation System
 
-**Patrón Principal:** Feature-Sliced Design (FSD)
-**Framework:** React 18 + TypeScript
-**Estado:** Zustand + React Context
-**Routing:** React Router v6
-**Styling:** Tailwind CSS + Design System Tokens
-**Build:** Vite
+**Framework**: React 18 + TypeScript + Vite
+**Architecture**: Feature-Sliced Design (FSD)
+**Updated**: 2025-11-22
 
 ---
 
-## 📐 Principios Arquitectónicos
+## 📋 Índice
 
-### 1. Feature-Sliced Design (FSD)
-Organización por capas con reglas de importación estrictas:
-
-```
-app → pages → widgets → features → entities → shared
-```
-
-**Regla de Oro:** Las capas superiores pueden importar de las inferiores, NUNCA al revés.
-
-### 2. Design System First
-- **Tokens centralizados** en `shared/design-system/tokens/`
-- **0 hardcoded values** en componentes
-- **Rebrand en 1 archivo** (cambiar `colors.ts` actualiza toda la app)
-
-### 3. Separation of Concerns
-- **UI** (componentes) separado de **Lógica** (hooks, utils)
-- **API calls** aislados en carpetas `/api`
-- **Types** centralizados en `/model`
-
-### 4. Composition over Inheritance
-- Componentes pequeños y reutilizables
-- Props para customización
-- Children para contenido variable
+1. [Stack Tecnológico](#stack-tecnológico)
+2. [Estructura de Directorios](#estructura-de-directorios)
+3. [Feature-Sliced Design](#feature-sliced-design)
+4. [Sistema de Autenticación](#sistema-de-autenticación)
+5. [State Management](#state-management)
+6. [Routing](#routing)
+7. [Componentes Clave](#componentes-clave)
+8. [Convenciones](#convenciones)
 
 ---
 
-## 🗂️ Estructura de Capas
+## STACK TECNOLÓGICO
 
-### 📱 Layer 1: `app/` (Application)
-**Responsabilidad:** Configuración global, providers, routing
+| Tecnología | Versión | Propósito |
+|------------|---------|-----------|
+| React | 18.x | UI Framework |
+| TypeScript | 5.x | Type Safety |
+| Vite | 5.x | Build Tool |
+| React Router | 6.x | Navigation |
+| Axios | latest | HTTP Client |
+| TailwindCSS | 3.x | Styling |
+| lucide-react | latest | Icons |
+| react-hot-toast | latest | Notifications |
+
+---
+
+## ESTRUCTURA DE DIRECTORIOS
+
+```
+frontend/src/
+├── app/                          # Application layer
+│   ├── App.tsx                   # Main app + routing
+│   ├── providers/                # Global providers
+│   │   ├── AuthContext.tsx       # Authentication state
+│   │   └── ProjectContext.tsx    # Project selection state
+│   └── components/               # App-level components
+│       └── ProtectedRoute.tsx    # Route protection + RBAC
+│
+├── features/                     # Business features
+│   ├── authentication/           # ✨ Multi-step login
+│   │   └── ui/
+│   │       ├── LoginEmailStep.tsx
+│   │       ├── RegisterStep.tsx
+│   │       ├── LoginPasswordStep.tsx
+│   │       └── AccessDeniedPage.tsx
+│   ├── project-management/
+│   │   └── ui/
+│   │       └── CreateProjectModal.tsx
+│   ├── test-generation/
+│   │   └── ui/
+│   │       ├── GenerateModal.tsx
+│   │       └── ReviewTestCasesModal.tsx
+│   └── bug-management/
+│       └── ui/
+│           ├── BugReportModal.tsx
+│           └── EditBugModal.tsx
+│
+├── pages/                        # Page components
+│   ├── LoginPage/                # ✨ Multi-step orchestrator
+│   ├── UsersManagementPage/      # ✨ Admin only
+│   ├── ProjectsListPage/         # Landing page
+│   ├── DashboardPage/            # Project dashboard
+│   ├── StoriesPage/              # User stories
+│   ├── TestCasesPage/            # Test cases
+│   ├── BugsPage/                 # Bug list
+│   ├── BugDetailsPage/           # Bug details
+│   └── ReportsPage/              # Test plans
+│
+├── widgets/                      # Complex UI blocks
+│   ├── header/
+│   │   ├── Header.tsx            # Top navigation
+│   │   └── Layout.tsx            # Page layout wrapper
+│   ├── sidebar/
+│   │   └── Sidebar.tsx           # Left navigation (project context)
+│   ├── dashboard-stats/
+│   │   └── MetricCard.tsx        # Dashboard metrics
+│   └── story-table/
+│       ├── StoryTable.tsx        # User stories table
+│       └── UserStoryCard.tsx     # Story card component
+│
+├── entities/                     # Business entities
+│   ├── user/
+│   │   ├── model/
+│   │   │   └── types.ts          # ✨ User types + Auth DTOs
+│   │   └── api/
+│   │       ├── authApi.ts        # ✨ checkEmail, register, login
+│   │       └── usersApi.ts       # ✨ createInvitation, CRUD
+│   ├── project/
+│   │   ├── model/
+│   │   │   └── types.ts          # Project types
+│   │   └── api/
+│   │       └── projectApi.ts     # Project CRUD
+│   └── user-story/
+│       ├── model/
+│       │   └── types.ts          # UserStory types
+│       ├── api/
+│       │   └── storyApi.ts       # Story CRUD
+│       └── ui/
+│           └── StoryCard.tsx     # Story UI component
+│
+└── shared/                       # Shared utilities
+    ├── api/
+    │   ├── apiClient.ts          # Axios instance
+    │   └── index.ts              # API exports
+    ├── types/
+    │   └── api.ts                # Shared API types
+    └── lib/
+        └── useTestGenerationPolling.ts  # Background polling
+```
+
+---
+
+## FEATURE-SLICED DESIGN
+
+### Capas (Layers)
+
+```
+┌─────────────────────────────────────────────────┐
+│ app/          Application bootstrap             │
+│               - Providers (Auth, Project)       │
+│               - Router                          │
+│               - Global components               │
+├─────────────────────────────────────────────────┤
+│ pages/        Full-page components              │
+│               - LoginPage, DashboardPage, etc   │
+├─────────────────────────────────────────────────┤
+│ widgets/      Complex UI blocks                 │
+│               - Header, Sidebar, Tables         │
+├─────────────────────────────────────────────────┤
+│ features/     Business features                 │
+│               - Authentication flow             │
+│               - Test generation                 │
+│               - Bug management                  │
+├─────────────────────────────────────────────────┤
+│ entities/     Business entities                 │
+│               - User (model + API)              │
+│               - Project (model + API)           │
+│               - UserStory (model + API)         │
+├─────────────────────────────────────────────────┤
+│ shared/       Reusable utilities                │
+│               - API client                      │
+│               - Types                           │
+│               - Custom hooks                    │
+└─────────────────────────────────────────────────┘
+```
+
+### Reglas de Dependencia
+
+```
+app/       → puede importar de todas las capas
+pages/     → puede importar de widgets, features, entities, shared
+widgets/   → puede importar de features, entities, shared
+features/  → puede importar de entities, shared
+entities/  → puede importar solo de shared
+shared/    → NO importa de ninguna otra capa
+```
+
+---
+
+## SISTEMA DE AUTENTICACIÓN
+
+### Flujo Multi-Step
+
+**LoginPage** (`pages/LoginPage/index.tsx`):
+- Orquestador del flujo multi-step
+- Maneja transiciones entre steps
+- State: `currentStep: 'email' | 'register' | 'password' | 'access-denied'`
+
+**Steps**:
+1. **LoginEmailStep** → User ingresa email
+2. **Decision Tree**:
+   - Email no existe → `AccessDeniedPage`
+   - Email existe + no registrado → `RegisterStep`
+   - Email existe + registrado → `LoginPasswordStep`
+
+**Componentes**:
+```typescript
+// Step 1: Email
+<LoginEmailStep
+  onNext={(email) => handleEmailSubmit(email)}
+  isLoading={isLoading}
+  error={error}
+/>
+
+// Step 2a: Register (invited user)
+<RegisterStep
+  email={email}
+  onRegister={(fullName, password) => handleRegister(fullName, password)}
+  onBack={() => setCurrentStep('email')}
+  isLoading={isLoading}
+  error={error}
+/>
+
+// Step 2b: Login (registered user)
+<LoginPasswordStep
+  email={email}
+  fullName={fullName}
+  onLogin={(password) => handleLogin(password)}
+  onBack={() => setCurrentStep('email')}
+  isLoading={isLoading}
+  error={error}
+/>
+
+// Step 2c: Access Denied
+<AccessDeniedPage
+  email={email}
+  onBack={() => setCurrentStep('email')}
+/>
+```
+
+### AuthContext
+
+**Location**: `app/providers/AuthContext.tsx`
+
+**State**:
+```typescript
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (credentials: LoginRequest) => Promise<void>;
+  register: (request: RegisterRequest) => Promise<void>;
+  logout: () => void;
+  hasRole: (...roles: Role[]) => boolean;
+}
+```
+
+**Métodos**:
+```typescript
+// Login
+await login({ email, password });
+// → POST /auth/login
+// → Save token + user to sessionStorage
+
+// Register (invited user)
+await register({ email, password, full_name });
+// → POST /auth/register
+// → Auto-login (save token)
+
+// Logout
+logout();
+// → Clear sessionStorage
+// → Navigate to /login
+```
+
+---
+
+## STATE MANAGEMENT
+
+### Context API (Global State)
+
+**AuthContext** (Autenticación):
+```typescript
+const { user, token, isAuthenticated, login, register, logout, hasRole } = useAuth();
+```
+
+**ProjectContext** (Proyecto Actual):
+```typescript
+const { currentProject, setCurrentProject, isLoading } = useProject();
+```
+
+### Local State (React useState)
+
+Cada componente maneja su propio estado:
+```typescript
+// Example: GenerateModal
+const [numTestCases, setNumTestCases] = useState(5);
+const [testTypes, setTestTypes] = useState(['FUNCTIONAL', 'UI']);
+const [isGenerating, setIsGenerating] = useState(false);
+```
+
+### Server State (Sin caché)
+
+Actualmente **NO hay caché de datos del servidor**.
+- Cada vez que se accede a una página, se hace fetch
+- Oportunidad de mejora: React Query / SWR
+
+---
+
+## ROUTING
+
+### Estructura de Rutas
 
 ```typescript
-// app/providers/ProjectContext.tsx
-export const ProjectProvider = ({ children }) => {
-  const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  // Persiste en localStorage
-  return <ProjectContext.Provider value={{...}}>{children}</ProjectContext.Provider>;
-};
+<BrowserRouter>
+  <AuthProvider>
+    <Routes>
+      {/* Public Route */}
+      <Route path="/login" element={<LoginPage />} />
 
-// app/App.tsx
-function App() {
-  return (
-    <ProjectProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProjectsListPage />} />
-          <Route path="/projects/:projectId/dashboard" element={<DashboardPage />} />
-          {/* ... */}
-        </Routes>
-      </BrowserRouter>
-    </ProjectProvider>
-  );
-}
+      {/* Protected Routes */}
+      <Route path="/*" element={
+        <ProtectedRoute>
+          <ProjectProvider>
+            <Layout>
+              <Routes>
+                {/* Landing */}
+                <Route path="/" element={<ProjectsListPage />} />
+
+                {/* Admin Only */}
+                <Route path="/admin/users" element={
+                  <ProtectedRoute requiredRoles={['admin']}>
+                    <UsersManagementPage />
+                  </ProtectedRoute>
+                } />
+
+                {/* Project Routes */}
+                <Route path="/projects/:projectId">
+                  <Route index element={<Navigate to="dashboard" />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="stories" element={<StoriesPage />} />
+                  <Route path="tests" element={<TestCasesPage />} />
+                  <Route path="bugs" element={<BugsPage />} />
+                  <Route path="bugs/:bugId" element={<BugDetailsPage />} />
+                  <Route path="reports" element={<ReportsPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                </Route>
+              </Routes>
+            </Layout>
+          </ProjectProvider>
+        </ProtectedRoute>
+      } />
+    </Routes>
+  </AuthProvider>
+</BrowserRouter>
 ```
 
-**Archivos típicos:**
-- `App.tsx` - Router y providers
-- `providers/ProjectContext.tsx` - Context global
-
----
-
-### 📦 Layer 2: `entities/` (Business Entities)
-**Responsabilidad:** Modelos de dominio, API calls, types
+### ProtectedRoute Component
 
 ```typescript
-// entities/test-execution/model/types.ts
-export interface ExecutionDetails {
-  execution_id: number;
-  test_case_id: string;
-  executed_by: string;
-  status: TestStatus;
-  step_results: StepExecutionResult[];
-  bug_ids: string[];
-}
+export const ProtectedRoute = ({ children, requiredRoles }: Props) => {
+  const { isAuthenticated, isLoading, hasRole } = useAuth();
 
-export interface StepExecutionResult {
-  step_id: number;
-  scenario: string;  // REQUIRED
-  keyword: 'Given' | 'When' | 'Then' | 'And' | 'But';
-  text: string;
-  status: TestStatus;
-  evidence_file?: string;
-}
+  // 1. Check if loading
+  if (isLoading) return <LoadingSpinner />;
 
-// entities/test-execution/api/executionApi.ts
-export const executionApi = {
-  createExecution: async (data: CreateExecutionRequest) => {
-    return await apiService.post('/test-executions', data);
-  },
-  getHistory: async (testCaseId: string) => {
-    return await apiService.get(`/test-executions/test-cases/${testCaseId}`);
+  // 2. Check if authenticated
+  if (!isAuthenticated) return <Navigate to="/login" />;
+
+  // 3. Check role (if required)
+  if (requiredRoles && !hasRole(...requiredRoles)) {
+    return <AccessDeniedPage />;
   }
+
+  // 4. Render children
+  return <>{children}</>;
 };
 ```
-
-**Estructura típica:**
-```
-entities/test-execution/
-├── api/
-│   └── executionApi.ts      ← API calls
-├── model/
-│   └── types.ts             ← Interfaces & types
-└── ui/                      ← Componentes específicos (opcional)
-    └── ExecutionBadge.tsx
-```
-
-**Regla:** Entities NO pueden importar de features o pages, solo de shared
 
 ---
 
-### ✨ Layer 3: `features/` (User Features)
-**Responsabilidad:** Interacciones del usuario, lógica de negocio
+## COMPONENTES CLAVE
 
+### Header + Sidebar (Layout)
+
+**Header** (`widgets/header/Header.tsx`):
+- Logo + Project name
+- User menu (dropdown)
+  - Profile
+  - Admin → Usuarios (if role=admin)
+  - Logout
+
+**Sidebar** (`widgets/sidebar/Sidebar.tsx`):
+- Project navigation (context-aware)
+- Links:
+  - Dashboard
+  - User Stories
+  - Test Cases
+  - Bugs
+  - Reports
+  - Settings
+
+**Layout** (`widgets/header/Layout.tsx`):
 ```typescript
-// features/test-execution/ui/TestRunnerModal.tsx
-export const TestRunnerModal: React.FC<Props> = ({
-  testCaseId, gherkinContent, onSave
-}) => {
-  const { scenarios, isRunning, markStep, addEvidence } = useTestRunner(gherkinContent);
-
-  return (
-    <Modal isOpen={isOpen}>
-      <ScenarioList title="Test Execution">
-        {scenarios.map(scenario => (
-          <ScenarioCard
-            key={scenario.name}
-            scenarioName={scenario.name}
-            status={scenario.status}
-            onMarkAllSteps={(status) => markAllSteps(scenario, status)}
-          >
-            {scenario.steps.map(step => (
-              <StepExecutionItem
-                key={step.id}
-                keyword={step.keyword}
-                text={step.text}
-                status={step.status}
-                onStatusChange={(newStatus) => markStep(step.id, newStatus)}
-              />
-            ))}
-          </ScenarioCard>
-        ))}
-      </ScenarioList>
-    </Modal>
-  );
-};
-
-// features/test-execution/model/useTestRunner.ts
-export const useTestRunner = (gherkinContent: string) => {
-  const [scenarios, setScenarios] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-
-  const markStep = (stepId: number, status: 'passed' | 'failed') => {
-    // Lógica de negocio
-  };
-
-  return { scenarios, isRunning, markStep, addEvidence, ... };
-};
-```
-
-**Estructura típica:**
-```
-features/test-execution/
-├── ui/
-│   ├── TestRunnerModal.tsx
-│   ├── ExecutionDetailsModal.tsx
-│   └── ExecutionHistory.tsx
-├── model/
-│   └── useTestRunner.ts      ← Custom hook con lógica
-├── api/                       ← API calls específicos (opcional)
-└── lib/                       ← Utilities específicos (opcional)
-```
-
-**Regla:** Features pueden importar de entities y shared, NO de otras features
-
----
-
-### 📄 Layer 4: `pages/` (Pages/Routes)
-**Responsabilidad:** Composición de features, routing
-
-```typescript
-// pages/TestCasesPage/index.tsx
-export const TestCasesPage = () => {
-  const { currentProject } = useProject();
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [showRunnerModal, setShowRunnerModal] = useState(false);
-
-  // Page solo COMPONE features
-  return (
-    <Layout>
-      <Header title="Test Cases" />
-      <TestCasesTable
-        data={testCases}
-        onRun={(testCase) => setShowRunnerModal(true)}
-        onEdit={(testCase) => setShowEditModal(true)}
-      />
-
-      {/* Feature modals */}
-      {showGenerateModal && <GenerateModal onClose={...} />}
-      {showRunnerModal && <TestRunnerModal onClose={...} />}
-    </Layout>
-  );
-};
-```
-
-**Regla:** Pages son "tontas", solo componen features y manejan routing
-
----
-
-### 🧩 Layer 5: `widgets/` (Complex Compositions)
-**Responsabilidad:** Composiciones complejas usadas en múltiples páginas
-
-```typescript
-// widgets/story-table/StoryTable.tsx
-export const StoryTable = ({ data, onRowClick, onGenerateTests }) => {
-  const table = useReactTable({
-    data,
-    columns: storyColumns,
-    // ... TanStack Table config
-  });
-
-  return (
-    <div className="card">
-      <Table>
-        {table.getRowModel().rows.map(row => (
-          <TableRow key={row.id}>
-            {/* ... */}
-          </TableRow>
-        ))}
-      </Table>
-    </div>
-  );
-};
-```
-
-**Ejemplos:**
-- `story-table/` - Tabla compleja con filtros, sort, expand
-- `header/` - Header con navegación y user menu
-- `sidebar/` - Sidebar con navegación de proyecto
-- `dashboard-stats/` - Cards de métricas del dashboard
-
-**Regla:** Widgets pueden importar de features, entities y shared
-
----
-
-### 🎨 Layer 6: `shared/` (Shared Resources)
-**Responsabilidad:** Código reutilizable en toda la app
-
-#### `/shared/design-system/`
-**Sistema de diseño centralizado**
-
-```typescript
-// shared/design-system/tokens/colors.ts
-export const colors = {
-  brand: {
-    primary: {
-      50: 'bg-blue-50',
-      100: 'bg-blue-100',
-      // ... 900
-      text600: 'text-blue-600',
-      border500: 'border-blue-500',
-    }
-  },
-  status: {
-    success: { ... },
-    error: { ... },
-    warning: { ... },
-  },
-  gray: { ... }
-};
-
-// shared/design-system/tokens/typography.ts
-export const getTypographyPreset = (name: TypographyPresetName) => {
-  return {
-    headingLarge: { className: 'text-3xl font-bold leading-tight', ... },
-    body: { className: 'text-base leading-normal', ... },
-    // ...
-  };
-};
-
-// shared/design-system/components/composite/ScenarioCard.tsx
-export const ScenarioCard = ({ scenarioName, status, children }) => {
-  const statusClasses = getStatusClasses(status);
-  const spacing = getComponentSpacing('scenarioCard');
-
-  return (
-    <div className={`${statusClasses.background} ${spacing.padding} rounded-lg`}>
-      <h3>{scenarioName}</h3>
+<div className="min-h-screen bg-gray-50">
+  <Header />
+  <div className="flex">
+    <Sidebar />
+    <main className="flex-1 p-6">
       {children}
-    </div>
-  );
-};
+    </main>
+  </div>
+</div>
 ```
 
-**Estructura:**
-```
-shared/design-system/
-├── tokens/
-│   ├── colors.ts            ← Colores centralizados
-│   ├── typography.ts        ← Tipografía centralizada
-│   ├── spacing.ts           ← Espaciado centralizado
-│   ├── shadows.ts           ← Sombras centralizadas
-│   └── index.ts             ← Exports & utilities
-├── components/
-│   └── composite/           ← Componentes complejos compartidos
-│       ├── ScenarioList.tsx
-│       ├── ScenarioCard.tsx
-│       ├── StepExecutionItem.tsx
-│       └── index.ts
-└── utils/                   ← Utilities del design system
-```
+### Modals
 
-#### `/shared/ui/`
-**Componentes base reutilizables**
+**Pattern**: Controlled components con `onClose` + `onSubmit`
 
 ```typescript
-// shared/ui/Button/Button.tsx
-export const Button = ({ variant, size, children, ...props }) => {
-  const variantClasses = getButtonVariantClasses(variant);
-  const sizeClasses = getButtonSizeClasses(size);
+interface ModalProps {
+  onClose: () => void;
+  onSubmit: (data: T) => Promise<void>;
+}
 
-  return (
-    <button
-      className={`${variantClasses} ${sizeClasses} transition-colors`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
+// Usage
+const [showModal, setShowModal] = useState(false);
 
-// shared/ui/Modal/Modal.tsx
-export const Modal = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm">
-      <div className={`bg-white rounded-xl shadow-2xl`}>
-        <div className="p-6 border-b">
-          <h2>{title}</h2>
-        </div>
-        <div className="p-6">{children}</div>
-      </div>
-    </div>
-  );
-};
-```
-
-#### `/shared/api/`
-**Cliente HTTP centralizado**
-
-```typescript
-// shared/api/apiClient.ts
-export const apiService = {
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
-
-  get: async <T>(url: string): Promise<T> => {
-    const response = await axios.get(`${apiService.baseURL}${url}`);
-    return response.data;
-  },
-
-  post: async <T>(url: string, data: any): Promise<T> => {
-    const response = await axios.post(`${apiService.baseURL}${url}`, data);
-    return response.data;
-  },
-
-  // ... put, delete, uploadFile
-};
-```
-
-#### `/shared/lib/`
-**Utilidades y helpers**
-
-```typescript
-// shared/lib/gherkinParser.ts
-export const parseGherkinContent = (content: string): ParsedFeature => {
-  // Parse Gherkin syntax
-  return {
-    feature: { name, description, tags },
-    scenarios: [
-      { name, tags, steps: [...] }
-    ]
-  };
-};
-
-// shared/lib/formatters.ts
-export const formatDate = (date: Date) => { ... };
-export const formatDuration = (seconds: number) => { ... };
-```
-
-#### `/shared/types/`
-**Tipos globales**
-
-```typescript
-// shared/types/api.ts
-export type ApiResponse<T> = {
-  data: T;
-  message?: string;
-  error?: string;
-};
-
-export type PaginatedResponse<T> = {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
-```
-
----
-
-## 🔄 Flujo de Datos
-
-### Flujo típico de una acción:
-
-```
-User Click (Page)
-    ↓
-Feature Modal abre (features/test-execution/ui/TestRunnerModal)
-    ↓
-Hook procesa lógica (features/test-execution/model/useTestRunner)
-    ↓
-API call (entities/test-execution/api/executionApi)
-    ↓
-HTTP request (shared/api/apiClient)
-    ↓
-Backend
-    ↓
-Response
-    ↓
-State update (useState/Context)
-    ↓
-UI re-render (React)
-```
-
----
-
-## 📊 Ejemplo Completo: Crear Ejecución de Test
-
-### 1. User clicks "Save" en TestRunnerModal
-
-```typescript
-// pages/TestCasesPage/index.tsx
-<TestRunnerModal
-  testCaseId={selectedTest.id}
-  gherkinContent={selectedTest.gherkinContent}
-  onSave={() => {
-    toast.success('Execution saved!');
-    loadTestCases(); // Refresh
+<CreateProjectModal
+  onClose={() => setShowModal(false)}
+  onSubmit={async (data) => {
+    await projectApi.create(data);
+    setShowModal(false);
+    loadProjects();
   }}
 />
 ```
 
-### 2. TestRunnerModal procesa con hook
+### Tables
+
+**Pattern**: Expandable rows con Acceptance Criteria
 
 ```typescript
-// features/test-execution/ui/TestRunnerModal.tsx
-const handleSave = async () => {
-  const { scenarios, evidenceMap } = useTestRunner();
+// StoryTable expandable row
+<tr>
+  <td onClick={() => toggleRow(row.id)}>
+    {isExpanded ? <ChevronDown /> : <ChevronRight />}
+  </td>
+  <td>{row.id}</td>
+  <td>{row.title}</td>
+  <td>
+    <AcceptanceCriteriaProgress
+      criteria={row.acceptance_criteria}
+    />
+  </td>
+</tr>
 
-  // Build payload
-  const stepResults: StepResult[] = scenarios.flatMap(scenario =>
-    scenario.steps.map(step => ({
-      step_id: step.id,
-      scenario: scenario.name,  // ✅ REQUIRED
-      keyword: step.keyword,
-      text: step.text,
-      status: step.status,
-      evidence_file: evidenceMap[step.id]?.path
-    }))
-  );
-
-  // Call API
-  await executionApi.createExecution({
-    test_case_id: testCaseId,
-    executed_by: 'QA Tester',
-    status: calculateOverallStatus(scenarios),
-    step_results: stepResults  // ✅ Validado
-  });
-
-  onSave();
-};
-```
-
-### 3. API Entity hace el request
-
-```typescript
-// entities/test-execution/api/executionApi.ts
-export const executionApi = {
-  createExecution: async (data: CreateExecutionRequest) => {
-    // Validación frontend ANTES de enviar
-    if (!data.step_results || data.step_results.length === 0) {
-      throw new Error('Must have at least one step result');
-    }
-
-    const missingScenario = data.step_results.find(s => !s.scenario);
-    if (missingScenario) {
-      throw new Error(`Step ${missingScenario.step_id} missing scenario`);
-    }
-
-    // Request al backend
-    return await apiService.post<{ id: number }>(
-      '/test-executions',
-      data
-    );
-  }
-};
-```
-
-### 4. Backend valida con Pydantic
-
-```python
-# backend/api/endpoints/executions.py
-@router.post("/test-executions")
-async def create_test_execution(
-    execution_data: TestExecutionCreate,  # ✅ Pydantic valida
-    db: Session = Depends(get_db)
-):
-    # Si data es inválida, Pydantic retorna 422 automáticamente
-    # Si data es válida, continúa...
-
-    new_execution = TestExecutionDB(
-        test_case_id=execution_data.test_case_id,
-        step_results=json.dumps([s.dict() for s in execution_data.step_results]),
-        # ...
-    )
-    db.add(new_execution)
-    db.commit()
-
-    return {"message": "Created", "id": new_execution.id}
+{isExpanded && (
+  <tr>
+    <td colSpan={6}>
+      <AcceptanceCriteriaList
+        criteria={row.acceptance_criteria}
+      />
+    </td>
+  </tr>
+)}
 ```
 
 ---
 
-## 🎯 Ventajas de Esta Arquitectura
+## CONVENCIONES
 
-### 1. **Escalabilidad**
-- Agregar feature nuevo: crear carpeta en `features/`, no tocar nada más
-- Agregar entity nuevo: crear carpeta en `entities/`, implementar API
-- Modificar diseño: cambiar `tokens/`, afecta toda la app
+### Naming
 
-### 2. **Mantenibilidad**
-- Bug en TestRunner: solo revisar `features/test-execution/`
-- Cambiar API: solo revisar `entities/*/api/`
-- Cambiar colores: solo editar `shared/design-system/tokens/colors.ts`
+| Tipo | Convención | Ejemplo |
+|------|------------|---------|
+| Components | PascalCase | `LoginPage`, `StoryTable` |
+| Files | PascalCase | `LoginPage.tsx`, `AuthContext.tsx` |
+| Hooks | camelCase + use prefix | `useAuth`, `useProject` |
+| API functions | camelCase | `projectApi.create()` |
+| Types | PascalCase | `User`, `Project`, `LoginRequest` |
+| Enums | PascalCase | `Role`, `TestType`, `Priority` |
 
-### 3. **Testabilidad**
-- Hooks aislados: fácil unit test
-- Componentes tontos: fácil snapshot test
-- API mocked: fácil integration test
+### File Structure
 
-### 4. **Onboarding**
-- Nueva persona: lee esta doc, entiende estructura inmediatamente
-- Convención clara: sabe dónde poner código nuevo
-- Layers separadas: no mezcla UI con lógica
-
-### 5. **Collaboration**
-- Múltiples devs: cada uno trabaja en su feature sin conflictos
-- Code review: scope claro (solo archivos de esa feature)
-- Git: menos merge conflicts
-
----
-
-## ⚠️ Reglas Importantes
-
-### ❌ NO HACER:
-
-1. **NO importar de capas superiores**
-```typescript
-// ❌ MAL: shared importando de features
-// shared/ui/Button.tsx
-import { useTestRunner } from '@/features/test-execution';  // ❌ PROHIBIDO
+```
+ComponentName/
+├── index.tsx           # Main component
+├── types.ts            # Local types (if any)
+└── styles.css          # Local styles (if any, rare with Tailwind)
 ```
 
-2. **NO hardcodear valores de diseño**
+### Props Types
+
 ```typescript
-// ❌ MAL
-<div className="bg-blue-600 text-white p-4">  // ❌ Hardcoded
+// Always define Props interface
+interface ComponentNameProps {
+  title: string;
+  onSubmit: (data: FormData) => void;
+  isLoading?: boolean;  // Optional props with ?
+}
 
-// ✅ BIEN
-<div className={`${colors.brand.primary[600]} ${colors.textWhite} ${padding.md}`}>
-```
-
-3. **NO mezclar lógica con UI**
-```typescript
-// ❌ MAL: Todo en un componente
-const TestRunner = () => {
-  const [scenarios, setScenarios] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-
-  const markStep = () => { /* lógica compleja */ };
-
-  return <div>{/* 500 líneas de JSX */}</div>;
-};
-
-// ✅ BIEN: Separar hook y componente
-const useTestRunner = () => { /* lógica */ };
-const TestRunner = () => {
-  const { scenarios, markStep } = useTestRunner();
-  return <div>{/* JSX limpio */}</div>;
+export const ComponentName = ({ title, onSubmit, isLoading = false }: ComponentNameProps) => {
+  // ...
 };
 ```
 
-4. **NO duplicar código**
+### API Calls
+
 ```typescript
-// ❌ MAL: Copiar-pegar componente
-// TestRunnerModal.tsx
-<div className="scenario-card">{/* ... */}</div>
-
-// ExecutionDetailsModal.tsx
-<div className="scenario-card">{/* ... mismo código */}</div>
-
-// ✅ BIEN: Crear componente compartido
-// shared/design-system/components/composite/ScenarioCard.tsx
-export const ScenarioCard = ({ ... }) => { ... };
+// Always use try-catch
+try {
+  setLoading(true);
+  const data = await api.call();
+  // Success handling
+  toast.success('Success message');
+} catch (error: any) {
+  const message = error.response?.data?.detail || 'Error genérico';
+  toast.error(message);
+} finally {
+  setLoading(false);
+}
 ```
 
-### ✅ SÍ HACER:
+### Styling
 
-1. **Usar design tokens**
-2. **Separar lógica en hooks**
-3. **Crear componentes reutilizables**
-4. **Validar datos antes de API calls**
-5. **Usar TypeScript estricto**
-6. **Documentar interfaces complejas**
-
----
-
-## 🚀 Próximos Pasos (Sprint 2)
-
-**Tarea 2: Validación de schema**
-- Crear interfaces estrictas en `entities/test-execution/model/types.ts`
-- Validar en `entities/test-execution/api/executionApi.ts`
-- Backend valida con Pydantic
-
-**Tarea 3: Paginación en reportes**
-- Agregar filtros en `pages/ReportsPage/index.tsx`
-- Backend implementa query params
-- UI muestra date pickers
+**TailwindCSS utility-first**:
+```tsx
+<div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
+  <h2 className="text-xl font-bold text-gray-900">Title</h2>
+  <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+    Action
+  </button>
+</div>
+```
 
 ---
 
-**Arquitectura sólida = Código mantenible = Features rápidos = Equipo feliz** 🎉
+## MEJORAS FUTURAS
+
+### 1. State Management Avanzado
+- React Query para server state + caching
+- Zustand para complex global state
+
+### 2. Testing
+- Vitest para unit tests
+- React Testing Library
+- E2E con Playwright
+
+### 3. Performance
+- Code splitting con React.lazy
+- Memoization (React.memo, useMemo)
+- Virtual scrolling para tablas grandes
+
+### 4. Accessibility
+- ARIA labels
+- Keyboard navigation
+- Screen reader support
+
+### 5. Error Boundaries
+- React Error Boundaries para crashes
+- Fallback UI
+
+---
+
+**Última Actualización**: 2025-11-22
+**Versión**: 2.0

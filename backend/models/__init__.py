@@ -5,6 +5,19 @@ from .project import Project, CreateProjectDTO, UpdateProjectDTO, ProjectStatus
 from .user_story import UserStory, AcceptanceCriteria, Priority, Status
 from .test_case import TestCase, GherkinScenario, TestStep, TestType, TestPriority, TestStatus
 from .bug_report import BugReport, BugSeverity, BugPriority, BugStatus, BugType
+from .user import (
+    User,
+    CreateUserDTO,
+    UpdateUserDTO,
+    Role,
+    LoginRequest,
+    LoginResponse,
+    CheckEmailRequest,
+    CheckEmailResponse,
+    RegisterRequest,
+    RegisterResponse,
+    CreateUserInvitationDTO,
+)
 
 __all__ = [
     "Project",
@@ -26,4 +39,15 @@ __all__ = [
     "BugPriority",
     "BugStatus",
     "BugType",
+    "User",
+    "CreateUserDTO",
+    "UpdateUserDTO",
+    "Role",
+    "LoginRequest",
+    "LoginResponse",
+    "CheckEmailRequest",
+    "CheckEmailResponse",
+    "RegisterRequest",
+    "RegisterResponse",
+    "CreateUserInvitationDTO",
 ]

@@ -56,3 +56,6 @@ htmlcov/
 
 # Logs
 *.log
+
+# Test files
+test_auth_*.py

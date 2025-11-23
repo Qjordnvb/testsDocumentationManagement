@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { MoreVertical, Beaker, Eye, Edit2 } from 'lucide-react';
 import type { UserStory } from '@/entities/user-story';
+import { useAuth } from '@/app/providers';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import { Button } from '@/shared/ui/Button';
 
@@ -24,6 +25,7 @@ export const UserStoryCard: React.FC<Props> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const { hasRole } = useAuth();
 
   const bodySmall = getTypographyPreset('bodySmall');
   const body = getTypographyPreset('body');
@@ -186,15 +188,18 @@ export const UserStoryCard: React.FC<Props> = ({
                 Ver Tests ({story.test_case_ids!.length})
               </Button>
             ) : (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => onGenerateTests(story.id)}
-                leftIcon={<Beaker size={18} />}
-                className="w-full"
-              >
-                Generate Tests
-              </Button>
+              // Only ADMIN and QA can generate tests
+              hasRole('admin', 'qa') && (
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => onGenerateTests(story.id)}
+                  leftIcon={<Beaker size={18} />}
+                  className="w-full"
+                >
+                  Generate Tests
+                </Button>
+              )
             )}
             <Button
               variant="ghost"
@@ -224,16 +229,19 @@ export const UserStoryCard: React.FC<Props> = ({
               <span>Ver Tests ({story.test_case_ids!.length})</span>
             </button>
           ) : (
-            <button
-              onClick={() => {
-                onGenerateTests(story.id);
-                setShowMobileMenu(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${body.className}`}
-            >
-              <Beaker size={18} className={colors.brand.primary.text600} />
-              <span>Generate Tests</span>
-            </button>
+            // Only ADMIN and QA can generate tests
+            hasRole('admin', 'qa') && (
+              <button
+                onClick={() => {
+                  onGenerateTests(story.id);
+                  setShowMobileMenu(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${body.className}`}
+              >
+                <Beaker size={18} className={colors.brand.primary.text600} />
+                <span>Generate Tests</span>
+              </button>
+            )
           )}
           <button
             onClick={() => {
