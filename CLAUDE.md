@@ -1,8 +1,12 @@
 # CLAUDE.md - QA Documentation System
 
-**Última Actualización**: 2025-11-22
-**Estado**: 🟢 Backend 100% | 🟢 Frontend 100% Funcional
-**Branch**: `claude/analyze-main-branch-012dMF1s91s6f5b5W9os6upj`
+**Última Actualización**: 2025-11-23
+**Estado**: 🟢 Frontend 100% FSD | 🟡 Backend 17% Service Layer (3 servicios creados, 6 endpoints pendientes)
+**Branch**: `claude/analyze-saas-project-01Vb783SjDuWLKrXgz25vhvJ`
+
+**⚠️ IMPORTANTE - Deuda Técnica Identificada**:
+- ✅ **Frontend**: CERO deuda técnica - 100% refactorizado con FSD
+- ⚠️ **Backend**: Deuda técnica en 6 endpoints (3,289 líneas) - Ver [TECHNICAL_DEBT_ANALYSIS.md](TECHNICAL_DEBT_ANALYSIS.md)
 
 ---
 
@@ -10,12 +14,15 @@
 
 1. [Quick Start](#quick-start)
 2. [Stack y Arquitectura](#stack-y-arquitectura)
-3. [🔐 Sistema de Autenticación](#sistema-de-autenticación)
-4. [Roles y Permisos](#roles-y-permisos)
-5. [Flujo de Datos](#flujo-de-datos)
-6. [Mapa de Archivos](#mapa-de-archivos)
-7. [Endpoints API](#endpoints-api-principales)
-8. [Troubleshooting](#troubleshooting)
+3. [🏗️ Arquitectura Service Layer (Backend)](#arquitectura-service-layer-backend)
+4. [🎨 Arquitectura FSD (Frontend)](#arquitectura-fsd-frontend)
+5. [🔐 Sistema de Autenticación](#sistema-de-autenticación)
+6. [Roles y Permisos](#roles-y-permisos)
+7. [Flujo de Datos](#flujo-de-datos)
+8. [Mapa de Archivos](#mapa-de-archivos)
+9. [Endpoints API](#endpoints-api-principales)
+10. [Deuda Técnica](#deuda-técnica)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -80,20 +87,348 @@ Rol: QA
 - **HTTP**: Axios
 - **Notifications**: react-hot-toast
 
-### Arquitectura
+### Arquitectura General
 ```
-┌─────────────┐      ┌──────────────┐      ┌──────────┐
-│  Frontend   │ HTTP │   Backend    │ SQL  │ SQLite   │
-│   (React)   │─────→│   (FastAPI)  │─────→│   DB     │
-│  Port 5173  │      │  Port 8000   │      │ qa_*.db  │
-└─────────────┘      └──────────────┘      └──────────┘
-                            │
-                            ↓ API
-                     ┌──────────────┐
-                     │ Gemini AI    │
-                     │ (Test Gen)   │
-                     └──────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    FRONTEND (React 18)                  │
+│  Architecture: Feature-Sliced Design (FSD)             │
+│  ┌──────────┬──────────┬──────────┬──────────┐         │
+│  │  Pages   │ Features │ Entities │  Shared  │         │
+│  │ (11/11)  │  (7/7)   │  (7/7)   │  (utils) │         │
+│  └────┬─────┴──────────┴──────────┴─────┬────┘         │
+│       │        model/ + ui/ + lib/       │              │
+└───────┼──────────────────────────────────┼──────────────┘
+        │           HTTP (Axios)            │
+        ↓                                   ↓
+┌─────────────────────────────────────────────────────────┐
+│                 BACKEND (FastAPI 0.109.0)               │
+│  Architecture: Service Layer (Partial - 17%)           │
+│  ┌──────────────┬───────────────┬──────────────┐       │
+│  │ Controllers  │   Services    │  Repository  │       │
+│  │  (HTTP)      │ (Bus. Logic)  │    (DB)      │       │
+│  │              │               │              │       │
+│  │ ✅ auth.py   │ ✅ AuthService │              │       │
+│  │ ✅ users.py  │ ✅ UserService │  SQLAlchemy  │       │
+│  │ ✅ projects  │ ✅ ProjectSvc  │   ORM        │       │
+│  │ ❌ bugs.py   │ ✅ BugService  │              │       │
+│  │ ❌ stories   │ ❌ (pending)   │              │       │
+│  │ ❌ test_case │ ❌ (pending)   │              │       │
+│  │ ❌ reports   │ ❌ (pending)   │              │       │
+│  │ ❌ execution │ ❌ (pending)   │              │       │
+│  │ ❌ stats     │ ❌ (pending)   │              │       │
+│  └──────┬───────┴───────┬───────┴──────┬───────┘       │
+│         │               │              │               │
+└─────────┼───────────────┼──────────────┼───────────────┘
+          │               │              │
+          ↓               ↓              ↓
+    ┌──────────┐   ┌──────────┐   ┌──────────┐
+    │ Gemini   │   │ ReportLab│   │ SQLite   │
+    │   AI     │   │ + docx   │   │   DB     │
+    └──────────┘   └──────────┘   └──────────┘
 ```
+
+**Leyenda**:
+- ✅ = Refactorizado con Service Layer
+- ❌ = Deuda técnica pendiente
+
+---
+
+## 🏗️ Arquitectura Service Layer (Backend)
+
+### Estado Actual: 17% Refactorizado
+
+El backend está en transición hacia una arquitectura de 3 capas siguiendo principios SOLID:
+
+**Capas**:
+1. **HTTP Layer** (Controllers) - Solo maneja requests/responses
+2. **Business Logic Layer** (Services) - Contiene toda la lógica de negocio
+3. **Data Layer** (Models/DB) - Interacción con base de datos
+
+### Servicios Implementados ✅
+
+#### 1. **AuthService** (`backend/services/auth_service.py`)
+```python
+class AuthService:
+    def check_email(email: str) → Dict  # Validar whitelist
+    def register_user(email, password, full_name) → Dict  # Registro
+    def login_user(email, password) → Dict  # Login
+    def get_user_info(user_id) → Dict  # Info usuario
+```
+
+**Beneficios**:
+- Password hashing centralizado
+- Generación de JWT en un solo lugar
+- Testeable sin HTTP server
+
+#### 2. **UserService** (`backend/services/user_service.py`)
+```python
+class UserService:
+    def get_all_users() → List[UserDB]
+    def get_user_by_id(user_id) → UserDB
+    def create_invitation(email, full_name, role, invited_by) → Dict
+    def create_user(email, password, full_name, role) → UserDB
+    def update_user(user_id, **fields) → UserDB
+    def delete_user(user_id, current_user_id) → bool
+```
+
+**Beneficios**:
+- Generación de IDs únicos centralizada
+- Validaciones complejas en un solo lugar
+- Prevención de auto-eliminación
+
+#### 3. **BugService** (`backend/services/bug_service.py`)
+```python
+class BugService:
+    def get_bugs_by_project(project_id) → List[Dict]
+    def get_bugs_grouped(project_id) → Dict
+    def get_bug_by_id(bug_id) → Dict
+    def create_bug(bug: BugReport) → Dict
+    def update_bug(bug_id, updates) → Dict
+    def delete_bug(bug_id) → bool
+```
+
+**Beneficios**:
+- Lógica de agrupación compleja centralizada
+- Conversiones de datos consistentes
+- Generación de documentos en servicio
+
+#### 4. **ProjectService** (`backend/services/project_service.py`)
+```python
+class ProjectService:
+    def get_all_projects() → List[ProjectDB]
+    def get_project_by_id(project_id) → ProjectDB
+    def create_project(name, description) → ProjectDB
+    def update_project(project_id, **fields) → ProjectDB
+    def delete_project(project_id) → bool
+    def get_project_stats(project_id) → Dict
+```
+
+### Endpoints Refactorizados ✅
+
+| Endpoint | Líneas | Estado | Servicio | Reducción |
+|----------|--------|--------|----------|-----------|
+| **auth.py** | 202 | ✅ Refactorizado | AuthService | -25% (de 271) |
+| **users.py** | 292 | ✅ Refactorizado | UserService | -20% (de 364) |
+| **projects.py** | 182 | ✅ Refactorizado | ProjectService | N/A (existía) |
+
+### Endpoints Pendientes ❌
+
+| Endpoint | Líneas | Prioridad | Servicio Requerido |
+|----------|--------|-----------|-------------------|
+| **test_cases.py** | 831 | 🔴 ALTA | TestCaseService |
+| **bugs.py** | 722 | 🔴 ALTA | BugService (creado, no usado) |
+| **reports.py** | 682 | 🟠 MEDIA | ReportService |
+| **stories.py** | 441 | 🟡 BAJA-MEDIA | StoryService |
+| **executions.py** | 365 | 🟡 BAJA-MEDIA | ExecutionService |
+| **stats.py** | 28 | 🟢 TRIVIAL | StatsService |
+
+**Total Deuda Técnica**: 3,289 líneas (82.9% del backend)
+
+### Dependency Injection Pattern
+
+```python
+# En endpoints refactorizados:
+def get_auth_service_dependency(db: Session = Depends(get_db)) → AuthService:
+    return AuthService(db)
+
+@router.post("/auth/login")
+async def login(
+    service: AuthService = Depends(get_auth_service_dependency)
+):
+    return service.login_user(email, password)
+```
+
+---
+
+## 🎨 Arquitectura FSD (Frontend)
+
+### Estado Actual: 100% Refactorizado ✅
+
+El frontend sigue completamente **Feature-Sliced Design**, una arquitectura que organiza el código por features y capas.
+
+### Estructura FSD
+
+```
+frontend/src/
+├── app/                    # Inicialización de la aplicación
+│   ├── App.tsx             # Rutas y providers
+│   ├── providers/          # Context API (Auth, Project)
+│   └── components/         # ProtectedRoute
+│
+├── pages/                  # 11 páginas (100% FSD)
+│   ├── AdminDashboardPage/
+│   │   ├── model/          # useAdminDashboard hook
+│   │   └── ui/             # Componente presentacional
+│   ├── BugsPage/
+│   │   ├── model/          # useBugs hook
+│   │   ├── ui/             # Componentes presentacionales
+│   │   └── lib/            # Funciones puras (badges)
+│   └── ... (9 páginas más)
+│
+├── features/               # Features reutilizables (7 features)
+│   ├── authentication/
+│   │   └── ui/             # LoginEmailStep, RegisterStep, etc.
+│   ├── bug-management/
+│   │   └── ui/             # BugReportModal, EditBugModal
+│   ├── generate-tests/
+│   │   ├── api/            # generateTests
+│   │   ├── lib/            # testFormatter
+│   │   ├── model/          # generateStore
+│   │   └── ui/             # GenerateModal, ReviewModal
+│   └── ... (4 features más)
+│
+├── entities/               # Entidades de negocio (7 entities)
+│   ├── project/
+│   │   ├── api/            # projectApi
+│   │   ├── lib/            # calculations (pure functions)
+│   │   └── model/          # types
+│   └── ... (6 entities más)
+│
+├── widgets/                # Widgets compuestos (5 widgets)
+│   ├── header/             # Header con user menu
+│   ├── sidebar/            # Sidebar con navegación
+│   └── ... (3 widgets más)
+│
+└── shared/                 # Código compartido
+    ├── api/                # apiClient (axios)
+    ├── design-system/      # Tokens, componentes
+    ├── hooks/              # useProjects, useProjectStats
+    ├── lib/                # filters, format, gherkinParser
+    └── ui/                 # Componentes reutilizables (Button, Modal, etc.)
+```
+
+### Páginas Refactorizadas (11/11)
+
+Cada página sigue la estructura FSD:
+
+1. **AdminDashboardPage** - Estadísticas de administración
+2. **BugDetailsPage** - Detalles de bug con test execution
+3. **BugsPage** - Filtrado y vistas agrupadas
+4. **DashboardPage** - Dashboard de proyecto
+5. **LoginPage** - Multi-step authentication
+6. **ManagerDashboardPage** - Vista de manager con health scores
+7. **ProjectsListPage** - Listado de proyectos con filtros
+8. **ReportsPage** - Generación de reportes
+9. **StoriesPage** - User stories management
+10. **TestCasesPage** - Test cases con AI generation
+11. **UsersManagementPage** - Gestión de usuarios
+
+**Patrón aplicado en todas**:
+```
+PageName/
+├── model/
+│   ├── index.ts           # Exports
+│   ├── types.ts           # TypeScript interfaces
+│   └── usePageName.ts     # Custom hook con toda la lógica
+├── ui/
+│   ├── index.ts           # Exports
+│   ├── PageName.tsx       # Componente presentacional
+│   └── ComponenteParte.tsx # Sub-componentes
+└── lib/                   # Funciones puras (opcional)
+    └── helpers.ts
+```
+
+### Shared Hooks (Reutilizables)
+
+**`shared/hooks/useProjects.ts`**:
+```typescript
+export const useProjects = (options?: UseProjectsOptions) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadProjects = async () => {
+    const data = await projectApi.getAll(filterByUser);
+    setProjects(data);
+  };
+
+  return { projects, loading, reload: loadProjects };
+};
+```
+
+**`shared/hooks/useProjectStats.ts`**:
+```typescript
+export const useProjectStats = (projectId: string) => {
+  const [stats, setStats] = useState<ProjectStats | null>(null);
+
+  const loadStats = async () => {
+    const data = await projectApi.getStats(projectId);
+    setStats(data);
+  };
+
+  return { stats, loading, reload: loadStats };
+};
+```
+
+### Shared Libraries (Pure Functions)
+
+**`shared/lib/filters.ts`**:
+```typescript
+export const applyProjectFilters = (
+  projects: Project[],
+  filters: ProjectFilters
+): Project[] => {
+  return projects.filter(project => {
+    if (filters.searchQuery && !project.name.includes(filters.searchQuery)) {
+      return false;
+    }
+    // ... más filtros
+    return true;
+  });
+};
+```
+
+**`entities/project/lib/calculations.ts`**:
+```typescript
+export const calculateHealthScore = (project: ProjectMetrics): number => {
+  const coverageScore = (project.test_coverage / 100) * 40;
+  const bugScore = Math.max(0, (1 - project.total_bugs / stories) * 30);
+  const testScore = Math.min(30, (project.total_tests / stories) * 30);
+  return Math.min(100, coverageScore + bugScore + testScore);
+};
+
+export const assessRiskLevel = (project: ProjectMetrics): RiskAssessment => {
+  const criticalFactors: string[] = [];
+  if (project.test_coverage < 50) criticalFactors.push('cobertura baja');
+  if (project.total_bugs > project.total_user_stories * 0.3) {
+    criticalFactors.push('alto número de bugs');
+  }
+  // ... retorna nivel de riesgo basado en factores
+};
+```
+
+### Principios FSD Aplicados
+
+1. ✅ **Separation of Concerns**: Lógica (model/) separada de UI (ui/)
+2. ✅ **Single Responsibility**: Cada hook/componente tiene una responsabilidad
+3. ✅ **Reusability**: Hooks y funciones compartidas en shared/
+4. ✅ **Testability**: Funciones puras fáciles de testear
+5. ✅ **Maintainability**: Cambios localizados, no afectan otras partes
+
+---
+
+## 🚨 Deuda Técnica
+
+### Backend - Deuda Técnica Alta
+
+**Ver análisis completo**: [TECHNICAL_DEBT_ANALYSIS.md](TECHNICAL_DEBT_ANALYSIS.md)
+
+| Archivo | Líneas | Violaciones SOLID | Prioridad |
+|---------|--------|-------------------|-----------|
+| test_cases.py | 831 | SRP, DIP, OCP | 🔴 CRÍTICA |
+| bugs.py | 722 | SRP, DIP | 🔴 ALTA |
+| reports.py | 682 | SRP, Duplicación | 🟠 MEDIA |
+| stories.py | 441 | SRP, DIP | 🟡 BAJA-MEDIA |
+| executions.py | 365 | SRP | 🟡 BAJA-MEDIA |
+| stats.py | 28 | SRP | 🟢 TRIVIAL |
+
+**Total**: 3,289 líneas (82.9% del backend con deuda técnica)
+
+### Frontend - Sin Deuda Técnica ✅
+
+- ✅ 100% refactorizado con FSD
+- ✅ Todas las páginas (11/11) siguen el patrón
+- ✅ Features y widgets correctamente estructurados
+- ✅ Cero código duplicado identificado
 
 ---
 
