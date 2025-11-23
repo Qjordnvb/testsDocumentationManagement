@@ -11,9 +11,10 @@ import type { Role } from '@/entities/user';
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRoles?: Role[];
+  excludeRoles?: Role[]; // Roles that are NOT allowed to access this route
 }
 
-export const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children, requiredRoles, excludeRoles }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
   const location = useLocation();
 
@@ -32,6 +33,14 @@ export const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps)
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Check if user's role is excluded from this route
+  if (excludeRoles && excludeRoles.length > 0) {
+    if (hasRole(...excludeRoles)) {
+      // Redirect excluded roles to home
+      return <Navigate to="/" replace />;
+    }
   }
 
   // Check role requirements if specified

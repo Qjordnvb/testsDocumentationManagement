@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, Clock, User, Image, AlertCircle } from 'lucide-react';
 import { apiService } from '@/shared/api/apiClient';
 import { bugApi } from '@/entities/bug';
+import { useAuth } from '@/app/providers';
 import type { ExecutionDetails, StepExecutionResult } from '@/entities/test-execution';
 import { BugReportModal } from '@/features/bug-management/ui';
 import { ScenarioList, ScenarioCard, StepExecutionItem } from '@/shared/design-system/components/composite';
@@ -39,6 +40,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
   userStoryId,
   onBugReported
 }) => {
+  const { hasRole } = useAuth();
   const [execution, setExecution] = useState<ExecutionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
@@ -289,7 +291,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                       totalSteps={scenario.steps.length}
                       bugCount={scenarioBugIds.length}
                       bugIds={scenarioBugIds}
-                      showBugButton={scenario.failedSteps > 0}
+                      showBugButton={scenario.failedSteps > 0 && hasRole('qa', 'dev')}
                       onReportBug={() => setSelectedScenarioForBug(scenario)}
                     >
                     {/* Steps within scenario */}

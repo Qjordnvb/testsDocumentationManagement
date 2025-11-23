@@ -5,14 +5,16 @@
  * UPDATED: Added authentication with role-based access control
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/app/providers';
-import { ProtectedRoute } from '@/app/components';
+import { ProtectedRoute, DevRedirect } from '@/app/components';
 import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { Layout } from '@/widgets/header/Layout';
 import { LoginPage } from '@/pages/LoginPage';
 import { UsersManagementPage } from '@/pages/UsersManagementPage';
+import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
+import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage';
 import { ProjectsListPage } from '@/pages/ProjectsListPage';
 import { Dashboard } from '@/pages/DashboardPage';
 import { StoriesPage } from '@/pages/StoriesPage';
@@ -53,7 +55,15 @@ function App() {
                       {/* Landing: Project Selection */}
                       <Route path="/" element={<ProjectsListPage />} />
 
-                      {/* Admin Only: User Management */}
+                      {/* Admin Only Routes */}
+                      <Route
+                        path="/admin/dashboard"
+                        element={
+                          <ProtectedRoute requiredRoles={['admin']}>
+                            <AdminDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/admin/users"
                         element={
@@ -63,18 +73,57 @@ function App() {
                         }
                       />
 
+                      {/* Manager Only Routes */}
+                      <Route
+                        path="/manager/dashboard"
+                        element={
+                          <ProtectedRoute requiredRoles={['manager']}>
+                            <ManagerDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
                       {/* Project-scoped routes */}
                       <Route path="/projects/:projectId">
-                        {/* Redirect /projects/:id to /projects/:id/dashboard */}
-                        <Route index element={<Navigate to="dashboard" replace />} />
+                        {/* Redirect /projects/:id to role-specific landing */}
+                        <Route index element={
+                          <ProtectedRoute>
+                            <DevRedirect defaultPath="dashboard" devPath="bugs" />
+                          </ProtectedRoute>
+                        } />
 
                         {/* Project pages */}
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="stories" element={<StoriesPage />} />
-                        <Route path="tests" element={<TestCasesPage />} />
-                        <Route path="bugs" element={<BugsPage />} />
-                        <Route path="bugs/:bugId" element={<BugDetailsPage />} />
-                        <Route path="reports" element={<ReportsPage />} />
+                        <Route path="dashboard" element={
+                          <ProtectedRoute excludeRoles={['dev', 'admin']}>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        } />
+                        {/* Stories and Tests: DEV has readonly access, Manager excluded */}
+                        <Route path="stories" element={
+                          <ProtectedRoute excludeRoles={['manager']}>
+                            <StoriesPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="tests" element={
+                          <ProtectedRoute excludeRoles={['manager']}>
+                            <TestCasesPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="bugs" element={
+                          <ProtectedRoute excludeRoles={['manager']}>
+                            <BugsPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="bugs/:bugId" element={
+                          <ProtectedRoute excludeRoles={['manager']}>
+                            <BugDetailsPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="reports" element={
+                          <ProtectedRoute excludeRoles={['dev', 'manager']}>
+                            <ReportsPage />
+                          </ProtectedRoute>
+                        } />
                         <Route path="settings" element={<SettingsPage />} />
                       </Route>
                     </Routes>

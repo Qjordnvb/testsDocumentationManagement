@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
 import { UploadModal } from '@/features/upload-excel';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import { projectApi, type ProjectStats } from '@/entities/project';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 
@@ -16,6 +17,8 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { currentProject } = useProject();
+  const { hasRole } = useAuth();
+  const isManager = hasRole('manager');
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -250,35 +253,37 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="card">
-        <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-4`}>
-          🎯 Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button
-            onClick={() => setUploadModalOpen(true)}
-            className="btn btn-primary flex items-center justify-center gap-2"
-          >
-            <span>📤</span>
-            <span>Upload Excel</span>
-          </button>
-          <button
-            onClick={() => navigate(`/projects/${projectId}/stories`)}
-            className="btn btn-secondary flex items-center justify-center gap-2"
-          >
-            <span>✨</span>
-            <span>Generate Tests</span>
-          </button>
-          <button
-            onClick={handleRefresh}
-            className="btn btn-secondary flex items-center justify-center gap-2"
-          >
-            <span>🔄</span>
-            <span>Refresh Metrics</span>
-          </button>
+      {/* Quick actions - Manager sees only Refresh */}
+      {!isManager && (
+        <div className="card">
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} mb-4`}>
+            🎯 Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => setUploadModalOpen(true)}
+              className="btn btn-primary flex items-center justify-center gap-2"
+            >
+              <span>📤</span>
+              <span>Upload Excel</span>
+            </button>
+            <button
+              onClick={() => navigate(`/projects/${projectId}/stories`)}
+              className="btn btn-secondary flex items-center justify-center gap-2"
+            >
+              <span>✨</span>
+              <span>Generate Tests</span>
+            </button>
+            <button
+              onClick={handleRefresh}
+              className="btn btn-secondary flex items-center justify-center gap-2"
+            >
+              <span>🔄</span>
+              <span>Refresh Metrics</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Reports Section */}
       <div className="card">

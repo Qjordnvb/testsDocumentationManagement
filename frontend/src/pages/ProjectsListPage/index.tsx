@@ -8,9 +8,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectApi } from '@/entities/project';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import { CreateProjectModal } from '@/features/project-management';
 import type { Project } from '@/entities/project';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
+import { AlertCircle } from 'lucide-react';
 
 export const ProjectsListPage = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -18,6 +20,8 @@ export const ProjectsListPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { setCurrentProject } = useProject();
+  const { user, hasRole } = useAuth();
+  const isDev = hasRole('dev');
   const navigate = useNavigate();
 
   // Clear current project when viewing all projects (only on mount)
@@ -29,12 +33,14 @@ export const ProjectsListPage = () => {
   // Load projects on mount
   useEffect(() => {
     loadProjects();
-  }, []);
+  }, [isDev, user?.email]); // Reload when role or user changes
 
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const data = await projectApi.getAll();
+      // DEV role: Filter projects by bugs assigned to this user
+      const filterByUser = isDev ? user?.email : undefined;
+      const data = await projectApi.getAll(filterByUser);
       setProjects(data);
       setError(null);
     } catch (err) {
@@ -46,7 +52,14 @@ export const ProjectsListPage = () => {
 
   const handleSelectProject = (project: Project) => {
     setCurrentProject(project);
-    navigate(`/projects/${project.id}/dashboard`);
+    // Role-based navigation
+    if (isDev) {
+      // DEV: Go directly to Mis Bugs
+      navigate(`/projects/${project.id}/bugs`);
+    } else {
+      // QA, Manager: Go to dashboard
+      navigate(`/projects/${project.id}/dashboard`);
+    }
   };
 
   const handleCreateProject = () => {
@@ -90,35 +103,62 @@ export const ProjectsListPage = () => {
 
   return (
     <div className="space-y-6">
-        {/* Actions bar */}
-        <div className="flex justify-end items-center">
-          <button
-            onClick={handleCreateProject}
-            className="btn btn-primary flex items-center gap-2"
-          >
-            <span>➕</span>
-            <span>Nuevo Proyecto</span>
-          </button>
-        </div>
+        {/* Actions bar - Only QA can create projects */}
+        {hasRole('qa') && (
+          <div className="flex justify-end items-center">
+            <button
+              onClick={handleCreateProject}
+              className="btn btn-primary flex items-center gap-2"
+            >
+              <span>➕</span>
+              <span>Nuevo Proyecto</span>
+            </button>
+          </div>
+        )}
 
         {/* Projects Grid */}
         <div>
         {projects.length === 0 ? (
           <div className="card text-center py-16 animate-fade-in-up">
-            <div className="text-7xl mb-6">📁</div>
-            <h2 className={`${headingLarge.className} font-bold ${colors.gray.text900} mb-3`}>
-              No hay proyectos todavía
-            </h2>
-            <p className={`${colors.gray.text600} mb-8 ${body.className}`}>
-              Crea tu primer proyecto para empezar a gestionar test cases
-            </p>
-            <button
-              onClick={handleCreateProject}
-              className="btn btn-primary inline-flex items-center gap-2"
-            >
-              <span>➕</span>
-              <span>Crear Primer Proyecto</span>
-            </button>
+            {isDev ? (
+              <>
+                {/* DEV role: No projects with assigned bugs */}
+                <AlertCircle className={`w-16 h-16 mx-auto mb-6 ${colors.gray.text400}`} />
+                <h2 className={`${headingLarge.className} font-bold ${colors.gray.text900} mb-3`}>
+                  No tienes bugs asignados
+                </h2>
+                <p className={`${colors.gray.text600} ${body.className}`}>
+                  No tienes bugs asignados en ningún proyecto actualmente.
+                </p>
+                <p className={`${colors.gray.text500} mt-2 ${bodySmall.className}`}>
+                  Contacta con tu QA o Project Manager para que te asignen bugs.
+                </p>
+              </>
+            ) : (
+              <>
+                {/* Other roles: No projects exist */}
+                <div className="text-7xl mb-6">📁</div>
+                <h2 className={`${headingLarge.className} font-bold ${colors.gray.text900} mb-3`}>
+                  No hay proyectos todavía
+                </h2>
+                <p className={`${colors.gray.text600} mb-8 ${body.className}`}>
+                  {hasRole('qa')
+                    ? 'Crea tu primer proyecto para empezar a gestionar test cases'
+                    : 'Espera a que QA cree un proyecto'
+                  }
+                </p>
+                {/* Only QA can create projects */}
+                {hasRole('qa') && (
+                  <button
+                    onClick={handleCreateProject}
+                    className="btn btn-primary inline-flex items-center gap-2"
+                  >
+                    <span>➕</span>
+                    <span>Crear Primer Proyecto</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">

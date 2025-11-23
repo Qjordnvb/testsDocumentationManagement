@@ -1,9 +1,14 @@
 /**
- * Sidebar Navigation Component (project-scoped)
+ * Sidebar Navigation Component (role-based)
+ * - ADMIN: Only Dashboard and Users
+ * - MANAGER: Only Dashboard
+ * - DEV: Projects with assigned bugs
+ * - QA: All projects (default)
  */
 
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useProject } from '@/app/providers/ProjectContext';
+import { useAuth } from '@/app/providers';
 import { useAppStore } from '@/app/providers/appStore';
 import { useState, useEffect } from 'react';
 import { projectApi } from '@/entities/project';
@@ -19,6 +24,7 @@ interface NavItem {
 export const Sidebar = () => {
   const location = useLocation();
   const params = useParams();
+  const { user, hasRole } = useAuth();
 
   // Extract projectId from params OR from URL as fallback
   let projectId = params.projectId;
@@ -33,37 +39,78 @@ export const Sidebar = () => {
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
   const [allProjects, setAllProjects] = useState<Project[]>([]);
 
-  // Build nav items with dynamic projectId
-  const navItems: NavItem[] = projectId ? [
-    { path: `/projects/${projectId}/dashboard`, label: 'Dashboard', icon: '📊' },
-    { path: `/projects/${projectId}/stories`, label: 'User Stories', icon: '📝' },
-    { path: `/projects/${projectId}/tests`, label: 'Test Cases', icon: '✅' },
-    { path: `/projects/${projectId}/bugs`, label: 'Bug Reports', icon: '🐛' },
-    { path: `/projects/${projectId}/reports`, label: 'Reports', icon: '📄' },
-  ] : [];
+  // Role-based navigation items
+  const getNavItems = (): NavItem[] => {
+    // Admin: Only Dashboard and Users (no projects)
+    if (hasRole('admin')) {
+      return [
+        { path: '/admin/dashboard', label: 'Dashboard', icon: '🏠' },
+        { path: '/admin/users', label: 'Usuarios', icon: '👥' },
+      ];
+    }
+
+    // Manager: Dashboard + Project metrics when inside a project
+    if (hasRole('manager') && projectId) {
+      return [
+        { path: `/projects/${projectId}/dashboard`, label: 'Métricas', icon: '📊' },
+      ];
+    }
+
+    // Manager: Global dashboard when not in project
+    if (hasRole('manager')) {
+      return [
+        { path: '/manager/dashboard', label: 'Dashboard General', icon: '📊' },
+      ];
+    }
+
+    // DEV: Simplified view (readonly access to Stories and Tests)
+    if (hasRole('dev') && projectId) {
+      return [
+        { path: `/projects/${projectId}/stories`, label: 'User Stories', icon: '📝' },
+        { path: `/projects/${projectId}/tests`, label: 'Test Cases', icon: '✅' },
+        { path: `/projects/${projectId}/bugs`, label: 'Mis Bugs', icon: '🐛' },
+      ];
+    }
+
+    // QA: Full project navigation
+    if (projectId) {
+      return [
+        { path: `/projects/${projectId}/dashboard`, label: 'Dashboard', icon: '📊' },
+        { path: `/projects/${projectId}/stories`, label: 'User Stories', icon: '📝' },
+        { path: `/projects/${projectId}/tests`, label: 'Test Cases', icon: '✅' },
+        { path: `/projects/${projectId}/bugs`, label: 'Bug Reports', icon: '🐛' },
+        { path: `/projects/${projectId}/reports`, label: 'Reports', icon: '📄' },
+      ];
+    }
+
+    return [];
+  };
+
+  const navItems = getNavItems();
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // Load projects when viewing all projects (no projectId)
+  // Load projects when viewing all projects (only for QA/Dev)
   useEffect(() => {
-    if (!projectId) {
+    if (!projectId && !hasRole('admin', 'manager')) {
       const loadProjects = async () => {
         try {
-          const projects = await projectApi.getAll();
+          // DEV role: filter by assigned bugs only
+          const filterByUser = hasRole('dev') ? user?.email : undefined;
+          const projects = await projectApi.getAll(filterByUser);
           setAllProjects(projects);
         } catch (error) {
           console.error('Error loading projects in sidebar:', error);
-          setAllProjects([]); // Set empty array on error
+          setAllProjects([]);
         }
       };
       loadProjects();
     } else {
-      // Clear projects list when inside a project
       setAllProjects([]);
     }
-  }, [projectId]);
+  }, [projectId, hasRole, user]);
 
   const handleProjectClick = (project: Project) => {
     setCurrentProject(project);
@@ -87,6 +134,14 @@ export const Sidebar = () => {
               <p className={`${bodySmall.className} text-white/70 mt-1 truncate`}>
                 {currentProject.name}
               </p>
+            ) : hasRole('admin') ? (
+              <p className={`${bodySmall.className} text-white/70 mt-1`}>
+                Administración
+              </p>
+            ) : hasRole('manager') ? (
+              <p className={`${bodySmall.className} text-white/70 mt-1`}>
+                Métricas
+              </p>
             ) : (
               <p className={`${bodySmall.className} text-white/70 mt-1`}>
                 Todos los Proyectos
@@ -104,8 +159,8 @@ export const Sidebar = () => {
         </button>
       </div>
 
-      {/* Navigation - Only show when inside a project */}
-      {projectId && projectId !== '' ? (
+      {/* Navigation */}
+      {hasRole('admin', 'manager') || (projectId && projectId !== '') ? (
         <>
           <nav className="p-4 space-y-2">
             {navItems.map((item) => (
@@ -125,36 +180,38 @@ export const Sidebar = () => {
             ))}
           </nav>
 
-          {/* Settings and Back to Projects at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 space-y-2">
-            <Link
-              to={`/projects/${projectId}/settings`}
-              className={`sidebar-link ${
-                isActive(`/projects/${projectId}/settings`) ? 'sidebar-link-active' : ''
-              } ${sidebarCollapsed ? 'justify-center' : ''}`}
-              title={sidebarCollapsed ? 'Settings' : undefined}
-            >
-              <span className="text-xl">⚙️</span>
-              {!sidebarCollapsed && <span className="font-medium">Settings</span>}
-            </Link>
-            <Link
-              to="/"
-              className={`sidebar-link ${sidebarCollapsed ? 'justify-center' : ''}`}
-              title={sidebarCollapsed ? 'Volver a Proyectos' : undefined}
-            >
-              <span className="text-xl">←</span>
-              {!sidebarCollapsed && <span className="font-medium">Volver a Proyectos</span>}
-            </Link>
-          </div>
+          {/* Settings and Back (only for QA/Dev in projects) */}
+          {projectId && !hasRole('admin', 'manager') && (
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 space-y-2">
+              <Link
+                to={`/projects/${projectId}/settings`}
+                className={`sidebar-link ${
+                  isActive(`/projects/${projectId}/settings`) ? 'sidebar-link-active' : ''
+                } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title={sidebarCollapsed ? 'Settings' : undefined}
+              >
+                <span className="text-xl">⚙️</span>
+                {!sidebarCollapsed && <span className="font-medium">Settings</span>}
+              </Link>
+              <Link
+                to="/"
+                className={`sidebar-link ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title={sidebarCollapsed ? 'Volver a Proyectos' : undefined}
+              >
+                <span className="text-xl">←</span>
+                {!sidebarCollapsed && <span className="font-medium">Volver a Proyectos</span>}
+              </Link>
+            </div>
+          )}
         </>
       ) : (
-        // When viewing all projects - show list of projects
+        // When viewing all projects - show list (only for QA/Dev)
         <div className="flex-1 flex flex-col overflow-hidden">
           {!sidebarCollapsed ? (
             <>
               <div className="p-4 border-b border-white/10">
                 <h3 className={`${bodySmall.className} font-semibold text-white/70 uppercase tracking-wider`}>
-                  Mis Proyectos
+                  {hasRole('dev') ? 'Mis Proyectos (con bugs)' : 'Mis Proyectos'}
                 </h3>
               </div>
               <nav className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -170,12 +227,13 @@ export const Sidebar = () => {
                     </div>
                     <div className={`${bodySmall.className} text-white/60 group-hover:text-white/80 mt-0.5 truncate`}>
                       {project.id} • {project.total_test_cases} tests
+                      {hasRole('dev') && project.total_bugs > 0 && ` • ${project.total_bugs} bugs`}
                     </div>
                   </Link>
                 ))}
                 {allProjects.length === 0 && (
                   <div className={`text-center py-8 text-white/50 ${bodySmall.className}`}>
-                    No hay proyectos
+                    {hasRole('dev') ? 'No hay proyectos con bugs asignados' : 'No hay proyectos'}
                   </div>
                 )}
               </nav>

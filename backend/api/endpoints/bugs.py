@@ -587,6 +587,108 @@ async def update_bug(
         "document_path": bug.document_path,
     }
 
+@router.patch("/bugs/{bug_id}/dev-update")
+async def dev_update_bug(
+    bug_id: str,
+    update_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Dev-restricted bug update endpoint
+    Only allows updating: status, fix_description, screenshots (evidence)
+    """
+    print(f"🔧 PATCH /bugs/{bug_id}/dev-update")
+    print(f"   Update data: {update_data}")
+
+    bug = db.query(BugReportDB).filter(BugReportDB.id == bug_id).first()
+    if not bug:
+        raise HTTPException(status_code=404, detail=f"Bug {bug_id} not found")
+
+    # Only allow specific fields that DEV can modify
+    allowed_fields = ["status", "fix_description", "screenshots"]
+
+    for field, value in update_data.items():
+        if field in allowed_fields and value is not None:
+            # Handle screenshots (evidence)
+            if field == "screenshots" and isinstance(value, list):
+                import json
+                value = json.dumps(value) if value else None
+                print(f"   Converting screenshots list to JSON string")
+
+            # Handle status enum
+            if field == "status":
+                try:
+                    from backend.models import BugStatus
+                    # Allow only specific dev-appropriate statuses
+                    allowed_statuses = [
+                        BugStatus.IN_PROGRESS,
+                        BugStatus.FIXED,
+                        BugStatus.TESTING,
+                    ]
+                    new_status = BugStatus[value] if isinstance(value, str) and value.isupper() else BugStatus(value)
+
+                    if new_status not in allowed_statuses:
+                        print(f"   ⚠️  Status {value} not allowed for dev, skipping")
+                        continue
+
+                    value = new_status
+
+                    # Update fixed_date when status changes to FIXED
+                    if value == BugStatus.FIXED and bug.status != BugStatus.FIXED:
+                        bug.fixed_date = datetime.now()
+                        print(f"   Auto-setting fixed_date to now")
+
+                except (KeyError, ValueError) as e:
+                    print(f"   ⚠️  Enum conversion error for status={value}: {e}")
+                    continue
+
+            setattr(bug, field, value)
+            print(f"   Updated {field} = {value}")
+
+    db.commit()
+    db.refresh(bug)
+
+    print(f"✅ Bug {bug_id} updated by dev successfully")
+
+    # Return updated bug
+    import json
+    screenshots_list = json.loads(bug.screenshots) if bug.screenshots else []
+    return {
+        "id": bug.id,
+        "title": bug.title,
+        "description": bug.description,
+        "steps_to_reproduce": bug.steps_to_reproduce.split('\n') if bug.steps_to_reproduce else [],
+        "expected_behavior": bug.expected_behavior,
+        "actual_behavior": bug.actual_behavior,
+        "severity": bug.severity.value if bug.severity else "Medium",
+        "priority": bug.priority.value if bug.priority else "Medium",
+        "bug_type": bug.bug_type.value if bug.bug_type else "Functional",
+        "status": bug.status.value if bug.status else "New",
+        "environment": bug.environment,
+        "browser": bug.browser,
+        "os": bug.os,
+        "version": bug.version,
+        "user_story_id": bug.user_story_id,
+        "test_case_id": bug.test_case_id,
+        "scenario_name": bug.scenario_name,
+        "screenshots": screenshots_list,
+        "attachments": screenshots_list,
+        "logs": bug.logs,
+        "notes": bug.notes,
+        "workaround": bug.workaround,
+        "root_cause": bug.root_cause,
+        "fix_description": bug.fix_description,
+        "reported_by": bug.reported_by,
+        "assigned_to": bug.assigned_to,
+        "verified_by": bug.verified_by,
+        "reported_date": bug.reported_date.isoformat() if bug.reported_date else None,
+        "assigned_date": bug.assigned_date.isoformat() if bug.assigned_date else None,
+        "fixed_date": bug.fixed_date.isoformat() if bug.fixed_date else None,
+        "verified_date": bug.verified_date.isoformat() if bug.verified_date else None,
+        "closed_date": bug.closed_date.isoformat() if bug.closed_date else None,
+        "document_path": bug.document_path,
+    }
+
 @router.delete("/bugs/{bug_id}")
 async def delete_bug(
     bug_id: str,

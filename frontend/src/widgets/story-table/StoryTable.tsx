@@ -463,14 +463,19 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
                             </p>
                           </div>
 
-                          {/* Acceptance Criteria - Checkeables */}
+                          {/* Acceptance Criteria - Readonly for DEV, Editable for others */}
                           {row.original.acceptance_criteria && row.original.acceptance_criteria.length > 0 && (
                             <div>
                               <h4 className={`${bodySmall.className} font-semibold ${colors.gray.text900} mb-2`}>
                                 Criterios de Aceptación ({row.original.acceptance_criteria.length})
-                                {onUpdateStory && (
+                                {onUpdateStory && !hasRole('dev') && (
                                   <span className={`ml-2 ${colors.gray.text500} font-normal italic`}>
                                     (Click para marcar/desmarcar)
+                                  </span>
+                                )}
+                                {hasRole('dev') && (
+                                  <span className={`ml-2 ${colors.gray.text500} font-normal italic`}>
+                                    (Solo lectura)
                                   </span>
                                 )}
                               </h4>
@@ -478,9 +483,9 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
                                 {row.original.acceptance_criteria.map((criterion: any, index: number) => (
                                   <li
                                     key={criterion.id || index}
-                                    onClick={() => onUpdateStory && toggleCriteria(row.original, index)}
-                                    className={`flex items-start gap-2 ${onUpdateStory ? 'cursor-pointer hover:bg-gray-100 p-2 -ml-2 rounded-md transition-colors' : ''}`}
-                                    title={onUpdateStory ? (criterion.completed ? 'Click para desmarcar' : 'Click para marcar como completado') : ''}
+                                    onClick={() => !hasRole('dev') && onUpdateStory && toggleCriteria(row.original, index)}
+                                    className={`flex items-start gap-2 ${!hasRole('dev') && onUpdateStory ? 'cursor-pointer hover:bg-gray-100 p-2 -ml-2 rounded-md transition-colors' : 'p-2 -ml-2'}`}
+                                    title={!hasRole('dev') && onUpdateStory ? (criterion.completed ? 'Click para desmarcar' : 'Click para marcar como completado') : ''}
                                   >
                                     {criterion.completed ? (
                                       <CheckCircle2 className={`w-4 h-4 ${colors.status.success.text600} mt-0.5 flex-shrink-0`} />

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import json
 
@@ -10,9 +10,29 @@ from backend.models import CreateProjectDTO, UpdateProjectDTO, ProjectStatus
 router = APIRouter()
 
 @router.get("/projects")
-async def get_projects(db: Session = Depends(get_db)):
-    """Get all projects"""
-    projects = db.query(ProjectDB).all()
+async def get_projects(
+    assigned_to: Optional[str] = Query(None, description="Filter projects by bugs assigned to user email"),
+    db: Session = Depends(get_db)
+):
+    """Get all projects, optionally filtered by assigned bugs"""
+    # If assigned_to filter is provided, get only projects with bugs assigned to that user
+    if assigned_to:
+        # Query distinct project_ids from bugs assigned to the user
+        project_ids_with_bugs = db.query(BugReportDB.project_id).filter(
+            BugReportDB.assigned_to == assigned_to
+        ).distinct().all()
+
+        project_ids = [pid[0] for pid in project_ids_with_bugs]
+
+        if not project_ids:
+            # User has no assigned bugs in any project
+            return {"projects": []}
+
+        # Get only those projects
+        projects = db.query(ProjectDB).filter(ProjectDB.id.in_(project_ids)).all()
+    else:
+        # Get all projects
+        projects = db.query(ProjectDB).all()
 
     # Calculate metrics for each project
     result = []

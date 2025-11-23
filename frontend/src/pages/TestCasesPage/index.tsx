@@ -475,7 +475,9 @@ export const TestCasesPage = () => {
             return (
               <div
                 key={suite.userStoryId}
-                ref={(el) => (suiteRefs.current[suite.userStoryId] = el)}
+                ref={(el) => {
+                  suiteRefs.current[suite.userStoryId] = el;
+                }}
                 className={`card overflow-hidden border-l-4 transition-all duration-500 ${
                   isHighlighted
                     ? 'border-l-yellow-500 bg-yellow-50 shadow-lg ring-2 ring-yellow-300'
@@ -624,15 +626,17 @@ export const TestCasesPage = () => {
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex items-center justify-end gap-3">
-                                      {/* All roles can run tests */}
-                                      <button
-                                        onClick={() => handleRunTest(tc)}
-                                        className="text-purple-600 hover:text-purple-900 flex items-center gap-1"
-                                        title="Ejecutar Test"
-                                        disabled={!tc.gherkin_file_path}
-                                      >
-                                        <PlayCircle size={16} />
-                                      </button>
+                                      {/* DEV role: Cannot run tests */}
+                                      {!hasRole('dev') && (
+                                        <button
+                                          onClick={() => handleRunTest(tc)}
+                                          className="text-purple-600 hover:text-purple-900 flex items-center gap-1"
+                                          title="Ejecutar Test"
+                                          disabled={!tc.gherkin_file_path}
+                                        >
+                                          <PlayCircle size={16} />
+                                        </button>
+                                      )}
                                       {/* All roles can view details */}
                                       <button
                                         onClick={() => setSelectedTestCase(tc)}
