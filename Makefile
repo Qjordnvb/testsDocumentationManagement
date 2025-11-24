@@ -111,31 +111,6 @@ status: ## Ver estado de servicios
 	@if lsof -i:8000 >/dev/null 2>&1; then echo "  ✅ Backend:  http://localhost:8000"; else echo "  ❌ Backend NO está corriendo"; fi
 	@if lsof -i:3000 >/dev/null 2>&1; then echo "  ✅ Frontend: http://localhost:3000"; else echo "  ❌ Frontend NO está corriendo"; fi
 
-# ==================== Reset Database ====================
-reset-db: ## BORRAR base de datos completamente
-	@echo "⚠️  =========================================="
-	@echo "⚠️   ADVERTENCIA: Esto borrará TODA la BD"
-	@echo "⚠️  =========================================="
-	@echo ""
-	@echo "Presiona Ctrl+C para cancelar, o Enter para continuar..."
-	@read -r confirm
-	@echo ""
-	@echo "1️⃣  Deteniendo servicios..."
-	@docker compose down
-	@echo ""
-	@echo "2️⃣  Borrando archivos de base de datos..."
-	@rm -f data/qa_automation.db data/qa_automation.db-shm data/qa_automation.db-wal
-	@echo "    ✅ BD eliminada"
-	@echo ""
-	@echo "3️⃣  Iniciando servicios (BD se creará vacía)..."
-	@docker compose up -d backend
-	@echo ""
-	@echo "✅ Base de datos reseteada"
-	@echo ""
-	@echo "📝 Ahora puedes:"
-	@echo "   1. Crear un proyecto"
-	@echo "   2. Subir Excel con user stories"
-	@echo "   3. make up  (para iniciar frontend también)"
 
 # ==================== Clean Everything ====================
 clean: ## Limpiar TODO (containers, volumes, DB, logs)
@@ -165,7 +140,54 @@ build: ## Rebuild containers
 
 rebuild: down build up ## Stop, rebuild, start
 
-# ==================== Database Tools ====================
+# ==================== Database Management (NUEVO & MEJORADO) ====================
+
+db-fresh: ## 🆕 Instalación LIMPIA (Borra todo -> Schema -> Admin -> Demo)
+	@echo "🏗️  Iniciando instalación fresca Multi-Tenant..."
+	@docker compose exec backend python backend/setup_database.py --fresh-install --yes
+	@echo "✅ Sistema listo para usar."
+
+db-migrate: ## 🔄 Migrar DB existente a Multi-Tenant
+	@echo "🔧 Ejecutando migración de esquema..."
+	@docker compose exec backend python backend/setup_database.py --migrate
+	@echo "✅ Migración completada."
+
+db-seed: ## 🌱 Cargar solo datos de prueba (en DB existente)
+	@echo "📦 Cargando datos demo..."
+	@docker compose exec backend python backend/setup_database.py --seed-demo --yes
+
+db-admin: ## 👤 Crear usuario admin (si no existe)
+	@echo "👤 Creando super admin..."
+	@docker compose exec backend python backend/setup_database.py --create-admin --yes
+
+reset-db: ## ⚠️  Resetear DB manteniendo conexión (Reemplaza al rm -f manual)
+	@echo "⚠️  ADVERTENCIA: Esto borrará todos los datos."
+	@docker compose exec backend python backend/setup_database.py --reset --yes
+
+# Crea una instalación limpia con nombre personalizado
+# Uso: make db-init ORG=ORG-COCA NAME="Coca Cola" EMAIL=admin@coca.com
+db-init:
+	@echo "🏗️  Creando organización inicial personalizada..."
+	@docker compose exec backend python backend/setup_database.py \
+		--fresh-install \
+		--org-id "$(ORG)" \
+		--org-name "$(NAME)" \
+		--admin-email "$(EMAIL)" \
+		--yes
+
+# Agrega una NUEVA empresa sin borrar las anteriores
+# Uso: make db-add ORG=ORG-PEPSI NAME="Pepsi Co" EMAIL=admin@pepsi.com
+db-add:
+	@echo "🏢 Agregando nueva organización..."
+	@docker compose exec backend python backend/setup_database.py \
+		--create-admin \
+		--org-id "$(ORG)" \
+		--org-name "$(NAME)" \
+		--admin-email "$(EMAIL)" \
+		--yes
+
+# ==================== Database Tools (UTILIDADES DE LECTURA) ====================
+
 db-status: ## Ver estadísticas de la BD
 	@if [ -f "data/qa_automation.db" ]; then \
 		echo "📊 Estadísticas de la BD:"; \
@@ -181,6 +203,5 @@ db.close()"; \
 	else \
 		echo "❌ Base de datos no existe"; \
 	fi
-
 # ==================== Default ====================
 .DEFAULT_GOAL := help

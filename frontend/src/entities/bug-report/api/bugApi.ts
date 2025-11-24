@@ -7,13 +7,16 @@ import { api } from '@/shared/api/apiClient';
 import type { BugReport, CreateBugReportDTO } from '../model/types';
 
 export const bugApi = {
-  getAll: async (): Promise<BugReport[]> => {
-    const { data } = await api.get<{ bugs: BugReport[] }>('/bugs');
+  getAll: async (projectId?: string): Promise<BugReport[]> => {
+    const params = projectId ? { project_id: projectId } : {};
+    const { data } = await api.get<{ bugs: BugReport[] }>('/bugs', { params });
     return data.bugs;
   },
 
-  getById: async (id: string): Promise<BugReport> => {
-    const { data } = await api.get<BugReport>(`/bugs/${id}`);
+  getById: async (id: string, projectId: string): Promise<BugReport> => {
+    const { data } = await api.get<BugReport>(`/bugs/${id}`, {
+      params: { project_id: projectId }
+    });
     return data;
   },
 
@@ -22,12 +25,16 @@ export const bugApi = {
     return data;
   },
 
-  update: async (id: string, updates: Partial<CreateBugReportDTO>): Promise<BugReport> => {
-    const { data } = await api.put<BugReport>(`/bugs/${id}`, updates);
+  update: async (id: string, projectId: string, updates: Partial<CreateBugReportDTO>): Promise<BugReport> => {
+    const { data } = await api.put<BugReport>(`/bugs/${id}`, updates, {
+      params: { project_id: projectId }
+    });
     return data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/bugs/${id}`);
+  delete: async (id: string, projectId: string): Promise<void> => {
+    await api.delete(`/bugs/${id}`, {
+      params: { project_id: projectId }
+    });
   },
 };

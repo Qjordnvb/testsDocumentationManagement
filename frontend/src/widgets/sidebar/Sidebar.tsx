@@ -108,7 +108,7 @@ export const Sidebar = () => {
     } else {
       setAllProjects([]);
     }
-  }, [projectId, hasRole, user]);
+  }, [projectId, user?.role, user?.email]);
 
   const handleProjectClick = (project: Project) => {
     setCurrentProject(project);

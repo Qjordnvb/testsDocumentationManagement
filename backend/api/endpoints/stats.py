@@ -1,28 +1,38 @@
+"""
+Statistics endpoints
+
+Handles global statistics operations.
+
+Refactored to use StatsService following SOLID principles:
+- Thin controllers: Only handle HTTP concerns (requests, responses, status codes)
+- Business logic delegated to StatsService
+- Testability: Service layer can be unit tested independently
+"""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from datetime import datetime
 
-from backend.database import get_db, UserStoryDB, TestCaseDB, BugReportDB
+from backend.database import get_db
+from backend.services.stats_service import StatsService
 
 router = APIRouter()
 
+
+def get_stats_service_dependency(db: Session = Depends(get_db)) -> StatsService:
+    """Dependency injection for StatsService"""
+    return StatsService(db)
+
+
 @router.get("/stats")
-async def get_statistics(db: Session = Depends(get_db)):
-    """Get project statistics"""
-    total_stories = db.query(UserStoryDB).count()
-    total_test_cases = db.query(TestCaseDB).count()
-    total_bugs = db.query(BugReportDB).count()
+async def get_statistics(
+    service: StatsService = Depends(get_stats_service_dependency)
+):
+    """
+    Get global project statistics
 
-    # Stories by status
-    stories_by_status = {}
-    for status in ["Backlog", "To Do", "In Progress", "Testing", "Done"]:
-        count = db.query(UserStoryDB).filter(UserStoryDB.status == status).count()
-        stories_by_status[status] = count
+    Args:
+        service: Injected StatsService instance
 
-    return {
-        "total_user_stories": total_stories,
-        "total_test_cases": total_test_cases,
-        "total_bugs": total_bugs,
-        "stories_by_status": stories_by_status,
-        "timestamp": datetime.now().isoformat()
-    }
+    Returns:
+        Statistics dictionary
+    """
+    return service.get_global_statistics()

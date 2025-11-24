@@ -11,6 +11,7 @@ export interface TestGenerationJob {
   taskId: string;
   storyId: string;
   storyTitle?: string;
+  projectId: string; // For multi-tenant isolation
   status: JobStatus;
   progress: number;
   message?: string;

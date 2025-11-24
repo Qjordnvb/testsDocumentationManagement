@@ -37,46 +37,58 @@ class ProjectService:
         """
         self.db = db
 
-    def get_all_projects(self, assigned_to: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_projects(self, organization_id: str, assigned_to: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Get all projects with metrics, optionally filtered by assigned bugs
+        Get all projects from a specific organization, optionally filtered by assigned bugs
 
         Args:
+            organization_id: Organization ID to filter by
             assigned_to: Email of user to filter projects by assigned bugs
 
         Returns:
             List of project dictionaries with metrics
         """
         if assigned_to:
-            projects = self._get_projects_by_assigned_user(assigned_to)
+            projects = self._get_projects_by_assigned_user(assigned_to, organization_id)
         else:
-            projects = self.db.query(ProjectDB).all()
+            # CRITICAL: Filter by organization_id
+            projects = self.db.query(ProjectDB).filter(
+                ProjectDB.organization_id == organization_id
+            ).all()
 
-        return [self._project_to_dict_with_metrics(project) for project in projects]
+        return [self._project_to_dict_with_metrics(project, assigned_to=assigned_to) for project in projects]
 
-    def get_project_by_id(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_project_by_id(self, project_id: str, organization_id: str = None) -> Optional[Dict[str, Any]]:
         """
         Get a single project by ID with metrics
 
         Args:
             project_id: Project ID to fetch
+            organization_id: Organization ID for multi-tenant isolation (optional for backwards compatibility)
 
         Returns:
             Project dictionary with metrics or None if not found
         """
-        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        query = self.db.query(ProjectDB).filter(ProjectDB.id == project_id)
+
+        # CRITICAL: Filter by organization_id for multi-tenant isolation
+        if organization_id:
+            query = query.filter(ProjectDB.organization_id == organization_id)
+
+        project = query.first()
 
         if not project:
             return None
 
         return self._project_to_dict_with_metrics(project)
 
-    def create_project(self, project_data: CreateProjectDTO) -> Dict[str, Any]:
+    def create_project(self, project_data: CreateProjectDTO, organization_id: str) -> Dict[str, Any]:
         """
         Create a new project with auto-generated ID
 
         Args:
             project_data: DTO with project creation data
+            organization_id: Organization ID to assign the project to
 
         Returns:
             Created project as dictionary with metrics
@@ -87,6 +99,7 @@ class ProjectService:
         # Create project entity
         new_project = ProjectDB(
             id=project_id,
+            organization_id=organization_id,  # CRITICAL: Assign to user's organization
             name=project_data.name,
             description=project_data.description,
             client=project_data.client,
@@ -166,12 +179,13 @@ class ProjectService:
 
         return True
 
-    def get_project_stats(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_project_stats(self, project_id: str, assigned_to: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Get detailed statistics for a project
 
         Args:
             project_id: Project ID
+            assigned_to: Optional email to filter bugs by assignee (for developer role)
 
         Returns:
             Statistics dictionary or None if project not found
@@ -181,7 +195,7 @@ class ProjectService:
         if not project:
             return None
 
-        metrics = self._calculate_project_metrics(project)
+        metrics = self._calculate_project_metrics(project, assigned_to=assigned_to)
 
         return {
             "project_id": project.id,
@@ -191,11 +205,12 @@ class ProjectService:
 
     # ========== Private Helper Methods ==========
 
-    def _get_projects_by_assigned_user(self, user_email: str) -> List[ProjectDB]:
-        """Get projects that have bugs assigned to a specific user"""
-        # Query distinct project_ids from bugs assigned to the user
+    def _get_projects_by_assigned_user(self, user_email: str, organization_id: str) -> List[ProjectDB]:
+        """Get projects from a specific organization that have bugs assigned to a specific user"""
+        # Query distinct project_ids from bugs assigned to the user in this organization
         project_ids_with_bugs = self.db.query(BugReportDB.project_id).filter(
-            BugReportDB.assigned_to == user_email
+            BugReportDB.assigned_to == user_email,
+            BugReportDB.organization_id == organization_id  # CRITICAL: Filter by organization
         ).distinct().all()
 
         project_ids = [pid[0] for pid in project_ids_with_bugs]
@@ -203,7 +218,11 @@ class ProjectService:
         if not project_ids:
             return []
 
-        return self.db.query(ProjectDB).filter(ProjectDB.id.in_(project_ids)).all()
+        # CRITICAL: Also filter projects by organization_id
+        return self.db.query(ProjectDB).filter(
+            ProjectDB.id.in_(project_ids),
+            ProjectDB.organization_id == organization_id
+        ).all()
 
     def _generate_unique_project_id(self) -> str:
         """Generate a unique project ID in format PROJ-001"""
@@ -217,9 +236,9 @@ class ProjectService:
 
         return project_id
 
-    def _project_to_dict_with_metrics(self, project: ProjectDB) -> Dict[str, Any]:
+    def _project_to_dict_with_metrics(self, project: ProjectDB, assigned_to: Optional[str] = None) -> Dict[str, Any]:
         """Convert ProjectDB entity to dictionary with calculated metrics"""
-        metrics = self._calculate_project_metrics(project)
+        metrics = self._calculate_project_metrics(project, assigned_to=assigned_to)
 
         return {
             "id": project.id,
@@ -236,12 +255,16 @@ class ProjectService:
             **metrics
         }
 
-    def _calculate_project_metrics(self, project: ProjectDB) -> Dict[str, Any]:
+    def _calculate_project_metrics(self, project: ProjectDB, assigned_to: Optional[str] = None) -> Dict[str, Any]:
         """
         Calculate project metrics (stories, tests, bugs, coverage)
 
         This is the core business logic that was previously in the controller.
         Now it's testable, reusable, and maintainable.
+
+        Args:
+            project: ProjectDB instance
+            assigned_to: Optional email to filter bugs by assignee
         """
         # Count total entities
         total_stories = self.db.query(UserStoryDB).filter(
@@ -252,9 +275,14 @@ class ProjectService:
             TestCaseDB.project_id == project.id
         ).count()
 
-        total_bugs = self.db.query(BugReportDB).filter(
+        # Count bugs - filter by assigned_to if provided (for developer role)
+        bugs_query = self.db.query(BugReportDB).filter(
             BugReportDB.project_id == project.id
-        ).count()
+        )
+        if assigned_to:
+            bugs_query = bugs_query.filter(BugReportDB.assigned_to == assigned_to)
+
+        total_bugs = bugs_query.count()
 
         # Calculate test coverage: % of stories that have at least 1 test case
         coverage = 0.0

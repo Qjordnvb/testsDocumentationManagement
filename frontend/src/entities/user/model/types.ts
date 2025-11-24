@@ -9,6 +9,8 @@ export interface User {
   email: string;
   full_name: string;
   role: Role;
+  organization_id: string;
+  organization_name?: string | null;
   is_active: boolean;
   created_at?: string;
   last_login?: string | null;

@@ -222,7 +222,7 @@ class StepExecutionResult(BaseModel):
         return v.strip()
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "step_index": 0,
                 "keyword": "Given",
@@ -283,7 +283,7 @@ class TestExecutionCreate(BaseModel):
         return v.strip()
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "test_case_id": "TC-001",
                 "executed_by": "qa.tester@example.com",

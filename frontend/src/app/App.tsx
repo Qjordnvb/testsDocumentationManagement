@@ -5,9 +5,9 @@
  * UPDATED: Added authentication with role-based access control
  */
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from '@/app/providers';
+import { AuthProvider, useAuth } from '@/app/providers';
 import { ProtectedRoute, DevRedirect } from '@/app/components';
 import { ProjectProvider } from '@/app/providers/ProjectContext';
 import { Layout } from '@/widgets/header/Layout';
@@ -33,6 +33,25 @@ const SettingsPage = () => (
   </div>
 );
 
+// --- COMPONENTE DE REDIRECCIÓN INTELIGENTE (4 ROLES) ---
+const HomeRedirect = () => {
+  const { user } = useAuth();
+
+  // 1. Admin -> Dashboard de Sistema
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  // 2. Manager -> Dashboard de Gestión Global
+  if (user?.role === 'manager') {
+    return <Navigate to="/manager/dashboard" replace />;
+  }
+
+  // 3. QA y Dev -> Lista de Proyectos (Su espacio de trabajo)
+  return <ProjectsListPage />;
+};
+// -------------------------------------------------------
+
 function App() {
   // Initialize test generation polling (runs in background)
   useTestGenerationPolling();
@@ -52,8 +71,8 @@ function App() {
                 <ProjectProvider>
                   <Layout>
                     <Routes>
-                      {/* Landing: Project Selection */}
-                      <Route path="/" element={<ProjectsListPage />} />
+                      {/* Landing: Project Selection - UPDATED with HomeRedirect */}
+                      <Route path="/" element={<HomeRedirect />} />
 
                       {/* Admin Only Routes */}
                       <Route

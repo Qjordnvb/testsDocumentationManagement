@@ -1,7 +1,12 @@
 """
 SQLAlchemy database models for tracking
+
+ARCHITECTURE: Multi-Tenant with Project Isolation
+- Each organization (tenant) is completely isolated
+- Each project within an organization is isolated
+- Composite Foreign Keys enforce referential integrity at both levels
 """
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum as SQLEnum, Float, PrimaryKeyConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum as SQLEnum, Float, PrimaryKeyConstraint, ForeignKeyConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -17,11 +22,52 @@ class ProjectStatus(str, enum.Enum):
     COMPLETED = "completed"
 
 
-class ProjectDB(Base):
-    """Project database model - Multi-project support"""
-    __tablename__ = "projects"
+class OrganizationDB(Base):
+    """
+    Organization (Tenant) model - Multi-tenant support
+    Each organization represents a separate company/entity
+    """
+    __tablename__ = "organizations"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)  # ORG-001, ORG-002
+    name = Column(String, nullable=False)
+    subdomain = Column(String, unique=True, nullable=True)  # acme, techstart
+    domain = Column(String, nullable=True)  # acme.com (for email validation)
+
+    # Settings
+    settings = Column(Text, nullable=True)  # JSON
+    max_users = Column(Integer, default=50)
+    max_projects = Column(Integer, default=100)
+
+    # Billing
+    plan = Column(String, default='free')  # free, pro, enterprise
+    subscription_status = Column(String, default='active')
+
+    # Security
+    is_active = Column(Boolean, default=True)
+
+    # Metadata
+    created_date = Column(DateTime, default=datetime.now)
+    updated_date = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    users = relationship("UserDB", back_populates="organization", cascade="all, delete-orphan")
+    projects = relationship("ProjectDB", back_populates="organization", cascade="all, delete-orphan")
+
+
+class ProjectDB(Base):
+    """
+    Project database model - Multi-project support with organization isolation
+    PK: (id, organization_id)
+    """
+    __tablename__ = "projects"
+    __table_args__ = (
+        PrimaryKeyConstraint('id', 'organization_id'),
+        {},
+    )
+
+    id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
 
@@ -46,21 +92,32 @@ class ProjectDB(Base):
     azure_project_id = Column(String, nullable=True)
 
     # Relationships
+    organization = relationship("OrganizationDB", back_populates="projects")
     user_stories = relationship("UserStoryDB", back_populates="project", cascade="all, delete-orphan")
     test_cases = relationship("TestCaseDB", back_populates="project", cascade="all, delete-orphan")
     bug_reports = relationship("BugReportDB", back_populates="project", cascade="all, delete-orphan")
 
 
 class UserStoryDB(Base):
-    """User Story database model"""
+    """
+    User Story database model with multi-tenant and multi-project isolation
+    PK: (id, project_id, organization_id)
+    FK: (project_id, organization_id) → projects
+    """
     __tablename__ = "user_stories"
     __table_args__ = (
-        PrimaryKeyConstraint('id', 'project_id'),
+        PrimaryKeyConstraint('id', 'project_id', 'organization_id'),
+        ForeignKeyConstraint(
+            ['project_id', 'organization_id'],
+            ['projects.id', 'projects.organization_id'],
+            ondelete='CASCADE'
+        ),
         {},
     )
 
     id = Column(String, nullable=False, index=True)
-    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+    project_id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, nullable=False, index=True)
 
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
@@ -91,26 +148,55 @@ class UserStoryDB(Base):
 
     # Relationships
     project = relationship("ProjectDB", back_populates="user_stories")
-    test_cases = relationship("TestCaseDB", back_populates="user_story")
-    bug_reports = relationship("BugReportDB", back_populates="user_story")
+
+    # --- FIX: Added overlaps to silence SAWarnings ---
+    test_cases = relationship(
+        "TestCaseDB",
+        back_populates="user_story",
+        cascade="all, delete-orphan",
+        overlaps="project,test_cases"
+    )
+    bug_reports = relationship(
+        "BugReportDB",
+        back_populates="user_story",
+        overlaps="project,bug_reports"
+    )
 
 
 class TestCaseDB(Base):
-    """Test Case database model"""
+    """
+    Test Case database model with complete isolation
+    PK: (id, project_id, organization_id)
+    FK: (project_id, organization_id) → projects
+    FK: (user_story_id, project_id, organization_id) → user_stories
+
+    CRITICAL FIX: Composite FK ensures test cases are isolated by both organization AND project
+    """
     __tablename__ = "test_cases"
     __table_args__ = (
-        PrimaryKeyConstraint('id', 'project_id'),
+        PrimaryKeyConstraint('id', 'project_id', 'organization_id'),
+        ForeignKeyConstraint(
+            ['project_id', 'organization_id'],
+            ['projects.id', 'projects.organization_id'],
+            ondelete='CASCADE'
+        ),
+        ForeignKeyConstraint(
+            ['user_story_id', 'project_id', 'organization_id'],
+            ['user_stories.id', 'user_stories.project_id', 'user_stories.organization_id'],
+            ondelete='CASCADE'
+        ),
         {},
     )
 
     id = Column(String, nullable=False, index=True)
-    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+    project_id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, nullable=False, index=True)
 
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
 
-    # Related user story
-    user_story_id = Column(String, ForeignKey("user_stories.id"), nullable=False)
+    # Related user story (part of composite FK)
+    user_story_id = Column(String, nullable=False)
 
     # Test metadata
     test_type = Column(SQLEnum(TestType), default=TestType.FUNCTIONAL)
@@ -135,160 +221,183 @@ class TestCaseDB(Base):
     azure_test_case_id = Column(String, nullable=True)
 
     # Relationships
-    project = relationship("ProjectDB", back_populates="test_cases")
-    user_story = relationship("UserStoryDB", back_populates="test_cases")
-    executions = relationship("TestExecutionDB", back_populates="test_case")
+    # --- FIX: Added overlaps to silence SAWarnings ---
+    project = relationship("ProjectDB", back_populates="test_cases", overlaps="test_cases")
+    user_story = relationship("UserStoryDB", back_populates="test_cases", overlaps="project,test_cases")
+
+    executions = relationship("TestExecutionDB", back_populates="test_case", cascade="all, delete-orphan")
 
 
 class BugReportDB(Base):
-    """Bug Report database model"""
+    """
+    Bug Report database model with complete isolation
+    PK: (id, project_id, organization_id)
+    FK: (project_id, organization_id) → projects
+    FK: (user_story_id, project_id, organization_id) → user_stories (optional)
+    FK: (test_case_id, project_id, organization_id) → test_cases (optional)
+    """
     __tablename__ = "bug_reports"
     __table_args__ = (
-        PrimaryKeyConstraint('id', 'project_id'),
+        PrimaryKeyConstraint('id', 'project_id', 'organization_id'),
+        ForeignKeyConstraint(
+            ['project_id', 'organization_id'],
+            ['projects.id', 'projects.organization_id'],
+            ondelete='CASCADE'
+        ),
+        # Optional FKs - bug can exist without user story or test case
+        ForeignKeyConstraint(
+            ['user_story_id', 'project_id', 'organization_id'],
+            ['user_stories.id', 'user_stories.project_id', 'user_stories.organization_id'],
+            ondelete='SET NULL'
+        ),
+        ForeignKeyConstraint(
+            ['test_case_id', 'project_id', 'organization_id'],
+            ['test_cases.id', 'test_cases.project_id', 'test_cases.organization_id'],
+            ondelete='SET NULL'
+        ),
         {},
     )
 
     id = Column(String, nullable=False, index=True)
-    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+    project_id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, nullable=False, index=True)
 
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
 
-    # Bug details (stored as JSON or newline-separated)
-    steps_to_reproduce = Column(Text, nullable=True)  # JSON array or newline-separated
-    expected_behavior = Column(Text, nullable=True)
-    actual_behavior = Column(Text, nullable=True)
+    # Bug classification
+    severity = Column(SQLEnum(BugSeverity), nullable=False)
+    priority = Column(SQLEnum(BugPriority), nullable=False)
+    bug_type = Column(SQLEnum(BugType), nullable=False)
 
-    # Classification
-    severity = Column(SQLEnum(BugSeverity), default=BugSeverity.MEDIUM)
-    priority = Column(SQLEnum(BugPriority), default=BugPriority.MEDIUM)
-    bug_type = Column(SQLEnum(BugType), default=BugType.FUNCTIONAL)
+    # --- FIX: Ensure default is NEW (OPEN does not exist in Enum) ---
     status = Column(SQLEnum(BugStatus), default=BugStatus.NEW)
 
-    # Context
+    # Related entities (optional, part of composite FKs)
+    user_story_id = Column(String, nullable=True)
+    test_case_id = Column(String, nullable=True)
+    execution_id = Column(Integer, nullable=True)  # Simple FK, no composite needed
+
+    # Assignment
+    reported_by = Column(String, nullable=False)
+    assigned_to = Column(String, nullable=True)
+
+    # Environment
     environment = Column(String, nullable=True)
     browser = Column(String, nullable=True)
     os = Column(String, nullable=True)
-    version = Column(String, nullable=True)
+    version = Column(String, nullable=True)  # Added version
 
-    # Relationships
-    user_story_id = Column(String, ForeignKey("user_stories.id"), nullable=True)
-    test_case_id = Column(String, nullable=True)
-    scenario_name = Column(String, nullable=True)  # Specific scenario that failed
-    execution_id = Column(Integer, nullable=True)  # Test execution where bug was found
+    # Steps to reproduce
+    steps_to_reproduce = Column(Text, nullable=True)
+    scenario_name = Column(String, nullable=True)  # Added scenario_name
+    expected_behavior = Column(Text, nullable=True)
+    actual_behavior = Column(Text, nullable=True)
 
-    # Evidence (stored as JSON array)
-    screenshots = Column(Text, nullable=True)  # JSON array of file paths
-    logs = Column(Text, nullable=True)
-
-    # Additional details
-    notes = Column(Text, nullable=True)
-    workaround = Column(Text, nullable=True)
-    root_cause = Column(Text, nullable=True)
-    fix_description = Column(Text, nullable=True)
-
-    # People
-    reported_by = Column(String, nullable=True)
-    assigned_to = Column(String, nullable=True)
-    verified_by = Column(String, nullable=True)
+    # Attachments
+    screenshot_path = Column(String, nullable=True)
+    log_file_path = Column(String, nullable=True)
+    attachments = Column(Text, nullable=True)  # JSON array
 
     # Dates
-    reported_date = Column(DateTime, default=datetime.now)
-    assigned_date = Column(DateTime, nullable=True)
-    fixed_date = Column(DateTime, nullable=True)
-    verified_date = Column(DateTime, nullable=True)
-    closed_date = Column(DateTime, nullable=True)
-
-    # Generated document
-    document_path = Column(String, nullable=True)
-
-    # Integration IDs
-    notion_page_id = Column(String, nullable=True)
-    azure_bug_id = Column(String, nullable=True)
+    created_date = Column(DateTime, default=datetime.now)
+    updated_date = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    resolved_date = Column(DateTime, nullable=True)
 
     # Relationships
-    project = relationship("ProjectDB", back_populates="bug_reports")
-    user_story = relationship("UserStoryDB", back_populates="bug_reports")
+    # --- FIX: Added overlaps to silence SAWarnings ---
+    project = relationship("ProjectDB", back_populates="bug_reports", overlaps="bug_reports")
+    user_story = relationship("UserStoryDB", back_populates="bug_reports", overlaps="bug_reports,project")
 
 
 class TestExecutionDB(Base):
-    """Test Execution tracking with detailed steps"""
+    """
+    Test Execution database model
+    PK: id (auto-increment, simple)
+    FK: (test_case_id, project_id, organization_id) → test_cases
+    """
     __tablename__ = "test_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['test_case_id', 'project_id', 'organization_id'],
+            ['test_cases.id', 'test_cases.project_id', 'test_cases.organization_id'],
+            ondelete='CASCADE'
+        ),
+        {},
+    )
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    test_case_id = Column(String, ForeignKey("test_cases.id"), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Composite FK to test_cases
+    test_case_id = Column(String, nullable=False, index=True)
+    project_id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, nullable=False, index=True)
 
     # Execution details
-    executed_by = Column(String, nullable=False) # Por ahora email o nombre
+    status = Column(String, nullable=False)  # PASSED, FAILED, BLOCKED, SKIPPED
+    executed_by = Column(String, nullable=False)
     execution_date = Column(DateTime, default=datetime.now)
-    status = Column(SQLEnum(TestStatus), nullable=False)
+    duration_seconds = Column(Integer, nullable=True)
 
-    # Environment context (NUEVO)
-    environment = Column(String, default="QA") # QA, STG, PROD
-    version = Column(String, nullable=True)    # v1.0.2, build #123
-
-    # Metrics
-    execution_time_minutes = Column(Float, nullable=True) # Cambiado a Float para mayor precisión (segundos/60)
-    passed_steps = Column(Integer, default=0)
-    failed_steps = Column(Integer, default=0)
-    total_steps = Column(Integer, default=0)
-
-    # Detailed Results (NUEVO)
-    # Guardaremos JSON como Texto porque SQLite no tiene tipo JSON nativo estricto
-    # Estructura: [{"step_id": 1, "keyword": "Given", "text": "...", "status": "PASSED", "actual": "..."}]
-    step_results = Column(Text, nullable=True)
-
-    # Evidence (NUEVO)
-    # Estructura: ["/uploads/PROJ-1/exec/img1.png", ...]
-    evidence_files = Column(Text, nullable=True)
-
-    # Notes and results
+    # Results
     notes = Column(Text, nullable=True)
-    failure_reason = Column(Text, nullable=True)
+    steps_results = Column(Text, nullable=True)  # JSON array of step results
+    screenshot_path = Column(String, nullable=True)
+    log_file_path = Column(String, nullable=True)
 
-    # Related bugs
-    bug_ids = Column(String, nullable=True)  # Comma-separated: "BUG-001,BUG-002"
+    # Environment
+    environment = Column(String, nullable=True)
+    browser = Column(String, nullable=True)
+    os = Column(String, nullable=True)
 
     # Relationships
     test_case = relationship("TestCaseDB", back_populates="executions")
 
 
-class UserDB(Base):
-    """User database model - Authentication and Authorization
+class Role(str, enum.Enum):
+    """User roles"""
+    ADMIN = "admin"
+    QA = "qa"
+    DEV = "dev"
+    MANAGER = "manager"
 
-    Supports invitation-based registration flow:
-    1. Admin creates user invitation (email + role, NO password)
-    2. User receives invitation and completes registration (sets password)
-    3. User can login with email + password
+
+class UserDB(Base):
+    """
+    User database model with organization isolation
+    PK: id
+    FK: organization_id → organizations
+
+    UNIQUE: (email, organization_id) - Same email can exist in different orgs
     """
     __tablename__ = "users"
 
-    # Primary Key
-    id = Column(String, primary_key=True, index=True)  # USR-001, USR-002, ...
+    id = Column(String, primary_key=True, index=True)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
 
-    # Authentication
-    email = Column(String, unique=True, nullable=False, index=True)
-    password_hash = Column(String, nullable=True)  # Nullable until user completes registration
-
-    # Profile
+    email = Column(String, nullable=False, index=True)
+    password_hash = Column(String, nullable=True)
     full_name = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # admin, qa, dev, manager
+    role = Column(SQLEnum(Role), default=Role.QA)
 
-    # Status
+    # Account status
     is_active = Column(Boolean, default=True)
-    is_registered = Column(Boolean, default=False)  # True after user completes registration
+    is_registered = Column(Boolean, default=False)
 
     # Invitation tracking
-    invited_by = Column(String, nullable=True)  # Email of admin who created invitation
+    invited_by = Column(String, nullable=True)
     invited_at = Column(DateTime, nullable=True)
-    registered_at = Column(DateTime, nullable=True)  # When user completed registration
 
-    # Metadata
+    # Timestamps
     created_at = Column(DateTime, default=datetime.now)
-    created_by = Column(String, ForeignKey('users.id'), nullable=True)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_login = Column(DateTime, nullable=True)
 
-    # Integration IDs
-    notion_user_id = Column(String, nullable=True)
-    azure_user_id = Column(String, nullable=True)
+    # Relationships
+    organization = relationship("OrganizationDB", back_populates="users")
+
+    __table_args__ = (
+        # Same email can exist in different organizations
+        {'sqlite_autoincrement': True},
+    )
+
+    # Note: Unique constraint (email, organization_id) will be added in migration

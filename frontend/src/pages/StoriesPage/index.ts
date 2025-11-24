@@ -1,5 +1,6 @@
 /**
- * Stories Page - Public API
+ * Stories Page
+ * Entry point - delegates to Stories component
  */
 
-export { StoriesPage } from './StoriesPage';
+export { Stories as StoriesPage } from './ui';

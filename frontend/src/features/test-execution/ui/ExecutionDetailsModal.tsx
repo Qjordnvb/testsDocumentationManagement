@@ -74,7 +74,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
   const loadScenarioBugs = async (bugIds: string[]) => {
     try {
       // Fetch each bug to get scenario_name
-      const bugPromises = bugIds.map(bugId => bugApi.getById(bugId));
+      const bugPromises = bugIds.map(bugId => bugApi.getById(bugId, projectId!));
       const bugs = await Promise.all(bugPromises);
 
       // Group bugs by scenario_name
@@ -219,7 +219,9 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                     <Clock size={14} />
                     <span>Duración</span>
                   </div>
-                  <p className="font-medium text-gray-900">{execution.execution_time_minutes.toFixed(1)} min</p>
+                      <p className="font-medium text-gray-900">
+                        {(execution.execution_time_minutes ?? (execution.duration_seconds ? execution.duration_seconds / 60 : 0)).toFixed(1)} min
+                      </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 text-gray-500 mb-1">
@@ -291,7 +293,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
                       totalSteps={scenario.steps.length}
                       bugCount={scenarioBugIds.length}
                       bugIds={scenarioBugIds}
-                      showBugButton={scenario.failedSteps > 0 && hasRole('qa', 'dev')}
+                      showBugButton={(scenario.failedSteps > 0 || scenarioBugIds.length > 0) && hasRole('qa', 'dev')}
                       onReportBug={() => setSelectedScenarioForBug(scenario)}
                     >
                     {/* Steps within scenario */}
@@ -418,7 +420,7 @@ export const ExecutionDetailsModal: React.FC<Props> = ({
           status: execution.status,
           environment: execution.environment,
           version: execution.version,
-          execution_time_minutes: execution.execution_time_minutes || 0,
+          execution_time_minutes: execution.execution_time_minutes ?? (execution.duration_seconds ? execution.duration_seconds / 60 : 0),
           evidence_count: execution.evidence_count || 0,
           total_steps: selectedScenarioForBug.steps.length,
           passed_steps: selectedScenarioForBug.passedSteps,

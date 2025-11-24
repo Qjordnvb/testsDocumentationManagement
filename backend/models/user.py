@@ -21,6 +21,8 @@ class User(BaseModel):
     email: str = Field(..., description="User email address")
     full_name: str = Field(..., description="User's full name")
     role: Role = Field(..., description="User role (admin, qa, dev, manager)")
+    organization_id: str = Field(..., description="Organization ID")
+    organization_name: Optional[str] = Field(None, description="Organization Name")
     is_active: bool = Field(default=True, description="Whether user is active")
     created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
@@ -32,6 +34,8 @@ class User(BaseModel):
                 "email": "admin@example.com",
                 "full_name": "Admin User",
                 "role": "admin",
+                "organization_id": "ORG-001",
+                "organization_name": "Acme Corporation",
                 "is_active": True,
                 "created_at": "2025-11-22T10:00:00",
                 "last_login": "2025-11-22T14:30:00"

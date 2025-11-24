@@ -1,181 +1,117 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+"""
+Test Case management endpoints
+
+Handles all test case-related operations including generation, retrieval, updates, and deletion.
+
+Refactored to use TestCaseService following SOLID principles:
+- Thin controllers: Only handle HTTP concerns (requests, responses, status codes)
+- Business logic delegated to TestCaseService
+- Testability: Service layer can be unit tested independently
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
-import json
-import os
-from datetime import datetime
 
-from backend.database import get_db, ProjectDB, UserStoryDB, TestCaseDB
-from backend.models import UserStory, AcceptanceCriteria, TestCase, TestType, TestPriority, TestStatus
-from backend.generators import GherkinGenerator
+from backend.database import get_db, UserDB
+from backend.services.test_case_service import TestCaseService
 from backend.integrations import GeminiClient
-from backend.config import settings
-from backend.api.dependencies import get_gemini_client
+from backend.api.dependencies import get_gemini_client, get_current_user
 
 router = APIRouter()
+
+
+def get_test_case_service_dependency(
+    db: Session = Depends(get_db),
+    gemini_client: GeminiClient = Depends(get_gemini_client)
+) -> TestCaseService:
+    """Dependency injection for TestCaseService"""
+    return TestCaseService(db, gemini_client)
+
 
 @router.post("/generate-test-cases/{story_id}")
 async def generate_test_cases(
     story_id: str,
     use_ai: bool = True,
     num_scenarios: int = 3,
-    db: Session = Depends(get_db),
-    gemini_client: GeminiClient = Depends(get_gemini_client)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
     """
     Generate test cases with Gherkin scenarios for a user story
+
+    Args:
+        story_id: User story ID
+        use_ai: Whether to use AI generation
+        num_scenarios: Number of scenarios to generate
+        service: Injected TestCaseService instance
+
+    Returns:
+        Generated test cases info
+
+    Raises:
+        HTTPException: If user story not found or generation errors
     """
-    # Get user story from database
-    story_db = db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
-    if not story_db:
-        raise HTTPException(status_code=404, detail="User story not found")
-
-    # Validate user story has project_id
-    if not story_db.project_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"User story {story_id} is not associated with a project. Please re-import user stories with project_id."
-        )
-
-    # Parse acceptance criteria from JSON
-    acceptance_criteria = []
-    if story_db.acceptance_criteria:
-        try:
-            criteria_data = json.loads(story_db.acceptance_criteria)
-            acceptance_criteria = [AcceptanceCriteria(**ac) for ac in criteria_data]
-        except Exception as e:
-            print(f"Warning: Failed to parse acceptance criteria for {story_id}: {e}")
-
-    # Convert to UserStory model with full data including acceptance criteria
-    user_story = UserStory(
-        id=story_db.id,
-        title=story_db.title,
-        description=story_db.description,
-        acceptance_criteria=acceptance_criteria,
-        priority=story_db.priority,
-        status=story_db.status,
-        epic=story_db.epic,
-        sprint=story_db.sprint,
-        story_points=story_db.story_points,
-        assigned_to=story_db.assigned_to
-    )
-
-    # Generate scenarios
-    gherkin_gen = GherkinGenerator(gemini_client if use_ai else None)
-
-    settings.ensure_directories()
-
     try:
-        gherkin_file = gherkin_gen.generate_from_user_story(
-            user_story=user_story,
-            output_dir=settings.output_dir,
+        result = service.generate_test_cases(
+            story_id=story_id,
             use_ai=use_ai,
             num_scenarios=num_scenarios
         )
-    except Exception as e:
-        # Handle API errors (e.g., API key issues)
+        return result
+
+    except ValueError as e:
         error_msg = str(e)
-        if "403" in error_msg or "API key" in error_msg:
+        # Handle API key errors
+        if "API key" in error_msg or "API error" in error_msg:
             raise HTTPException(
-                status_code=403,
-                detail="Gemini API error: Invalid or leaked API key. Please update your GEMINI_API_KEY in .env file. Get a new key at https://aistudio.google.com/app/apikey"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_msg
+            )
+        # Handle validation errors
+        elif "not found" in error_msg or "not associated" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND if "not found" in error_msg else status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
             )
         else:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error generating test scenarios: {error_msg}"
             )
-
-    # UPSERT: Create or update test case record in database
-    test_case_id = f"TC-{story_id}-001"
-
-    # Check if test case already exists
-    existing_test_case = db.query(TestCaseDB).filter(TestCaseDB.id == test_case_id).first()
-
-    if existing_test_case:
-        # Update existing test case
-        print(f"  Updating test case: {test_case_id}")
-        existing_test_case.title = f"Test for {user_story.title}"
-        existing_test_case.description = f"Automated test scenarios for {user_story.id}"
-        existing_test_case.gherkin_file_path = gherkin_file
-        action = "updated"
-    else:
-        # Create new test case
-        print(f"  Creating new test case: {test_case_id}")
-        db_test_case = TestCaseDB(
-            id=test_case_id,
-            project_id=story_db.project_id,  # Inherit from user story
-            title=f"Test for {user_story.title}",
-            description=f"Automated test scenarios for {user_story.id}",
-            user_story_id=story_id,
-            gherkin_file_path=gherkin_file,
-            created_date=datetime.now()
-        )
-        db.add(db_test_case)
-        action = "created"
-
-    db.commit()
-    db.refresh(existing_test_case if existing_test_case else db_test_case)
-
-    # Get the saved/updated test case for response
-    test_case = existing_test_case if existing_test_case else db_test_case
-
-    # Return in format expected by frontend
-    return {
-        "message": f"Test cases {action} successfully",
-        "test_cases": [{
-            "id": test_case.id,
-            "title": test_case.title,
-            "description": test_case.description,
-            "user_story_id": test_case.user_story_id,
-            "test_type": test_case.test_type.value if test_case.test_type else None,
-            "priority": test_case.priority.value if test_case.priority else None,
-            "status": test_case.status.value if test_case.status else None,
-            "estimated_time_minutes": test_case.estimated_time_minutes,
-            "actual_time_minutes": test_case.actual_time_minutes,
-            "automated": test_case.automated,
-            "created_date": test_case.created_date.isoformat() if test_case.created_date else None,
-            "gherkin_file_path": test_case.gherkin_file_path,
-        }],
-        "action": action,
-        "gherkin_file": gherkin_file
-    }
 
 
 @router.get("/test-cases")
 async def get_test_cases(
     project_id: str = Query(..., description="Filter test cases by project ID"),
-    db: Session = Depends(get_db)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
-    """Get all test cases for a specific project"""
-    # Validate project exists
-    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    """
+    Get all test cases for a specific project
 
-    # Filter test cases by project
-    test_cases = db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
-    return {
-        "test_cases": [
-            {
-                "id": tc.id,
-                "title": tc.title,
-                "description": tc.description,
-                "user_story_id": tc.user_story_id,
-                "test_type": tc.test_type.value if tc.test_type else None,
-                "priority": tc.priority.value if tc.priority else None,
-                "status": tc.status.value if tc.status else None,
-                "estimated_time_minutes": tc.estimated_time_minutes,
-                "actual_time_minutes": tc.actual_time_minutes,
-                "automated": tc.automated,
-                "created_date": tc.created_date.isoformat() if tc.created_date else None,
-                "last_executed": tc.last_executed.isoformat() if tc.last_executed else None,
-                "executed_by": tc.executed_by,
-                "gherkin_file_path": tc.gherkin_file_path,
-            }
-            for tc in test_cases
-        ]
-    }
+    Args:
+        project_id: Project ID to filter test cases
+        service: Injected TestCaseService instance
+
+    Returns:
+        List of test cases
+
+    Raises:
+        HTTPException: If project not found
+    """
+    print(f"📋 GET /test-cases - Project: {project_id}")
+
+    try:
+        test_cases = service.get_test_cases_by_project(project_id)
+
+        print(f"   Found {len(test_cases)} test cases")
+
+        return {"test_cases": test_cases}
+
+    except ValueError as e:
+        print(f"   ❌ Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
 
 
 @router.post("/generate-test-cases/{story_id}/preview")
@@ -185,535 +121,344 @@ async def preview_test_cases(
     scenarios_per_test: int = Query(default=3, ge=1, le=10),
     test_types: List[str] = Query(default=["FUNCTIONAL", "UI"]),
     use_ai: bool = True,
-    db: Session = Depends(get_db),
-    gemini_client: GeminiClient = Depends(get_gemini_client)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
     """
     Generate test case suggestions (PREVIEW - does NOT save to DB)
     QA will review before saving
-    """
-    # Get user story
-    story_db = db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
-    if not story_db:
-        raise HTTPException(status_code=404, detail="User story not found")
 
-    # Validate user story has project_id
-    if not story_db.project_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"User story {story_id} is not associated with a project. Please re-import user stories with project_id."
+    Args:
+        story_id: User story ID
+        num_test_cases: Number of test cases to generate
+        scenarios_per_test: Number of scenarios per test case
+        test_types: List of test types
+        use_ai: Whether to use AI generation
+        service: Injected TestCaseService instance
+
+    Returns:
+        Suggested test cases for review
+
+    Raises:
+        HTTPException: If user story not found or generation errors
+    """
+    print(f"🔍 POST /generate-test-cases/{story_id}/preview")
+    print(f"   num_test_cases: {num_test_cases}")
+    print(f"   scenarios_per_test: {scenarios_per_test}")
+    print(f"   test_types: {test_types}")
+    print(f"   use_ai: {use_ai}")
+
+    try:
+        result = service.preview_test_cases(
+            story_id=story_id,
+            num_test_cases=num_test_cases,
+            scenarios_per_test=scenarios_per_test,
+            test_types=test_types,
+            use_ai=use_ai
         )
 
-    # Parse acceptance criteria from JSON
-    acceptance_criteria = []
-    if story_db.acceptance_criteria:
-        try:
-            criteria_data = json.loads(story_db.acceptance_criteria)
-            acceptance_criteria = [AcceptanceCriteria(**ac) for ac in criteria_data]
-        except Exception as e:
-            print(f"Warning: Failed to parse acceptance criteria for {story_id}: {e}")
+        print(f"   ✅ Generated {result['total_suggested']} test case suggestions")
+        if result.get('warning'):
+            print(f"   ⚠️  Warning: {result['warning']['message']}")
 
-    user_story = UserStory(
-        id=story_db.id,
-        title=story_db.title,
-        description=story_db.description,
-        acceptance_criteria=acceptance_criteria,
-        priority=story_db.priority,
-        status=story_db.status,
-        epic=story_db.epic,
-        sprint=story_db.sprint,
-        story_points=story_db.story_points,
-        assigned_to=story_db.assigned_to
-    )
+        return result
 
-    # Generate multiple test cases with AI
-    suggested_test_cases = []
+    except ValueError as e:
+        print(f"   ❌ Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND if "not found" in str(e) else status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
-    # Generate Gherkin scenarios using AI if enabled
-    gherkin_scenarios = []
-    if use_ai:
-        try:
-            total_scenarios_needed = scenarios_per_test * num_test_cases
 
-            # Use batched generation for better reliability and performance
-            gherkin_scenarios = gemini_client.generate_gherkin_scenarios_batched(
-                user_story,
-                num_scenarios=total_scenarios_needed,
-                batch_size=15  # Generate max 15 scenarios per API call
-            )
-        except Exception as e:
-            import traceback
-            print(f"❌ AI generation failed with error:")
-            print(f"   Error type: {type(e).__name__}")
-            print(f"   Error message: {str(e)}")
-            print(f"   Traceback:")
-            traceback.print_exc()
-            print(f"⚠️  Using fallback generation instead")
-            use_ai = False
-
-    # Distribute scenarios across test cases
-    scenarios_per_tc = len(gherkin_scenarios) // num_test_cases if gherkin_scenarios else scenarios_per_test
-
-    for i in range(num_test_cases):
-        # Determine test type for this test case
-        test_type = test_types[i % len(test_types)] if test_types else "FUNCTIONAL"
-
-        # Generate title based on test type and position
-        titles = {
-            "FUNCTIONAL": f"Functional tests for {user_story.title}",
-            "UI": f"UI validation for {user_story.title}",
-            "SECURITY": f"Security tests for {user_story.title}",
-            "API": f"API tests for {user_story.title}",
-            "INTEGRATION": f"Integration tests for {user_story.title}",
-        }
-        title = titles.get(test_type, f"Test case {i+1} for {user_story.title}")
-
-        # Get scenarios for this test case
-        start_idx = i * scenarios_per_tc
-        end_idx = start_idx + scenarios_per_tc
-        test_scenarios = gherkin_scenarios[start_idx:end_idx] if gherkin_scenarios else []
-
-        # Generate Gherkin content
-        if test_scenarios:
-            gherkin_lines = [
-                f"Feature: {title}",
-                f"  {user_story.description[:200]}..." if len(user_story.description) > 200 else f"  {user_story.description}",
-                "",
-                f"  User Story: {user_story.id}",
-                f"  Test Type: {test_type}",
-                "",
-            ]
-
-            for scenario in test_scenarios:
-                gherkin_lines.append(scenario.to_gherkin())
-                gherkin_lines.append("")  # Empty line between scenarios
-
-            gherkin_content = "\n".join(gherkin_lines)
-        else:
-            # Fallback: Generate multiple scenarios based on test type (NO AI) - EN ESPAÑOL
-            gherkin_lines = [
-                f"Feature: {title}",
-                f"  {user_story.description}",
-                "",
-                f"  Historia de Usuario: {user_story.id}",
-                f"  Tipo de Prueba: {test_type}",
-                f"  Nota: Generación con IA no disponible - usando escenarios de plantilla",
-                "",
-            ]
-
-            # Generate scenarios_per_test scenarios based on test type
-            for s in range(1, scenarios_per_test + 1):
-                scenario_type = "Camino Feliz" if s == 1 else ("Negativo" if s == 2 else f"Caso Extremo {s-2}")
-                scenario_type_en = "Happy Path" if s == 1 else ("Negative" if s == 2 else f"Edge Case {s-2}")
-
-                if test_type == "FUNCTIONAL":
-                    gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
-                        f"Scenario {s}: {scenario_type} - {user_story.title[:50]}",
-                        f"  Given el sistema está configurado para {user_story.id}",
-                        f"  And todos los prerequisitos están cumplidos",
-                        f"  When {'se realiza la acción válida' if s == 1 else 'se intenta una acción inválida' if s == 2 else 'se presentan condiciones de caso extremo'}",
-                        f"  Then {'se logra el resultado esperado' if s == 1 else 'ocurre el manejo de errores apropiado' if s == 2 else 'se manejan correctamente las condiciones de frontera'}",
-                        f"  And el estado del sistema {'se actualiza correctamente' if s == 1 else 'permanece consistente'}",
-                        ""
-                    ])
-                elif test_type == "UI":
-                    gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
-                        f"Scenario {s}: UI {scenario_type} - {user_story.title[:50]}",
-                        f"  Given el usuario está en la página relevante para {user_story.id}",
-                        f"  And los elementos de UI están cargados",
-                        f"  When el usuario {'realiza la acción principal de UI' if s == 1 else 'intenta una interacción de UI inválida' if s == 2 else 'prueba casos extremos de UI'}",
-                        f"  Then {'la UI responde correctamente' if s == 1 else 'aparecen mensajes de validación apropiados' if s == 2 else 'la UI maneja casos extremos apropiadamente'}",
-                        f"  And el estado visual se actualiza apropiadamente",
-                        ""
-                    ])
-                elif test_type == "API":
-                    gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
-                        f"Scenario {s}: API {scenario_type} - {user_story.title[:50]}",
-                        f"  Given el endpoint de API está disponible para {user_story.id}",
-                        f"  And la autenticación es {'válida' if s == 1 else 'inválida' if s == 2 else 'caso extremo'}",
-                        f"  When se realiza una petición API {'válida' if s == 1 else 'inválida' if s == 2 else 'de frontera'}",
-                        f"  Then el código de respuesta es {'200 OK' if s == 1 else '400/401' if s == 2 else 'apropiado'}",
-                        f"  And los datos de respuesta coinciden con el esquema esperado",
-                        ""
-                    ])
-                else:
-                    gherkin_lines.extend([
-                        f"@{test_type.lower()} @{scenario_type_en.lower().replace(' ', '_')}",
-                        f"Scenario {s}: {scenario_type} - {user_story.title[:50]}",
-                        f"  Given el sistema está listo para probar {user_story.id}",
-                        f"  And todas las precondiciones están satisfechas",
-                        f"  When se ejecuta la acción de prueba",
-                        f"  Then se verifica el resultado esperado",
-                        f"  And no ocurren efectos secundarios inesperados",
-                        ""
-                    ])
-
-            gherkin_content = "\n".join(gherkin_lines)
-
-        suggested_test_cases.append({
-            "suggested_id": f"TC-{story_id}-{str(i+1).zfill(3)}",
-            "title": title,
-            "description": f"{test_type} test scenarios for {user_story.id}",
-            "test_type": test_type,
-            "priority": "MEDIUM",
-            "status": "NOT_RUN",
-            "scenarios_count": len(test_scenarios) if test_scenarios else scenarios_per_test,
-            "gherkin_content": gherkin_content,
-            "can_edit": True,
-            "can_delete": True
-        })
-
-    response = {
-        "project_id": story_db.project_id,  # Include project_id for frontend
-        "user_story_id": story_id,
-        "user_story_title": user_story.title,
-        "suggested_test_cases": suggested_test_cases,
-        "total_suggested": len(suggested_test_cases),
-        "can_edit_before_save": True,
-        "can_add_more": True,
-        "ai_generated": len(gherkin_scenarios) > 0
-    }
-
-    # Add warning if AI generation failed
-    if use_ai and len(gherkin_scenarios) == 0:
-        response["warning"] = {
-            "message": "AI generation unavailable - using template scenarios",
-            "reason": "Gemini API key may be invalid, expired, or blocked. Check backend logs for details.",
-            "action": "Generate a new API key at: https://makersuite.google.com/app/apikey"
-        }
-
-    return response
-
-@router.post("/test-cases/batch")
+@router.post("/test-cases/batch", status_code=status.HTTP_201_CREATED)
 async def create_test_cases_batch(
     test_cases_data: dict,
-    db: Session = Depends(get_db)
+    current_user: UserDB = Depends(get_current_user),
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
     """
     Create multiple test cases at once (after QA review)
-    """
-    print("=" * 80)
-    print("🚀 BATCH CREATE TEST CASES - START")
-    print(f"📦 Received data: {test_cases_data}")
-    print("=" * 80)
 
+    Args:
+        test_cases_data: Dictionary with test_cases list, user_story_id, and project_id
+        current_user: Current authenticated user (for organization validation)
+        service: Injected TestCaseService instance
+
+    Returns:
+        Created test cases info
+
+    Raises:
+        HTTPException: If validation fails or creation errors
+    """
     test_cases = test_cases_data.get("test_cases", [])
     user_story_id = test_cases_data.get("user_story_id")
-
-    print(f"📊 Number of test cases to create: {len(test_cases)}")
-    print(f"📝 User story ID: {user_story_id}")
+    project_id = test_cases_data.get("project_id")
 
     if not user_story_id:
-        raise HTTPException(status_code=400, detail="user_story_id is required")
-
-    # Get user story to inherit project_id
-    user_story = db.query(UserStoryDB).filter(UserStoryDB.id == user_story_id).first()
-    if not user_story:
-        raise HTTPException(status_code=404, detail=f"User story {user_story_id} not found")
-
-    print(f"✅ User story found: {user_story.id} - {user_story.title}")
-    print(f"📁 Project ID: {user_story.project_id}")
-
-    if not user_story.project_id:
         raise HTTPException(
-            status_code=400,
-            detail=f"User story {user_story_id} is not associated with a project"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_story_id is required"
         )
 
-    created_test_cases = []
+    if not project_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="project_id is required"
+        )
 
-    # Get initial count ONCE before the loop to generate sequential IDs
-    initial_count = db.query(TestCaseDB).filter(
-        TestCaseDB.user_story_id == user_story_id
-    ).count()
-    print(f"📊 Initial test case count for story {user_story_id}: {initial_count}")
+    try:
+        result = service.create_test_cases_batch(
+            test_cases_data=test_cases,
+            user_story_id=user_story_id,
+            project_id=project_id,
+            organization_id=current_user.organization_id
+        )
 
-    for i, tc_data in enumerate(test_cases, 1):
-        try:
-            print(f"\n📝 Processing test case {i}/{len(test_cases)}...")
-            print(f"   Data: {tc_data}")
+        return result
 
-            # Generate unique ID if not provided
-            if "id" not in tc_data or not tc_data["id"]:
-                # Use initial_count + current index to generate unique sequential IDs
-                tc_data["id"] = f"TC-{user_story_id}-{str(initial_count + i).zfill(3)}"
-                print(f"   Generated ID: {tc_data['id']}")
-
-            # Save Gherkin content to file if provided
-            gherkin_file_path = None
-            if "gherkin_content" in tc_data:
-                settings.ensure_directories()
-                gherkin_file = f"{settings.output_dir}/{tc_data['id']}.feature"
-                with open(gherkin_file, 'w') as f:
-                    f.write(tc_data["gherkin_content"])
-                gherkin_file_path = gherkin_file
-                print(f"   ✅ Gherkin file saved: {gherkin_file}")
-
-            # Parse enum values safely
-            test_type_str = tc_data.get("test_type", "FUNCTIONAL")
-            priority_str = tc_data.get("priority", "MEDIUM")
-            status_str = tc_data.get("status", "NOT_RUN")
-
-            print(f"   Enum values: type={test_type_str}, priority={priority_str}, status={status_str}")
-
-            # Try to get enum by name (FUNCTIONAL), fallback to getting by value
-            try:
-                test_type = TestType[test_type_str]
-            except KeyError:
-                print(f"   ⚠️ TestType KeyError for '{test_type_str}', using fallback")
-                # If name lookup fails, try value lookup
-                test_type = next((t for t in TestType if t.name == test_type_str), TestType.FUNCTIONAL)
-
-            try:
-                priority = TestPriority[priority_str]
-            except KeyError:
-                print(f"   ⚠️ TestPriority KeyError for '{priority_str}', using fallback")
-                priority = next((p for p in TestPriority if p.name == priority_str), TestPriority.MEDIUM)
-
-            try:
-                status = TestStatus[status_str]
-            except KeyError:
-                print(f"   ⚠️ TestStatus KeyError for '{status_str}', using fallback")
-                status = next((s for s in TestStatus if s.name == status_str), TestStatus.NOT_RUN)
-
-            print(f"   ✅ Enums resolved: {test_type}, {priority}, {status}")
-
-            # Create test case
-            db_test_case = TestCaseDB(
-                id=tc_data["id"],
-                project_id=user_story.project_id,  # Inherit from user story
-                title=tc_data.get("title", "Untitled Test Case"),
-                description=tc_data.get("description", ""),
-                user_story_id=tc_data["user_story_id"],
-                test_type=test_type,
-                priority=priority,
-                status=status,
-                gherkin_file_path=gherkin_file_path,
-                created_date=datetime.now()
-            )
-
-            db.add(db_test_case)
-            created_test_cases.append(db_test_case)
-            print(f"   ✅ Test case {tc_data['id']} added to session")
-
-        except Exception as e:
-            print(f"   ❌ ERROR processing test case {i}: {type(e).__name__}: {str(e)}")
-            import traceback
-            traceback.print_exc()
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg:
             raise HTTPException(
-                status_code=500,
-                detail=f"Error creating test case {i}: {str(e)}"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg
+            )
+        elif "not associated" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg
             )
 
-    print(f"\n💾 Committing {len(created_test_cases)} test cases to database...")
-    db.commit()
-    print(f"✅ Commit successful!")
-
-    print("=" * 80)
-    print("🎉 BATCH CREATE TEST CASES - COMPLETE")
-    print(f"✅ Created {len(created_test_cases)} test cases successfully")
-    print("=" * 80)
-
-    return {
-        "message": f"Created {len(created_test_cases)} test cases successfully",
-        "created_count": len(created_test_cases),
-        "test_cases": [
-            {
-                "id": tc.id,
-                "title": tc.title,
-                "user_story_id": tc.user_story_id,
-                "test_type": tc.test_type.value,
-                "status": tc.status.value
-            }
-            for tc in created_test_cases
-        ]
-    }
 
 @router.get("/test-cases/{test_id}")
-async def get_test_case(test_id: str, db: Session = Depends(get_db)):
-    """Get specific test case by ID"""
-    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-    if not tc:
-        raise HTTPException(status_code=404, detail="Test case not found")
+async def get_test_case(
+    test_id: str,
+    service: TestCaseService = Depends(get_test_case_service_dependency)
+):
+    """
+    Get specific test case by ID
 
-    return {
-        "id": tc.id,
-        "title": tc.title,
-        "description": tc.description,
-        "user_story_id": tc.user_story_id,
-        "test_type": tc.test_type.value if tc.test_type else None,
-        "priority": tc.priority.value if tc.priority else None,
-        "status": tc.status.value if tc.status else None,
-        "estimated_time_minutes": tc.estimated_time_minutes,
-        "actual_time_minutes": tc.actual_time_minutes,
-        "automated": tc.automated,
-        "created_date": tc.created_date.isoformat() if tc.created_date else None,
-        "last_executed": tc.last_executed.isoformat() if tc.last_executed else None,
-        "executed_by": tc.executed_by,
-        "gherkin_file_path": tc.gherkin_file_path,
-    }
+    Args:
+        test_id: Test case ID
+        service: Injected TestCaseService instance
+
+    Returns:
+        Test case details
+
+    Raises:
+        HTTPException: If test case not found
+    """
+    print(f"🔍 GET /test-cases/{test_id}")
+
+    try:
+        test_case = service.get_test_case_by_id(test_id)
+
+        print(f"   ✅ Test case found: {test_case['title']}")
+
+        return test_case
+
+    except ValueError as e:
+        print(f"   ❌ Test case not found: {test_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
 
 @router.put("/test-cases/{test_id}")
 async def update_test_case(
     test_id: str,
     updates: dict,
-    db: Session = Depends(get_db)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
-    """Update existing test case"""
-    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-    if not tc:
-        raise HTTPException(status_code=404, detail="Test case not found")
+    """
+    Update existing test case
 
-    # Update allowed fields
-    allowed_fields = [
-        "title", "description", "test_type", "priority", "status",
-        "estimated_time_minutes", "actual_time_minutes", "automated",
-        "executed_by"
-    ]
+    Args:
+        test_id: Test case ID to update
+        updates: Dictionary with fields to update
+        service: Injected TestCaseService instance
 
-    for field, value in updates.items():
-        if field in allowed_fields and value is not None:
-            if field in ["test_type", "priority", "status"]:
-                # Convert string to enum
-                if field == "test_type":
-                    value = TestType[value]
-                elif field == "priority":
-                    value = TestPriority[value]
-                elif field == "status":
-                    value = TestStatus[value]
-            setattr(tc, field, value)
+    Returns:
+        Updated test case
 
-    db.commit()
-    db.refresh(tc)
+    Raises:
+        HTTPException: If test case not found
+    """
+    print(f"✏️  PUT /test-cases/{test_id}")
+    print(f"   Update data: {updates}")
 
-    return {
-        "message": "Test case updated successfully",
-        "test_case": {
-            "id": tc.id,
-            "title": tc.title,
-            "description": tc.description,
-            "test_type": tc.test_type.value if tc.test_type else None,
-            "priority": tc.priority.value if tc.priority else None,
-            "status": tc.status.value if tc.status else None,
-        }
-    }
+    try:
+        result = service.update_test_case(test_id, updates)
+
+        print(f"   ✅ Test case updated: {test_id}")
+
+        return result
+
+    except ValueError as e:
+        print(f"   ❌ Update failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
 
 # IMPORTANT: /batch endpoint MUST come BEFORE /{test_id} to avoid path matching conflicts
 @router.delete("/test-cases/batch")
 async def delete_test_cases_batch(
     test_case_ids: dict,
-    db: Session = Depends(get_db)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
-    """Delete multiple test cases at once
+    """
+    Delete multiple test cases at once
 
-    Accepts: {"test_case_ids": ["TC-001", "TC-002", ...]}
+    Args:
+        test_case_ids: Dictionary with test_case_ids list
+        service: Injected TestCaseService instance
+
+    Returns:
+        Deletion results
+
+    Raises:
+        HTTPException: If validation fails
     """
     ids_to_delete = test_case_ids.get("test_case_ids", [])
 
-    if not ids_to_delete:
-        raise HTTPException(status_code=400, detail="No test case IDs provided")
+    print(f"🗑️  DELETE /test-cases/batch")
+    print(f"   IDs to delete: {ids_to_delete}")
 
-    deleted_count = 0
-    deleted_ids = []
-    errors = []
+    try:
+        result = service.delete_test_cases_batch(ids_to_delete)
 
-    for test_id in ids_to_delete:
-        try:
-            tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-            if tc:
-                # Delete associated Gherkin file if exists
-                if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
-                    try:
-                        os.remove(tc.gherkin_file_path)
-                    except Exception as e:
-                        print(f"Warning: Could not delete Gherkin file {tc.gherkin_file_path}: {e}")
+        print(f"   ✅ Deleted {result['deleted_count']} test case(s)")
+        if result.get('errors'):
+            print(f"   ⚠️  Errors: {result['errors']}")
 
-                db.delete(tc)
-                deleted_count += 1
-                deleted_ids.append(test_id)
-            else:
-                errors.append(f"Test case {test_id} not found")
-        except Exception as e:
-            errors.append(f"Error deleting {test_id}: {str(e)}")
+        return result
 
-    db.commit()
+    except ValueError as e:
+        print(f"   ❌ Batch delete failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
-    return {
-        "message": f"Deleted {deleted_count} test case(s) successfully",
-        "deleted_count": deleted_count,
-        "deleted_ids": deleted_ids,
-        "errors": errors if errors else None
-    }
 
 @router.delete("/test-cases/{test_id}")
-async def delete_test_case(test_id: str, db: Session = Depends(get_db)):
-    """Delete single test case"""
-    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-    if not tc:
-        raise HTTPException(status_code=404, detail="Test case not found")
+async def delete_test_case(
+    test_id: str,
+    service: TestCaseService = Depends(get_test_case_service_dependency)
+):
+    """
+    Delete single test case
 
-    # Delete associated Gherkin file if exists
-    if tc.gherkin_file_path and os.path.exists(tc.gherkin_file_path):
-        os.remove(tc.gherkin_file_path)
+    Args:
+        test_id: Test case ID to delete
+        service: Injected TestCaseService instance
 
-    db.delete(tc)
-    db.commit()
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: If test case not found
+    """
+    print(f"🗑️  DELETE /test-cases/{test_id}")
+
+    deleted = service.delete_test_case(test_id)
+
+    if not deleted:
+        print(f"   ❌ Test case not found: {test_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test case not found"
+        )
+
+    print(f"   ✅ Test case deleted: {test_id}")
 
     return {
         "message": "Test case deleted successfully",
         "deleted_id": test_id
     }
 
+
 @router.get("/test-cases/{test_id}/gherkin")
-async def get_gherkin_content(test_id: str, db: Session = Depends(get_db)):
-    """Get Gherkin file content for a test case"""
-    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-    if not tc:
-        raise HTTPException(status_code=404, detail="Test case not found")
+async def get_gherkin_content(
+    test_id: str,
+    service: TestCaseService = Depends(get_test_case_service_dependency)
+):
+    """
+    Get Gherkin file content for a test case
 
-    if not tc.gherkin_file_path or not os.path.exists(tc.gherkin_file_path):
-        raise HTTPException(status_code=404, detail="Gherkin file not found")
+    Args:
+        test_id: Test case ID
+        service: Injected TestCaseService instance
 
-    with open(tc.gherkin_file_path, 'r') as f:
-        content = f.read()
+    Returns:
+        Gherkin content
 
-    return {
-        "test_case_id": test_id,
-        "file_path": tc.gherkin_file_path,
-        "gherkin_content": content
-    }
+    Raises:
+        HTTPException: If test case or file not found
+    """
+    print(f"📄 GET /test-cases/{test_id}/gherkin")
+
+    try:
+        result = service.get_gherkin_content(test_id)
+
+        print(f"   ✅ Gherkin content found")
+
+        return result
+
+    except ValueError as e:
+        print(f"   ❌ Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
 
 @router.put("/test-cases/{test_id}/gherkin")
 async def update_gherkin_content(
     test_id: str,
     content_data: dict,
-    db: Session = Depends(get_db)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
-    """Update Gherkin file content for a test case"""
-    tc = db.query(TestCaseDB).filter(TestCaseDB.id == test_id).first()
-    if not tc:
-        raise HTTPException(status_code=404, detail="Test case not found")
+    """
+    Update Gherkin file content for a test case
 
+    Args:
+        test_id: Test case ID
+        content_data: Dictionary with gherkin_content
+        service: Injected TestCaseService instance
+
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: If test case not found
+    """
     gherkin_content = content_data.get("gherkin_content", "")
 
-    # Create file if doesn't exist
-    if not tc.gherkin_file_path:
-        settings.ensure_directories()
-        tc.gherkin_file_path = f"{settings.output_dir}/{test_id}.feature"
+    print(f"✏️  PUT /test-cases/{test_id}/gherkin")
+    print(f"   Content length: {len(gherkin_content)} characters")
 
-    # Write content to file
-    with open(tc.gherkin_file_path, 'w') as f:
-        f.write(gherkin_content)
+    try:
+        result = service.update_gherkin_content(test_id, gherkin_content)
 
-    db.commit()
+        print(f"   ✅ Gherkin content updated")
 
-    return {
-        "message": "Gherkin content updated successfully",
-        "file_path": tc.gherkin_file_path
-    }
+        return result
+
+    except ValueError as e:
+        print(f"   ❌ Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
 
 
 # ==================== Background Test Generation (Celery Queue) ====================
@@ -721,48 +466,87 @@ async def update_gherkin_content(
 @router.post("/generate-test-cases/{story_id}/queue")
 async def queue_test_generation(
     story_id: str,
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
     num_test_cases: int = Query(default=5, ge=1, le=10),
     scenarios_per_test: int = Query(default=3, ge=1, le=10),
     test_types: List[str] = Query(default=["FUNCTIONAL", "UI"]),
     use_ai: bool = True,
-    db: Session = Depends(get_db)
+    service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
     """
     Queue test generation task in background (non-blocking)
     Returns task_id for status polling
+
+    Args:
+        story_id: User story ID
+        num_test_cases: Number of test cases to generate
+        scenarios_per_test: Number of scenarios per test case
+        test_types: List of test types
+        use_ai: Whether to use AI generation
+        service: Injected TestCaseService instance
+
+    Returns:
+        Task info with task_id
+
+    Raises:
+        HTTPException: If validation fails
     """
     from backend.tasks import generate_test_cases_task
+    from backend.database.db import SessionLocal
 
-    # Validate user story exists
-    story_db = db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
-    if not story_db:
-        raise HTTPException(status_code=404, detail=f"User story {story_id} not found")
+    # Validate user story exists (use service's DB session)
+    try:
+        # We need to validate the story exists and belongs to the project
+        # We can't use service directly here, so we'll do a quick validation
+        from backend.database import UserStoryDB, ProjectDB
 
-    # Validate project_id
-    if not story_db.project_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"User story {story_id} is not associated with a project"
+        # Get project to retrieve organization_id
+        project = service.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found"
+            )
+
+        # Validate story exists in the specified project and organization
+        story_db = service.db.query(UserStoryDB).filter(
+            UserStoryDB.id == story_id,
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == project.organization_id
+        ).first()
+        if not story_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User story {story_id} not found in project {project_id}"
+            )
+
+        # Queue the task (runs in background)
+        task = generate_test_cases_task.delay(
+            story_id=story_id,
+            project_id=project_id,
+            organization_id=project.organization_id,
+            num_test_cases=num_test_cases,
+            scenarios_per_test=scenarios_per_test,
+            test_types=test_types,
+            use_ai=use_ai
         )
 
-    # Queue the task (runs in background)
-    task = generate_test_cases_task.delay(
-        story_id=story_id,
-        num_test_cases=num_test_cases,
-        scenarios_per_test=scenarios_per_test,
-        test_types=test_types,
-        use_ai=use_ai
-    )
+        print(f"📋 Queued test generation task: {task.id} for story {story_id}")
 
-    print(f"📋 Queued test generation task: {task.id} for story {story_id}")
+        return {
+            "task_id": task.id,
+            "story_id": story_id,
+            "status": "queued",
+            "message": "Test generation queued successfully",
+            "status_url": f"/api/v1/generate-test-cases/status/{task.id}"
+        }
 
-    return {
-        "task_id": task.id,
-        "story_id": story_id,
-        "status": "queued",
-        "message": "Test generation queued successfully",
-        "status_url": f"/api/v1/generate-test-cases/status/{task.id}"
-    }
+    except ImportError:
+        # Celery not configured
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Background task queue not configured"
+        )
 
 
 @router.get("/generate-test-cases/status/{task_id}")
@@ -770,62 +554,73 @@ async def get_task_status(task_id: str):
     """
     Get status of background test generation task
 
+    Args:
+        task_id: Celery task ID
+
     Returns:
-        - status: "pending" | "generating" | "completed" | "failed"
-        - progress: 0-100
-        - result: Complete result when status=completed
+        Task status info
+
+    Note: This endpoint doesn't use TestCaseService since it's only checking Celery task status
     """
-    from backend.celery_app import celery_app
+    try:
+        from backend.celery_app import celery_app
 
-    task = celery_app.AsyncResult(task_id)
+        task = celery_app.AsyncResult(task_id)
 
-    if task.state == 'PENDING':
-        return {
-            "task_id": task_id,
-            "status": "pending",
-            "progress": 0,
-            "message": "Task is waiting to start..."
-        }
+        if task.state == 'PENDING':
+            return {
+                "task_id": task_id,
+                "status": "pending",
+                "progress": 0,
+                "message": "Task is waiting to start..."
+            }
 
-    elif task.state == 'PROGRESS':
-        # Task is running, return progress info
-        info = task.info or {}
-        return {
-            "task_id": task_id,
-            "status": "generating",
-            "progress": info.get('progress', 0),
-            "message": info.get('status', 'Generating test cases...'),
-            "story_id": info.get('story_id'),
-            "story_title": info.get('story_title')
-        }
+        elif task.state == 'PROGRESS':
+            # Task is running, return progress info
+            info = task.info or {}
+            return {
+                "task_id": task_id,
+                "status": "generating",
+                "progress": info.get('progress', 0),
+                "message": info.get('status', 'Generating test cases...'),
+                "story_id": info.get('story_id'),
+                "story_title": info.get('story_title')
+            }
 
-    elif task.state == 'SUCCESS':
-        # Task completed successfully
-        result = task.result
-        return {
-            "task_id": task_id,
-            "status": "completed",
-            "progress": 100,
-            "message": "Test cases generated successfully",
-            "result": result
-        }
+        elif task.state == 'SUCCESS':
+            # Task completed successfully
+            result = task.result
+            return {
+                "task_id": task_id,
+                "status": "completed",
+                "progress": 100,
+                "message": "Test cases generated successfully",
+                "result": result
+            }
 
-    elif task.state == 'FAILURE':
-        # Task failed
-        error_info = str(task.info) if task.info else "Unknown error"
-        return {
-            "task_id": task_id,
-            "status": "failed",
-            "progress": 0,
-            "message": "Test generation failed",
-            "error": error_info
-        }
+        elif task.state == 'FAILURE':
+            # Task failed
+            error_info = str(task.info) if task.info else "Unknown error"
+            return {
+                "task_id": task_id,
+                "status": "failed",
+                "progress": 0,
+                "message": "Test generation failed",
+                "error": error_info
+            }
 
-    else:
-        # Unknown state
-        return {
-            "task_id": task_id,
-            "status": "unknown",
-            "progress": 0,
-            "message": f"Unknown task state: {task.state}"
-        }
+        else:
+            # Unknown state
+            return {
+                "task_id": task_id,
+                "status": "unknown",
+                "progress": 0,
+                "message": f"Unknown task state: {task.state}"
+            }
+
+    except ImportError:
+        # Celery not configured
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Background task queue not configured"
+        )

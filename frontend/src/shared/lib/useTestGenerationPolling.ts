@@ -65,15 +65,14 @@ export function useTestGenerationPolling() {
                 gherkin_content: tc.gherkin_content,
               }));
 
-              // Call batch create endpoint
-              await fetch('/api/v1/test-cases/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  user_story_id: status.result.story_id,
-                  test_cases: testCasesToSave,
-                }),
+              // Call batch create endpoint (WITH AUTHENTICATION and multi-tenant isolation)
+              const result = await apiService.createTestCasesBatch({
+                user_story_id: status.result.story_id,
+                project_id: job.projectId,
+                test_cases: testCasesToSave,
               });
+
+              console.log('✅ Test cases saved successfully:', result);
 
               toast.success(
                 `Test Cases Saved! ${testCasesToSave.length} test cases created for ${job?.storyTitle || 'user story'}`,
@@ -82,10 +81,13 @@ export function useTestGenerationPolling() {
 
               // Notify that test cases were saved (triggers refresh in StoriesPage)
               notifyTestCasesSaved();
-            } catch (error) {
-              console.error('Error saving test cases:', error);
+            } catch (error: any) {
+              console.error('❌ Error saving test cases:', error);
+
+              const errorMessage = error?.response?.data?.detail || error?.message || 'Unknown error';
+
               toast.error(
-                'Failed to Save - Test cases were generated but could not be saved',
+                `Failed to Save - ${errorMessage}`,
                 { duration: 7000 }
               );
             }

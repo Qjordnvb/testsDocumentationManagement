@@ -1,0 +1,1 @@
+export { BugDetailsPage } from './BugDetailsPage';

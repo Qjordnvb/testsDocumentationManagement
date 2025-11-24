@@ -98,6 +98,7 @@ export const TestRunnerModal: React.FC<Props> = ({
     environment: 'QA',
     version: '',
     execution_time_minutes: elapsedSeconds / 60,
+    duration_seconds: elapsedSeconds,
     total_steps: totalSteps,
     passed_steps: passedSteps,
     failed_steps: failedSteps,
@@ -132,6 +133,7 @@ export const TestRunnerModal: React.FC<Props> = ({
       environment: 'QA',
       version: '',
       execution_time_minutes: elapsedSeconds / 60,
+      duration_seconds: elapsedSeconds,
       total_steps: selectedScenarioForBug.steps.length,
       passed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'passed').length,
       failed_steps: selectedScenarioForBug.steps.filter((st: any) => st.status === 'failed').length,
@@ -314,9 +316,15 @@ export const TestRunnerModal: React.FC<Props> = ({
 
       // Check if there are failed steps - prompt to create bug
       const hasFailures = executionStatus === 'FAILED';
-      if (hasFailures) {
+
+      // If there are failures AND no bugs reported yet, prompt to create bug
+      // If bugs were already reported during execution, just close
+      const hasReportedBugs = Object.keys(scenarioBugs).length > 0;
+
+      if (hasFailures && !hasReportedBugs) {
         setShowBugPrompt(true);
       } else {
+        // If passed OR failed but bugs already reported, close modal
         onClose();
       }
 

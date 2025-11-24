@@ -23,8 +23,10 @@ export const bugApi = {
   /**
    * Get a specific bug by ID
    */
-  getById: async (bugId: string): Promise<Bug> => {
-    const { data } = await api.get<Bug>(`/bugs/${bugId}`);
+  getById: async (bugId: string, projectId: string): Promise<Bug> => {
+    const { data } = await api.get<Bug>(`/bugs/${bugId}`, {
+      params: { project_id: projectId }
+    });
     return data;
   },
 
@@ -39,30 +41,36 @@ export const bugApi = {
   /**
    * Update an existing bug
    */
-  update: async (bugId: string, updates: UpdateBugDTO): Promise<Bug> => {
-    const { data } = await api.put<Bug>(`/bugs/${bugId}`, updates);
+  update: async (bugId: string, projectId: string, updates: UpdateBugDTO): Promise<Bug> => {
+    const { data } = await api.put<Bug>(`/bugs/${bugId}`, updates, {
+      params: { project_id: projectId }
+    });
     return data;
   },
 
   /**
    * Delete a bug
    */
-  delete: async (bugId: string): Promise<void> => {
-    await api.delete(`/bugs/${bugId}`);
+  delete: async (bugId: string, projectId: string): Promise<void> => {
+    await api.delete(`/bugs/${bugId}`, {
+      params: { project_id: projectId }
+    });
   },
 
   /**
    * Update bug status (convenience method)
    */
-  updateStatus: async (bugId: string, status: Bug['status']): Promise<Bug> => {
-    return bugApi.update(bugId, { status });
+  updateStatus: async (bugId: string, projectId: string, status: Bug['status']): Promise<Bug> => {
+    return bugApi.update(bugId, projectId, { status });
   },
 
   /**
    * Dev-restricted update: only status, fix_description, screenshots
    */
-  devUpdate: async (bugId: string, updates: { status?: Bug['status']; fix_description?: string; screenshots?: string[] }): Promise<Bug> => {
-    const { data } = await api.patch<Bug>(`/bugs/${bugId}/dev-update`, updates);
+  devUpdate: async (bugId: string, projectId: string, updates: { status?: Bug['status']; fix_description?: string; screenshots?: string[] }): Promise<Bug> => {
+    const { data } = await api.patch<Bug>(`/bugs/${bugId}/dev-update`, updates, {
+      params: { project_id: projectId }
+    });
     return data;
   },
 

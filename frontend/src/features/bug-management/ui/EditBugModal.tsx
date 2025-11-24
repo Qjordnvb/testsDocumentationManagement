@@ -123,7 +123,7 @@ export const EditBugModal: React.FC<Props> = ({
         assigned_to: assignedTo.trim() || undefined,
       };
 
-      const updatedBug = await bugApi.update(bug.id, updates);
+      const updatedBug = await bugApi.update(bug.id, bug.project_id, updates);
 
       toast.success(`Bug ${updatedBug.id} updated successfully`);
 
