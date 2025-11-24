@@ -16,6 +16,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useTestCasesPage } from '../model';
+import { useAuth } from '@/app/providers';
 import { TestCaseFormModal } from '@/features/test-case-management/ui/TestCaseFormModal';
 import { TestRunnerModal } from '@/features/test-execution/ui/TestRunnerModal';
 import { ExecutionDetailsModal } from '@/features/test-execution/ui/ExecutionDetailsModal';
@@ -24,6 +25,8 @@ import { GherkinEditor } from '@/shared/ui/GherkinEditor/GherkinEditor';
 import { Badge, ConfirmModal } from '@/shared/ui';
 
 export const TestCases = () => {
+  const { hasRole } = useAuth();
+  const isDev = hasRole('dev');
   const {
     projectId,
     currentProject,
@@ -215,13 +218,15 @@ export const TestCases = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteSuite(suite, e)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                    title="Eliminar suite completo"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {!isDev && (
+                    <button
+                      onClick={(e) => handleDeleteSuite(suite, e)}
+                      className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                      title="Eliminar suite completo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Test Cases Table */}
@@ -307,36 +312,40 @@ export const TestCases = () => {
                                   </Badge>
                                 </td>
                                 <td className="py-3" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex gap-1 justify-end">
-                                    <button
-                                      onClick={() => handleRunTest(testCase)}
-                                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                      title="Ejecutar test"
-                                    >
-                                      <Play size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleOpenGherkin(testCase)}
-                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                      title="Ver/Editar Gherkin"
-                                    >
-                                      <FileText size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingTestCase(testCase)}
-                                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                      title="Editar test case"
-                                    >
-                                      <Edit size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(testCase.id)}
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                      title="Eliminar test case"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </div>
+                                  {!isDev ? (
+                                    <div className="flex gap-1 justify-end">
+                                      <button
+                                        onClick={() => handleRunTest(testCase)}
+                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                        title="Ejecutar test"
+                                      >
+                                        <Play size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleOpenGherkin(testCase)}
+                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Ver/Editar Gherkin"
+                                      >
+                                        <FileText size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingTestCase(testCase)}
+                                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Editar test case"
+                                      >
+                                        <Edit size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(testCase.id)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Eliminar test case"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-gray-400 text-right">Solo lectura</div>
+                                  )}
                                 </td>
                               </tr>
                               {/* Execution History Row */}
