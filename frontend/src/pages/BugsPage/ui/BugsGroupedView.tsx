@@ -4,7 +4,7 @@
  */
 
 import type { TestCaseGroup } from '@/entities/bug';
-import { Bug as BugIcon, ChevronDown, ChevronRight, Calendar, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, User } from 'lucide-react';
 import { EmptyState } from '@/shared/ui';
 import {
   getStatusIcon,

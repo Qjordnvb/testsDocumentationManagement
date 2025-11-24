@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save } from 'lucide-react';
 import { Button } from '@/shared/ui';
-import type { UserStory, Priority, Status, AcceptanceCriteria } from '@/entities/user-story';
+import type { UserStory, Priority, Status } from '@/entities/user-story';
 import toast from 'react-hot-toast';
 
 interface EditStoryModalProps {

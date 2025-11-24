@@ -68,7 +68,6 @@ export function useTestGenerationPolling() {
               // Call batch create endpoint (WITH AUTHENTICATION and multi-tenant isolation)
               const result = await apiService.createTestCasesBatch({
                 user_story_id: status.result.story_id,
-                project_id: job.projectId,
                 test_cases: testCasesToSave,
               });
 

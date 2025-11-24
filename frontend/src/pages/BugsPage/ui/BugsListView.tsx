@@ -3,7 +3,7 @@
  */
 
 import type { Bug } from '@/entities/bug';
-import { Bug as BugIcon, Calendar, User } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
 import { EmptyState } from '@/shared/ui';
 import {
   getStatusIcon,

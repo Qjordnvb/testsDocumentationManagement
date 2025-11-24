@@ -9,7 +9,7 @@ import type { UserStory } from '@/entities/user-story';
 import { StoryTable, UserStoryCard } from '@/widgets/story-table';
 import { Button, SkeletonTable, EmptyState } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
-import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
+import { getTypographyPreset } from '@/shared/design-system/tokens';
 import { useStories } from '../model';
 import { UploadModal } from '@/features/upload-excel/ui/UploadModal';
 import { GenerateModal } from '@/features/generate-tests/ui/GenerateModal';
@@ -48,7 +48,6 @@ export const Stories = () => {
 
   const bodySmall = getTypographyPreset('bodySmall');
   const body = getTypographyPreset('body');
-  const headingLarge = getTypographyPreset('headingLarge');
 
   if (isLoading) {
     return (
