@@ -69,6 +69,7 @@ export function useTestGenerationPolling() {
               const result = await apiService.createTestCasesBatch({
                 user_story_id: status.result.story_id,
                 test_cases: testCasesToSave,
+                project_id: job.projectId,
               });
 
               console.log('✅ Test cases saved successfully:', result);

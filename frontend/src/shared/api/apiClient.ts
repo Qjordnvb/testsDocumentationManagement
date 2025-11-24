@@ -180,14 +180,15 @@ export const apiService = {
   },
 
   // Create multiple test cases at once (after AI generation)
+// Create multiple test cases at once (after AI generation)
   createTestCasesBatch: async (payload: {
     user_story_id: string;
+    project_id: string;
     test_cases: any[];
   }): Promise<any> => {
     const { data } = await api.post('/test-cases/batch', payload);
     return data;
   },
-
   // ==================== Test Plans ====================
 
   // Generate test plan

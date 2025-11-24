@@ -51,6 +51,7 @@ export interface PreviewResponse {
 
 export interface BatchCreateParams {
   user_story_id: string;
+  project_id: string;
   test_cases: Array<{
     id?: string;
     suggested_id?: string;
