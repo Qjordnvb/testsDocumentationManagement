@@ -244,16 +244,16 @@ class BugReportDB(Base):
             ['projects.id', 'projects.organization_id'],
             ondelete='CASCADE'
         ),
-        # Optional FKs - bug can exist without user story or test case
+        # Optional FKs - CASCADE for test_case (delete bugs when test deleted)
         ForeignKeyConstraint(
             ['user_story_id', 'project_id', 'organization_id'],
             ['user_stories.id', 'user_stories.project_id', 'user_stories.organization_id'],
-            ondelete='SET NULL'
+            ondelete='SET NULL'  # User story can be deleted without deleting bugs
         ),
         ForeignKeyConstraint(
             ['test_case_id', 'project_id', 'organization_id'],
             ['test_cases.id', 'test_cases.project_id', 'test_cases.organization_id'],
-            ondelete='SET NULL'
+            ondelete='CASCADE'  # CRITICAL: Cascade delete bugs when test case is deleted
         ),
         {},
     )

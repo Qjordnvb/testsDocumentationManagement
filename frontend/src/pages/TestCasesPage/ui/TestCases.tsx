@@ -74,6 +74,7 @@ export const TestCases = () => {
     highlightedSuite,
     deletingTestCaseId,
     setDeletingTestCaseId,
+    deletingTestCaseBugCount,
     confirmDelete,
   } = useTestCasesPage();
 
@@ -312,7 +313,7 @@ export const TestCases = () => {
                                   </Badge>
                                 </td>
                                 <td className="py-3" onClick={(e) => e.stopPropagation()}>
-                                  {!isDev ? (
+                                  {!isDev && (
                                     <div className="flex gap-1 justify-end">
                                       <button
                                         onClick={() => handleRunTest(testCase)}
@@ -343,8 +344,6 @@ export const TestCases = () => {
                                         <Trash2 size={16} />
                                       </button>
                                     </div>
-                                  ) : (
-                                    <div className="text-sm text-gray-400 text-right">Solo lectura</div>
                                   )}
                                 </td>
                               </tr>
@@ -472,8 +471,17 @@ export const TestCases = () => {
         isOpen={!!deletingTestCaseId}
         onClose={() => setDeletingTestCaseId(null)}
         onConfirm={confirmDelete}
-        title="Eliminar Test Case"
-        message="¿Estás seguro de que deseas eliminar este test case? Esta acción no se puede deshacer."
+        title="⚠️ Eliminar Test Case"
+        message={
+          deletingTestCaseBugCount > 0
+            ? `Este test case tiene ${deletingTestCaseBugCount} bug${deletingTestCaseBugCount > 1 ? 's' : ''} reportado${deletingTestCaseBugCount > 1 ? 's' : ''}.\n\n` +
+              `Al eliminar este test case:\n` +
+              `• Se eliminarán TODOS los ${deletingTestCaseBugCount} bugs asociados\n` +
+              `• Se perderá toda la documentación de estos bugs\n` +
+              `• Esta acción NO se puede deshacer\n\n` +
+              `¿Confirmas la eliminación del test case y sus bugs?`
+            : '¿Estás seguro de que deseas eliminar este test case? Esta acción no se puede deshacer.'
+        }
         confirmText="Eliminar"
         cancelText="Cancelar"
         variant="danger"

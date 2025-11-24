@@ -1,19 +1,20 @@
 /**
  * Header Component
+ * Displays contextual information based on current route and user role
  */
 
 import { useState } from 'react';
-import { useProject } from '@/app/providers/ProjectContext';
 import { useAuth } from '@/app/providers';
 import { Link, useNavigate } from 'react-router-dom';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
-import { LogOut, Users, Building2 } from 'lucide-react';
+import { LogOut, Users } from 'lucide-react';
+import { useHeaderContext } from './lib/useHeaderContext';
 
 export const Header = () => {
-  const { currentProject } = useProject();
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const headerContext = useHeaderContext();
 
   const bodySmall = getTypographyPreset('bodySmall');
   const headingMedium = getTypographyPreset('headingMedium');
@@ -46,49 +47,36 @@ export const Header = () => {
   return (
     <header className={`${colors.white} shadow-sm border-b ${colors.gray.border200} px-6 py-4`}>
       <div className="flex items-center justify-between">
-        {/* Project name with breadcrumb */}
+        {/* Dynamic header content based on route and role */}
         <div>
-          {currentProject ? (
-            // When inside a project - show breadcrumb
-            <>
-              <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-1`}>
-                <Link to="/" className={`hover:text-blue-600 transition-colors`}>
-                  📁 Todos los Proyectos
-                </Link>
-                <span>›</span>
-                <span className={`${colors.gray.text900} font-medium`}>{currentProject.name}</span>
-              </div>
-              <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900}`}>
-                {currentProject.name}
-              </h2>
-              <p className={`${bodySmall.className} ${colors.gray.text600}`}>
-                {currentProject.id} • QA Documentation Management
-              </p>
-            </>
-          ) : (
-            // VISTA DASHBOARD (Admin/Manager/Lista de Proyectos)
-            <>
-              <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} flex items-center gap-2`}>
-                {/* Si el usuario es admin o manager, mostramos el nombre de su organización */}
-                {user?.role === 'admin' || user?.role === 'manager' ? (
-                  <>
-                    <Building2 className="text-primary-purple" />
-                    <span>{user?.organization_name || 'Mi Organización'}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>📁</span>
-                    <span>Mis Proyectos QA</span>
-                  </>
-                )}
-              </h2>
-              <p className={`${bodySmall.className} ${colors.gray.text600}`}>
-                {user?.role === 'admin'
-                  ? `Gestión Corporativa • ${user?.email}`
-                  : 'Gestiona todos tus proyectos de testing'}
-              </p>
-            </>
+          {/* Breadcrumbs (only show when relevant) */}
+          {headerContext.showBreadcrumbs && headerContext.breadcrumbs.length > 0 && (
+            <div className={`flex items-center gap-2 ${bodySmall.className} ${colors.gray.text500} mb-1`}>
+              {headerContext.breadcrumbs.map((crumb, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  {crumb.link ? (
+                    <Link to={crumb.link} className="hover:text-blue-600 transition-colors">
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span className={`${colors.gray.text900} font-medium`}>{crumb.label}</span>
+                  )}
+                  {index < headerContext.breadcrumbs.length - 1 && <span>›</span>}
+                </div>
+              ))}
+            </div>
           )}
+
+          {/* Title */}
+          <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} flex items-center gap-2`}>
+            {headerContext.icon && <span>{headerContext.icon}</span>}
+            <span>{headerContext.title}</span>
+          </h2>
+
+          {/* Subtitle */}
+          <p className={`${bodySmall.className} ${colors.gray.text600}`}>
+            {headerContext.subtitle}
+          </p>
         </div>
 
         {/* User menu */}

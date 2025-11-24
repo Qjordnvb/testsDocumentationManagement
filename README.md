@@ -132,6 +132,10 @@ testsDocumentationManagement/
 
 ### ⚡ Inicio Rápido (UN SOLO COMANDO)
 
+make db-init ORG="ORG-COCA" NAME="Coca Cola Inc" EMAIL="admin@coca.com"
+make db-add ORG="ORG-PEPSI" NAME="PepsiCo" EMAIL="admin@pepsi.com"
+
+
 ```bash
 # 1. Configuración inicial (solo primera vez)
 make setup

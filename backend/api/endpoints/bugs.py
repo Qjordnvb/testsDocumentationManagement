@@ -355,6 +355,52 @@ async def dev_update_bug(
         )
 
 
+@router.get("/bugs/count-by-test-case/{test_case_id}")
+async def count_bugs_by_test_case(
+    test_case_id: str,
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
+    current_user: UserDB = Depends(get_current_user),
+    service: BugService = Depends(get_bug_service_dependency)
+):
+    """
+    Count bugs associated with a specific test case
+
+    CRITICAL SAFETY: Uses composite key (test_case_id + project_id + organization_id)
+    to ensure only bugs from the current organization/project are counted
+
+    Args:
+        test_case_id: Test case ID to count bugs for
+        project_id: Project ID (part of composite key)
+        current_user: Current authenticated user (for organization validation)
+        service: Injected BugService instance
+
+    Returns:
+        Bug count
+
+    Raises:
+        HTTPException: If project not found or access denied
+    """
+    print(f"📊 GET /bugs/count-by-test-case/{test_case_id}?project_id={project_id}")
+    print(f"   User: {current_user.id} (Org: {current_user.organization_id})")
+
+    try:
+        count = service.count_bugs_by_test_case(test_case_id, project_id)
+        print(f"   ✅ Found {count} bug(s) associated with test case {test_case_id}")
+
+        return {
+            "test_case_id": test_case_id,
+            "project_id": project_id,
+            "bug_count": count
+        }
+
+    except ValueError as e:
+        print(f"   ❌ Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
 @router.delete("/bugs/{bug_id}")
 async def delete_bug(
     bug_id: str,

@@ -8,6 +8,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { testCaseApi } from '@/entities/test-case';
 import { storyApi } from '@/entities/user-story';
+import { bugApi } from '@/entities/bug';
 import { useProject } from '@/app/providers/ProjectContext';
 import type { TestCase } from '@/entities/test-case';
 import type { UserStory } from '@/entities/user-story';
@@ -32,6 +33,7 @@ export const useTestCasesPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [deletingTestCaseId, setDeletingTestCaseId] = useState<string | null>(null);
+  const [deletingTestCaseBugCount, setDeletingTestCaseBugCount] = useState<number>(0);
 
   // Test Runner states
   const [runningTestCase, setRunningTestCase] = useState<TestCase | null>(null);
@@ -229,8 +231,19 @@ export const useTestCasesPage = () => {
   };
 
   // Handlers
-  const handleDelete = (id: string) => {
-    setDeletingTestCaseId(id);
+  const handleDelete = async (id: string) => {
+    if (!projectId) return;
+
+    try {
+      // Load bug count before showing modal
+      const count = await bugApi.countByTestCase(id, projectId);
+      setDeletingTestCaseBugCount(count);
+      setDeletingTestCaseId(id);
+    } catch (err: any) {
+      console.error('Error loading bug count:', err);
+      setDeletingTestCaseBugCount(0);
+      setDeletingTestCaseId(id);
+    }
   };
 
   const confirmDelete = async () => {
@@ -419,6 +432,7 @@ export const useTestCasesPage = () => {
     // Delete confirmation
     deletingTestCaseId,
     setDeletingTestCaseId,
+    deletingTestCaseBugCount,
     confirmDelete,
   };
 };

@@ -249,6 +249,37 @@ class BugService:
 
         return True
 
+    def count_bugs_by_test_case(self, test_case_id: str, project_id: str) -> int:
+        """
+        Count number of bugs associated with a specific test case
+
+        CRITICAL SAFETY: Uses composite key (test_case_id + project_id + organization_id)
+        to ensure isolation per organization/project
+
+        Args:
+            test_case_id: Test case ID
+            project_id: Project ID for isolation
+
+        Returns:
+            Number of bugs associated with this test case
+
+        Raises:
+            ValueError: If project not found
+        """
+        # Validate project exists and get organization_id
+        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            raise ValueError(f"Project {project_id} not found")
+
+        # Count bugs with composite key filtering (ensures multi-tenant isolation)
+        count = self.db.query(BugReportDB).filter(
+            BugReportDB.test_case_id == test_case_id,
+            BugReportDB.project_id == project_id,
+            BugReportDB.organization_id == project.organization_id  # CRITICAL: Tenant isolation
+        ).count()
+
+        return count
+
     # ========== Private Helper Methods ==========
 
     def _determine_project_id(self, bug: BugReport) -> str:

@@ -81,4 +81,16 @@ export const bugApi = {
     const { data } = await api.get<GroupedBugsResponse>(`/bugs/grouped?project_id=${projectId}`);
     return data;
   },
+
+  /**
+   * Count bugs associated with a specific test case
+   * Used before test case deletion to warn user about CASCADE delete
+   */
+  countByTestCase: async (testCaseId: string, projectId: string): Promise<number> => {
+    const { data } = await api.get<{ test_case_id: string; project_id: string; bug_count: number }>(
+      `/bugs/count-by-test-case/${testCaseId}`,
+      { params: { project_id: projectId } }
+    );
+    return data.bug_count;
+  },
 };

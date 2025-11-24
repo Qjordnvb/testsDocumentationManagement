@@ -8,7 +8,6 @@ import { MoreVertical, Beaker, Eye, Edit2 } from 'lucide-react';
 import type { UserStory } from '@/entities/user-story';
 import { useAuth } from '@/app/providers';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
-import { Button } from '@/shared/ui/Button';
 
 interface Props {
   story: UserStory;
