@@ -2,8 +2,10 @@
  * Stories Page Main Component
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
+import type { UserStory } from '@/entities/user-story';
 import { StoryTable, UserStoryCard } from '@/widgets/story-table';
 import { Button, LoadingSpinner } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
@@ -11,6 +13,7 @@ import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 import { useStories } from '../model';
 import { UploadModal } from '@/features/upload-excel/ui/UploadModal';
 import { GenerateModal } from '@/features/generate-tests/ui/GenerateModal';
+import { EditStoryModal } from '@/features/story-management/ui';
 
 export const Stories = () => {
   const navigate = useNavigate();
@@ -33,6 +36,8 @@ export const Stories = () => {
     handleUpdateStory,
     loadStories,
   } = useStories();
+
+  const [editingStory, setEditingStory] = useState<UserStory | null>(null);
 
   const handleViewTests = (storyId: string) => {
     // Navigate to test cases page with story filter using React Router
@@ -141,10 +146,7 @@ export const Stories = () => {
               story={story}
               onGenerateTests={() => handleGenerate(story)}
               onViewTests={handleViewTests}
-              onEdit={(storyId) => {
-                // TODO: Implement edit modal
-                console.log('Edit story:', storyId);
-              }}
+              onEdit={() => setEditingStory(story)}
             />
           ))}
         </div>
@@ -171,6 +173,19 @@ export const Stories = () => {
           }}
           onSuccess={() => {
             loadStories();
+          }}
+        />
+      )}
+
+      {/* Edit Story Modal */}
+      {editingStory && (
+        <EditStoryModal
+          isOpen={!!editingStory}
+          story={editingStory}
+          onClose={() => setEditingStory(null)}
+          onSave={async (storyId, updates) => {
+            await handleUpdateStory(storyId, updates);
+            setEditingStory(null);
           }}
         />
       )}

@@ -36,7 +36,6 @@ export const GenerateModal = ({
   onSuccess,
 }: GenerateModalProps) => {
   const {
-    isGenerating,
     generationError,
     setGenerationError,
     resetGeneration,
@@ -48,10 +47,6 @@ export const GenerateModal = ({
   const [selectedTestTypes, setSelectedTestTypes] = useState<string[]>(['FUNCTIONAL', 'UI']);
   const [useAi, setUseAi] = useState(true);
   const [suggestedTests, setSuggestedTests] = useState<SuggestedTestCase[]>([]);
-  const [isLoadingLocal, setIsLoadingLocal] = useState(false);
-
-  // Combined loading state (local OR store)
-  const isActuallyGenerating = isGenerating || isLoadingLocal;
 
   // Check if story already has active job
   const storyHasActiveJob = hasActiveJob(story.id);
@@ -75,10 +70,18 @@ export const GenerateModal = ({
     }
   };
 
-  // Handle queue generation (NEW - non-blocking)
+  // Handle queue generation (NEW - non-blocking with immediate feedback)
   const handleGenerate = async () => {
-    setIsLoadingLocal(true);
     setGenerationError(null);
+
+    // Close modal immediately for better UX
+    onClose();
+
+    // Show optimistic toast immediately
+    toast.loading(
+      `Encolando generación de ${numTestCases} test cases para "${story.title}"...`,
+      { id: `queue-${story.id}`, duration: 2000 }
+    );
 
     try {
       // Queue the test generation job (non-blocking)
@@ -104,12 +107,10 @@ export const GenerateModal = ({
 
       // Show success toast
       toast.success(
-        `Test Generation Queued! Generating ${numTestCases} test cases for "${story.title}". You'll be notified when ready.`,
-        { duration: 4000 }
+        `✅ Generación encolada! Generando ${numTestCases} test cases. Mira el badge para ver el progreso.`,
+        { id: `queue-${story.id}`, duration: 4000 }
       );
 
-      // Close modal and call onSuccess
-      onClose();
       onSuccess?.();
     } catch (error: any) {
       // Error handling
@@ -126,13 +127,10 @@ export const GenerateModal = ({
         errorMessage = error.message;
       }
 
-      setGenerationError(errorMessage);
       toast.error(
-        `Queue Failed - ${errorMessage}`,
-        { duration: 5000 }
+        `❌ Error: ${errorMessage}`,
+        { id: `queue-${story.id}`, duration: 5000 }
       );
-    } finally {
-      setIsLoadingLocal(false);
     }
   };
 
@@ -179,7 +177,7 @@ export const GenerateModal = ({
         )}
 
         {/* Configuration */}
-        {!suggestedTests.length && !isActuallyGenerating && (
+        {!suggestedTests.length && (
           <div className="space-y-4">
             {/* AI toggle */}
             <div className="flex items-center justify-between">
@@ -220,7 +218,6 @@ export const GenerateModal = ({
                 value={numTestCases}
                 onChange={(e) => setNumTestCases(Number(e.target.value))}
                 className={`w-full h-2 ${colors.gray[200]} ${borderRadius.lg} appearance-none cursor-pointer`}
-                disabled={isActuallyGenerating}
               />
               <div className={`flex justify-between ${bodySmall.className} ${colors.gray.text500} mt-1`}>
                 <span>1</span>
@@ -241,7 +238,6 @@ export const GenerateModal = ({
                 value={scenariosPerTest}
                 onChange={(e) => setScenariosPerTest(Number(e.target.value))}
                 className={`w-full h-2 ${colors.gray[200]} ${borderRadius.lg} appearance-none cursor-pointer`}
-                disabled={isActuallyGenerating}
               />
               <div className={`flex justify-between ${bodySmall.className} ${colors.gray.text500} mt-1`}>
                 <span>1</span>
@@ -262,14 +258,12 @@ export const GenerateModal = ({
                     type="button"
                     onClick={() => handleTestTypeToggle(testType.value)}
                     className={`
-                      px-3 py-1.5 ${bodySmall.className} font-medium ${borderRadius.md} border transition-colors
+                      px-3 py-1.5 ${bodySmall.className} font-medium ${borderRadius.md} border transition-colors cursor-pointer
                       ${selectedTestTypes.includes(testType.value)
                         ? `${colors.brand.primary[100]} ${colors.brand.primary.border300} ${colors.brand.primary.text800}`
                         : `${colors.white} ${colors.gray.border300} ${colors.gray.text700} hover:bg-gray-50`
                       }
-                      ${isActuallyGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                     `}
-                    disabled={isActuallyGenerating}
                   >
                     {testType.label}
                   </button>
@@ -287,14 +281,6 @@ export const GenerateModal = ({
           </div>
         )}
 
-        {/* Queueing in progress */}
-        {isLoadingLocal && (
-          <div className="flex flex-col items-center justify-center py-8 px-4">
-            <Loader2 className={`w-12 h-12 ${colors.brand.primary.text600} animate-spin mb-4`} />
-            <p className={`${bodySmall.className} font-medium ${colors.gray.text900}`}>Encolando generación...</p>
-          </div>
-        )}
-
         {/* Error message */}
         {generationError && (
           <div className={`flex items-start gap-2 p-3 ${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg}`}>
@@ -305,15 +291,15 @@ export const GenerateModal = ({
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-4 border-t">
-          <Button variant="secondary" onClick={handleClose} disabled={isLoadingLocal}>
+          <Button variant="secondary" onClick={handleClose}>
             Cancelar
           </Button>
           <Button
             onClick={handleGenerate}
-            disabled={isLoadingLocal || storyHasActiveJob}
-            leftIcon={isLoadingLocal ? <Loader2 className="animate-spin" /> : <Sparkles />}
+            disabled={storyHasActiveJob}
+            leftIcon={<Sparkles />}
           >
-            {isLoadingLocal ? 'Encolando...' : storyHasActiveJob ? 'Ya está en cola' : 'Encolar Generación'}
+            {storyHasActiveJob ? 'Ya está en cola' : 'Generar Test Cases'}
           </Button>
         </div>
       </div>

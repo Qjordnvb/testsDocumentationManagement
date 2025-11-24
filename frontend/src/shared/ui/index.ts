@@ -50,3 +50,6 @@ export type { FormGroupProps } from './FormGroup';
 // EmptyState
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
+
+// Skeleton
+export { Skeleton, SkeletonText, SkeletonCard, SkeletonTable } from './Skeleton';
