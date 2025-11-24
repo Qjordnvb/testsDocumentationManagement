@@ -165,6 +165,18 @@ class ReportService:
         # Convert to Pydantic models
         bugs = []
         for bug_db in bugs_db:
+            # Parse attachments if stored as JSON
+            screenshots = []
+            if bug_db.attachments:
+                try:
+                    attachments_data = json.loads(bug_db.attachments)
+                    screenshots = attachments_data if isinstance(attachments_data, list) else []
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            # Fallback to screenshot_path if available
+            if bug_db.screenshot_path and not screenshots:
+                screenshots = [bug_db.screenshot_path]
+
             bug = BugReport(
                 id=bug_db.id,
                 title=bug_db.title,
@@ -183,20 +195,20 @@ class ReportService:
                 user_story_id=bug_db.user_story_id,
                 test_case_id=bug_db.test_case_id,
                 scenario_name=bug_db.scenario_name,
-                screenshots=json.loads(bug_db.screenshots) if bug_db.screenshots else [],
-                logs=bug_db.logs,
-                notes=bug_db.notes,
-                workaround=bug_db.workaround,
-                root_cause=bug_db.root_cause,
-                fix_description=bug_db.fix_description,
+                screenshots=screenshots,
+                logs=None,  # DB has log_file_path, not logs content
+                notes=None,  # Field not in current DB schema
+                workaround=None,  # Field not in current DB schema
+                root_cause=None,  # Field not in current DB schema
+                fix_description=None,  # Field not in current DB schema
                 reported_by=bug_db.reported_by or "Unknown",
                 assigned_to=bug_db.assigned_to,
-                verified_by=bug_db.verified_by,
-                reported_date=bug_db.reported_date,
-                assigned_date=bug_db.assigned_date,
-                fixed_date=bug_db.fixed_date,
-                verified_date=bug_db.verified_date,
-                closed_date=bug_db.closed_date
+                verified_by=None,  # Field not in current DB schema
+                reported_date=bug_db.created_date,  # Map created_date to reported_date
+                assigned_date=None,  # Field not in current DB schema
+                fixed_date=bug_db.resolved_date,  # Map resolved_date to fixed_date
+                verified_date=None,  # Field not in current DB schema
+                closed_date=bug_db.resolved_date if bug_db.status == BugStatus.CLOSED else None
             )
             bugs.append(bug)
 
