@@ -30,19 +30,19 @@ def get_report_service_dependency(db: Session = Depends(get_db)) -> ReportServic
 @router.post("/generate-test-plan")
 async def generate_test_plan(
     project_id: str = Query(..., description="Project ID to generate test plan for"),
-    format: str = Query(default="both", description="Format: pdf, docx, or both"),
+    format: str = Query(default="pdf", description="Format: pdf or docx"),
     service: ReportService = Depends(get_report_service_dependency)
 ):
     """
-    Generate test plan document for a specific project
+    Generate test plan document for a specific project and return the file
 
     Args:
         project_id: Project ID to generate test plan for
-        format: Format - "pdf", "docx", or "both"
+        format: Format - "pdf" or "docx" (default: pdf)
         service: Injected ReportService instance
 
     Returns:
-        Generated files info
+        File response with generated document
 
     Raises:
         HTTPException: If project not found
@@ -50,11 +50,39 @@ async def generate_test_plan(
     print(f"📊 POST /generate-test-plan - Project: {project_id}, Format: {format}")
 
     try:
+        # Generate files
         result = service.generate_test_plan(project_id, format)
+        files = result['files']
 
-        print(f"   ✅ Test plan generated: {result['files']}")
+        print(f"   ✅ Test plan generated: {files}")
 
-        return result
+        # Determine which file to return based on format
+        if format == "docx":
+            file_path = files.get('docx')
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        else:
+            # Default to PDF for "pdf" or "both"
+            file_path = files.get('pdf')
+            media_type = "application/pdf"
+
+        if not file_path or not Path(file_path).exists():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Generated file not found: {file_path}"
+            )
+
+        filename = Path(file_path).name
+
+        print(f"   📄 Returning file: {filename}")
+
+        return FileResponse(
+            path=str(file_path),
+            filename=filename,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
 
     except ValueError as e:
         print(f"   ❌ Error: {str(e)}")
