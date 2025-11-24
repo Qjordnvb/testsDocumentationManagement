@@ -1,10 +1,13 @@
 """
-Test Plan document generator (Markdown and PDF)
+Test Plan document generator (Markdown, PDF, and DOCX)
 """
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 from datetime import datetime
 import markdown
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -89,6 +92,13 @@ class TestPlanGenerator:
                 user_stories, test_cases, output_path, project_name, metrics
             )
             generated_files["pdf"] = pdf_path
+
+        # Generate DOCX (Word)
+        if format in ["docx", "both"]:
+            docx_path = self._generate_docx(
+                user_stories, test_cases, output_path, project_name, metrics
+            )
+            generated_files["docx"] = docx_path
 
         return generated_files
 
@@ -486,3 +496,133 @@ class TestPlanGenerator:
             f.write(report_content)
 
         return str(report_file)
+
+    def _generate_docx(
+        self,
+        user_stories: List[UserStory],
+        test_cases: List[TestCase],
+        output_path: Path,
+        project_name: str,
+        metrics: Dict[str, Any] = None,
+    ) -> str:
+        """Generate DOCX (Word) test plan"""
+
+        docx_file = (
+            output_path / f"TestPlan_{project_name}_{datetime.now().strftime('%Y%m%d')}.docx"
+        )
+
+        # Create Word document
+        doc = Document()
+
+        # Title
+        title = doc.add_heading(f"Test Plan: {project_name}", 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Date
+        date_para = doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        doc.add_paragraph()  # Spacing
+
+        # Section 1: Introduction
+        doc.add_heading("1. Introduction", level=1)
+        doc.add_paragraph(
+            f"This test plan outlines the testing strategy and approach for {project_name}. "
+            "It covers functional, integration, and other types of testing required to ensure quality."
+        )
+
+        # Section 2: Test Scope
+        doc.add_heading("2. Test Scope", level=1)
+        doc.add_paragraph(f"Total User Stories: {len(user_stories)}")
+        doc.add_paragraph(f"Total Test Cases: {len(test_cases)}")
+
+        # Section 2.1: Features to be Tested
+        doc.add_heading("2.1 Features to be Tested", level=2)
+
+        # User Stories Table
+        if user_stories:
+            table = doc.add_table(rows=1, cols=3)
+            table.style = "Light Grid Accent 1"
+
+            # Header
+            header_cells = table.rows[0].cells
+            header_cells[0].text = "ID"
+            header_cells[1].text = "Title"
+            header_cells[2].text = "Priority"
+            for cell in header_cells:
+                cell.paragraphs[0].runs[0].font.bold = True
+
+            # Add user stories (limit to 20 for readability)
+            for us in user_stories[:20]:
+                row_cells = table.add_row().cells
+                row_cells[0].text = us.id
+                row_cells[1].text = us.title
+                row_cells[2].text = us.priority.value if us.priority else "N/A"
+
+        # Section 2.2: Project Metrics
+        if metrics:
+            doc.add_heading("2.2 Project Metrics", level=2)
+            doc.add_paragraph(
+                f"Test Coverage: {metrics.get('test_coverage', 0)}% "
+                f"({metrics.get('stories_with_tests', 0)}/{metrics.get('total_stories', 0)} stories covered)"
+            )
+            doc.add_paragraph(
+                f"Total Bugs: {metrics.get('total_bugs', 0)} "
+                f"(Critical: {metrics.get('critical_bugs', 0)}, Open: {metrics.get('open_bugs', 0)})"
+            )
+            doc.add_paragraph(
+                f"Test Executions: {metrics.get('total_executions', 0)} "
+                f"(Passed: {metrics.get('passed_tests', 0)}, Failed: {metrics.get('failed_tests', 0)})"
+            )
+            doc.add_paragraph(f"Pass Rate: {metrics.get('pass_rate', 0)}%")
+
+        # Section 3: Test Strategy
+        doc.add_heading("3. Test Strategy", level=1)
+
+        doc.add_heading("3.1 Test Types", level=2)
+        test_type_counts = self._count_test_types(test_cases)
+        for test_type, count in test_type_counts.items():
+            doc.add_paragraph(f"{test_type}: {count} test cases", style="List Bullet")
+
+        doc.add_heading("3.2 Test Levels", level=2)
+        doc.add_paragraph("Unit Testing: Individual component testing", style="List Number")
+        doc.add_paragraph("Integration Testing: Component interaction testing", style="List Number")
+        doc.add_paragraph("System Testing: End-to-end system testing", style="List Number")
+        doc.add_paragraph("Acceptance Testing: User acceptance criteria validation", style="List Number")
+
+        # Section 4: Test Cases Summary
+        doc.add_heading("4. Test Cases Summary", level=1)
+
+        if test_cases:
+            table = doc.add_table(rows=1, cols=5)
+            table.style = "Light Grid Accent 1"
+
+            # Header
+            header_cells = table.rows[0].cells
+            headers = ["Test ID", "Title", "Type", "Priority", "User Story"]
+            for i, header in enumerate(headers):
+                header_cells[i].text = header
+                header_cells[i].paragraphs[0].runs[0].font.bold = True
+
+            # Add test cases (limit to 50 for readability)
+            for tc in test_cases[:50]:
+                row_cells = table.add_row().cells
+                row_cells[0].text = tc.id
+                row_cells[1].text = tc.title[:40] + "..." if len(tc.title) > 40 else tc.title
+                row_cells[2].text = tc.test_type.value if tc.test_type else "N/A"
+                row_cells[3].text = tc.priority.value if tc.priority else "N/A"
+                row_cells[4].text = tc.user_story_id or "N/A"
+
+        # Footer
+        doc.add_paragraph()
+        footer = doc.add_paragraph(
+            f"Generated by QA Documentation Automation System • {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        footer.runs[0].font.size = Pt(9)
+        footer.runs[0].font.color.rgb = RGBColor(128, 128, 128)
+
+        # Save document
+        doc.save(str(docx_file))
+
+        return str(docx_file)
