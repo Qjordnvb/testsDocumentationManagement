@@ -24,6 +24,7 @@ interface GenerateModalProps {
   isOpen: boolean;
   onClose: () => void;
   story: UserStory;
+  projectId: string;
   onSuccess?: () => void;
 }
 
@@ -31,6 +32,7 @@ export const GenerateModal = ({
   isOpen,
   onClose,
   story,
+  projectId,
   onSuccess,
 }: GenerateModalProps) => {
   const {
@@ -82,6 +84,7 @@ export const GenerateModal = ({
       // Queue the test generation job (non-blocking)
       const response = await apiService.queueTestGeneration(
         story.id,
+        projectId,
         numTestCases,
         scenariosPerTest,
         selectedTestTypes,
@@ -93,6 +96,7 @@ export const GenerateModal = ({
         taskId: response.task_id,
         storyId: story.id,
         storyTitle: story.title,
+        projectId: projectId,
         status: 'queued',
         progress: 0,
         queuedAt: new Date(),

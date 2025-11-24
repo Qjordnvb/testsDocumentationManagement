@@ -38,6 +38,8 @@ class DatabaseTask(Task):
 def generate_test_cases_task(
     self,
     story_id: str,
+    project_id: str,
+    organization_id: str,
     num_test_cases: int = 5,
     scenarios_per_test: int = 3,
     test_types: List[str] = None,
@@ -49,6 +51,8 @@ def generate_test_cases_task(
     Args:
         self: Celery task instance (bound)
         story_id: User story ID
+        project_id: Project ID for multi-tenant isolation
+        organization_id: Organization ID for multi-tenant isolation
         num_test_cases: Number of test cases to generate
         scenarios_per_test: Scenarios per test case
         test_types: List of test types (e.g., ["FUNCTIONAL", "UI"])
@@ -64,19 +68,16 @@ def generate_test_cases_task(
         # Update progress: Starting
         self.update_state(state='PROGRESS', meta={'progress': 5, 'status': 'Starting...'})
 
-        # Get user story from database
-        story_db = self.db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
+        # Get user story from database (with composite key for multi-tenant isolation)
+        story_db = self.db.query(UserStoryDB).filter(
+            UserStoryDB.id == story_id,
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == organization_id
+        ).first()
         if not story_db:
             return {
                 'status': 'failed',
-                'error': f'User story {story_id} not found'
-            }
-
-        # Validate project_id
-        if not story_db.project_id:
-            return {
-                'status': 'failed',
-                'error': f'User story {story_id} is not associated with a project'
+                'error': f'User story {story_id} not found in project {project_id}'
             }
 
         # Update progress: Loading story
@@ -439,6 +440,7 @@ def process_excel_task(
             story_data = {
                 'id': user_story.id,
                 'project_id': project_id,
+                'organization_id': project.organization_id,  # CRITICAL: Multi-tenant isolation
                 'title': user_story.title,
                 'description': user_story.description,
                 'priority': user_story.priority.value if hasattr(user_story.priority, 'value') else user_story.priority,

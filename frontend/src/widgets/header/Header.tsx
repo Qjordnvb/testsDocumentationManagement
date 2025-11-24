@@ -7,7 +7,7 @@ import { useProject } from '@/app/providers/ProjectContext';
 import { useAuth } from '@/app/providers';
 import { Link, useNavigate } from 'react-router-dom';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
-import { LogOut, Users } from 'lucide-react';
+import { LogOut, Users, Building2 } from 'lucide-react';
 
 export const Header = () => {
   const { currentProject } = useProject();
@@ -66,14 +66,26 @@ export const Header = () => {
               </p>
             </>
           ) : (
-            // When in projects list - clear title
+            // VISTA DASHBOARD (Admin/Manager/Lista de Proyectos)
             <>
               <h2 className={`${headingMedium.className} font-bold ${colors.gray.text900} flex items-center gap-2`}>
-                <span>📁</span>
-                <span>Mis Proyectos QA</span>
+                {/* Si el usuario es admin o manager, mostramos el nombre de su organización */}
+                {user?.role === 'admin' || user?.role === 'manager' ? (
+                  <>
+                    <Building2 className="text-primary-purple" />
+                    <span>{user?.organization_name || 'Mi Organización'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>📁</span>
+                    <span>Mis Proyectos QA</span>
+                  </>
+                )}
               </h2>
               <p className={`${bodySmall.className} ${colors.gray.text600}`}>
-                Gestiona todos tus proyectos de testing
+                {user?.role === 'admin'
+                  ? `Gestión Corporativa • ${user?.email}`
+                  : 'Gestiona todos tus proyectos de testing'}
               </p>
             </>
           )}

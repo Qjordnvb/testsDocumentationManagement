@@ -100,10 +100,12 @@ class TestCaseService:
             test_case = existing_test_case
         else:
             # Create new test case
+            # CRITICAL: Get organization_id for multi-tenant isolation
             print(f"  Creating new test case: {test_case_id}")
             test_case = TestCaseDB(
                 id=test_case_id,
                 project_id=story_db.project_id,
+                organization_id=story_db.organization_id,  # CRITICAL: From user story
                 title=f"Test for {user_story.title}",
                 description=f"Automated test scenarios for {user_story.id}",
                 user_story_id=story_id,
@@ -141,8 +143,11 @@ class TestCaseService:
         if not project:
             raise ValueError(f"Project {project_id} not found")
 
-        # Filter test cases by project
-        test_cases = self.db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
+        # Filter test cases by project AND organization
+        test_cases = self.db.query(TestCaseDB).filter(
+            TestCaseDB.project_id == project_id,
+            TestCaseDB.organization_id == project.organization_id
+        ).all()
         return [self._test_case_to_dict(tc) for tc in test_cases]
 
     def preview_test_cases(
@@ -282,7 +287,9 @@ class TestCaseService:
     def create_test_cases_batch(
         self,
         test_cases_data: List[Dict[str, Any]],
-        user_story_id: str
+        user_story_id: str,
+        project_id: str,
+        organization_id: str
     ) -> Dict[str, Any]:
         """
         Create multiple test cases at once (after QA review)
@@ -290,6 +297,8 @@ class TestCaseService:
         Args:
             test_cases_data: List of test case data dictionaries
             user_story_id: User story ID
+            project_id: Project ID for multi-tenant isolation
+            organization_id: Organization ID for multi-tenant isolation
 
         Returns:
             Dictionary with created test cases
@@ -301,11 +310,17 @@ class TestCaseService:
         print("🚀 BATCH CREATE TEST CASES - START")
         print(f"📊 Number of test cases to create: {len(test_cases_data)}")
         print(f"📝 User story ID: {user_story_id}")
+        print(f"🏢 Organization ID: {organization_id}")
+        print(f"📁 Project ID: {project_id}")
 
-        # Get user story to inherit project_id
-        user_story = self.db.query(UserStoryDB).filter(UserStoryDB.id == user_story_id).first()
+        # Get user story to inherit project_id (with multi-tenant isolation)
+        user_story = self.db.query(UserStoryDB).filter(
+            UserStoryDB.id == user_story_id,
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == organization_id
+        ).first()
         if not user_story:
-            raise ValueError(f"User story {user_story_id} not found")
+            raise ValueError(f"User story {user_story_id} not found in project {project_id}")
 
         print(f"✅ User story found: {user_story.id} - {user_story.title}")
         print(f"📁 Project ID: {user_story.project_id}")
@@ -348,9 +363,11 @@ class TestCaseService:
                 print(f"   ✅ Enums resolved: {test_type}, {priority}, {status}")
 
                 # Create test case
+                # CRITICAL: Include organization_id for multi-tenant isolation
                 db_test_case = TestCaseDB(
                     id=tc_data["id"],
                     project_id=user_story.project_id,
+                    organization_id=user_story.organization_id,  # CRITICAL: From user story
                     title=tc_data.get("title", "Untitled Test Case"),
                     description=tc_data.get("description", ""),
                     user_story_id=tc_data.get("user_story_id", user_story_id),

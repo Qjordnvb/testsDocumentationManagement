@@ -10,6 +10,7 @@ from .models import (
     BugReportDB,
     TestExecutionDB,
     UserDB,
+    OrganizationDB,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "BugReportDB",
     "TestExecutionDB",
     "UserDB",
+    "OrganizationDB",
 ]

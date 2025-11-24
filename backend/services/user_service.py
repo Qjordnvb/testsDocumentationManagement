@@ -36,14 +36,19 @@ class UserService:
         """
         self.db = db
 
-    def get_all_users(self) -> List[UserDB]:
+    def get_all_users(self, organization_id: str) -> List[UserDB]:
         """
-        Get all users
+        Get all users from a specific organization
+
+        Args:
+            organization_id: Organization ID to filter by
 
         Returns:
-            List of all users
+            List of users from the specified organization only
         """
-        return self.db.query(UserDB).all()
+        return self.db.query(UserDB).filter(
+            UserDB.organization_id == organization_id
+        ).all()
 
     def get_user_by_id(self, user_id: str) -> Optional[UserDB]:
         """
@@ -62,7 +67,8 @@ class UserService:
         email: str,
         full_name: str,
         role: Role,
-        invited_by: str
+        invited_by: str,
+        organization_id: str
     ) -> Dict[str, Any]:
         """
         Create a user invitation (whitelist entry)
@@ -75,6 +81,7 @@ class UserService:
             full_name: User full name
             role: User role
             invited_by: Email of the admin who created the invitation
+            organization_id: Organization ID to assign the user to
 
         Returns:
             Dictionary with invitation details
@@ -82,7 +89,7 @@ class UserService:
         Raises:
             ValueError: If email already exists
         """
-        # Check if email already exists
+        # Check if email already exists (globally, across all organizations)
         existing_user = self.db.query(UserDB).filter(UserDB.email == email).first()
         if existing_user:
             raise ValueError(f"El email {email} ya tiene una invitación")
@@ -97,11 +104,12 @@ class UserService:
             password_hash=None,  # No password until user registers
             full_name=full_name,
             role=role.value,
+            organization_id=organization_id,  # Assign to admin's organization
             is_active=True,
             is_registered=False,  # Pending registration
             invited_by=invited_by,
             invited_at=datetime.utcnow(),
-            created_by=None  # Set by endpoint from current_user.id
+            created_at=datetime.utcnow()
         )
 
         self.db.add(new_user)
@@ -114,6 +122,7 @@ class UserService:
             "email": new_user.email,
             "full_name": new_user.full_name,
             "role": new_user.role,
+            "organization_id": new_user.organization_id,
             "status": "pending_registration",
             "invited_by": invited_by,
             "invited_at": new_user.invited_at.isoformat()
@@ -125,7 +134,7 @@ class UserService:
         password: str,
         full_name: str,
         role: Role,
-        created_by: str
+        organization_id: str
     ) -> UserDB:
         """
         Create a new user (LEGACY - use create_invitation instead)
@@ -137,7 +146,7 @@ class UserService:
             password: User password (plain text, will be hashed)
             full_name: User full name
             role: User role
-            created_by: ID of the admin who created the user
+            organization_id: Organization ID to assign the user to
 
         Returns:
             Created user object
@@ -163,12 +172,12 @@ class UserService:
             password_hash=password_hash,
             full_name=full_name,
             role=role.value,
+            organization_id=organization_id,  # Assign to admin's organization
             is_active=True,
             is_registered=True,  # Already registered (has password)
-            registered_at=datetime.utcnow(),
             invited_by=None,  # Direct creation, not invited
             invited_at=datetime.utcnow(),
-            created_by=created_by
+            created_at=datetime.utcnow()
         )
 
         self.db.add(new_user)

@@ -200,7 +200,7 @@ export const ScenarioCard = ({
               title={bugCount > 0 ? `${bugCount} bug(s) ya reportado(s). Click para ver detalles` : 'Reportar bug para este scenario'}
             >
               <Bug className="w-4 h-4" />
-              <span>{bugCount > 0 ? `View Bug (${bugCount})` : 'Report Bug'}</span>
+              <span>{bugCount > 0 ? `Ver Bug${bugCount > 1 ? 's' : ''}` : 'Reportar Bug'}</span>
             </button>
           )}
 

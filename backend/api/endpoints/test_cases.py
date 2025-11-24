@@ -12,10 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from backend.database import get_db
+from backend.database import get_db, UserDB
 from backend.services.test_case_service import TestCaseService
 from backend.integrations import GeminiClient
-from backend.api.dependencies import get_gemini_client
+from backend.api.dependencies import get_gemini_client, get_current_user
 
 router = APIRouter()
 
@@ -173,13 +173,15 @@ async def preview_test_cases(
 @router.post("/test-cases/batch", status_code=status.HTTP_201_CREATED)
 async def create_test_cases_batch(
     test_cases_data: dict,
+    current_user: UserDB = Depends(get_current_user),
     service: TestCaseService = Depends(get_test_case_service_dependency)
 ):
     """
     Create multiple test cases at once (after QA review)
 
     Args:
-        test_cases_data: Dictionary with test_cases list and user_story_id
+        test_cases_data: Dictionary with test_cases list, user_story_id, and project_id
+        current_user: Current authenticated user (for organization validation)
         service: Injected TestCaseService instance
 
     Returns:
@@ -190,6 +192,7 @@ async def create_test_cases_batch(
     """
     test_cases = test_cases_data.get("test_cases", [])
     user_story_id = test_cases_data.get("user_story_id")
+    project_id = test_cases_data.get("project_id")
 
     if not user_story_id:
         raise HTTPException(
@@ -197,10 +200,18 @@ async def create_test_cases_batch(
             detail="user_story_id is required"
         )
 
+    if not project_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="project_id is required"
+        )
+
     try:
         result = service.create_test_cases_batch(
             test_cases_data=test_cases,
-            user_story_id=user_story_id
+            user_story_id=user_story_id,
+            project_id=project_id,
+            organization_id=current_user.organization_id
         )
 
         return result
@@ -455,6 +466,7 @@ async def update_gherkin_content(
 @router.post("/generate-test-cases/{story_id}/queue")
 async def queue_test_generation(
     story_id: str,
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
     num_test_cases: int = Query(default=5, ge=1, le=10),
     scenarios_per_test: int = Query(default=3, ge=1, le=10),
     test_types: List[str] = Query(default=["FUNCTIONAL", "UI"]),
@@ -484,27 +496,35 @@ async def queue_test_generation(
 
     # Validate user story exists (use service's DB session)
     try:
-        # We need to validate the story exists and has project_id
+        # We need to validate the story exists and belongs to the project
         # We can't use service directly here, so we'll do a quick validation
-        from backend.database import UserStoryDB
+        from backend.database import UserStoryDB, ProjectDB
 
-        story_db = service.db.query(UserStoryDB).filter(UserStoryDB.id == story_id).first()
+        # Get project to retrieve organization_id
+        project = service.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found"
+            )
+
+        # Validate story exists in the specified project and organization
+        story_db = service.db.query(UserStoryDB).filter(
+            UserStoryDB.id == story_id,
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == project.organization_id
+        ).first()
         if not story_db:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User story {story_id} not found"
-            )
-
-        # Validate project_id
-        if not story_db.project_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User story {story_id} is not associated with a project"
+                detail=f"User story {story_id} not found in project {project_id}"
             )
 
         # Queue the task (runs in background)
         task = generate_test_cases_task.delay(
             story_id=story_id,
+            project_id=project_id,
+            organization_id=project.organization_id,
             num_test_cases=num_test_cases,
             scenarios_per_test=scenarios_per_test,
             test_types=test_types,

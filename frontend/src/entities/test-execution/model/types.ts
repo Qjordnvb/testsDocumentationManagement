@@ -35,7 +35,8 @@ export interface ExecutionSummary {
   status: TestStatus;
   environment: string;
   version?: string;
-  execution_time_minutes: number;
+  execution_time_minutes?: number; // Optional, derived from duration_seconds
+  duration_seconds?: number; // Primary source of truth
   passed_steps: number;
   failed_steps: number;
   total_steps: number;

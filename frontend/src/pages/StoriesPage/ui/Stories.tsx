@@ -2,25 +2,43 @@
  * Stories Page Main Component
  */
 
+import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
 import { StoryTable } from '@/widgets/story-table';
 import { Button, LoadingSpinner } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 import { useStories } from '../model';
+import { UploadModal } from '@/features/upload-excel/ui/UploadModal';
+import { GenerateModal } from '@/features/generate-tests/ui/GenerateModal';
 
 export const Stories = () => {
+  const navigate = useNavigate();
   const {
+    projectId,
     currentProject,
     stories,
     isLoading,
     error,
+    uploadModalOpen,
     setUploadModalOpen,
+    generateModalOpen,
+    setGenerateModalOpen,
+    selectedStory,
+    setSelectedStory,
     viewMode,
     setViewMode,
+    handleUploadSuccess,
     handleGenerate,
     loadStories,
   } = useStories();
+
+  const handleViewTests = (storyId: string) => {
+    // Navigate to test cases page with story filter using React Router
+    if (projectId) {
+      navigate(`/projects/${projectId}/tests?story=${storyId}`);
+    }
+  };
 
   const bodySmall = getTypographyPreset('bodySmall');
   const body = getTypographyPreset('body');
@@ -108,7 +126,11 @@ export const Stories = () => {
           </Button>
         </div>
       ) : viewMode === 'table' ? (
-        <StoryTable stories={stories} onGenerateTests={handleGenerate} />
+        <StoryTable
+          stories={stories}
+          onGenerateTests={handleGenerate}
+          onViewTests={handleViewTests}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stories.map((story) => (
@@ -120,12 +142,30 @@ export const Stories = () => {
         </div>
       )}
 
-      {/* Modals temporarily disabled pending component updates */}
       {/* Upload Modal */}
-      {/* {uploadModalOpen && projectId && ...} */}
+      {uploadModalOpen && (
+        <UploadModal
+          isOpen={uploadModalOpen}
+          onClose={() => setUploadModalOpen(false)}
+          onSuccess={handleUploadSuccess}
+        />
+      )}
 
       {/* Generate Tests Modal */}
-      {/* {generateModalOpen && selectedStory && ...} */}
+      {generateModalOpen && selectedStory && (
+        <GenerateModal
+          isOpen={generateModalOpen}
+          story={selectedStory}
+          projectId={projectId!}
+          onClose={() => {
+            setGenerateModalOpen(false);
+            setSelectedStory(null);
+          }}
+          onSuccess={() => {
+            loadStories();
+          }}
+        />
+      )}
     </PageLayout>
   );
 };

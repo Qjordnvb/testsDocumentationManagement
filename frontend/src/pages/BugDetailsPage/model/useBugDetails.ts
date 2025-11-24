@@ -52,7 +52,7 @@ export const useBugDetails = () => {
     try {
       setLoading(true);
       setError(null);
-      const bugData = await bugApi.getById(bugId);
+      const bugData = await bugApi.getById(bugId, projectId!);
       setBug(bugData);
 
       // Load test case if linked
@@ -88,8 +88,8 @@ export const useBugDetails = () => {
       setUpdatingStatus(true);
       // Use devUpdate endpoint for DEV role (restricted to status, fix_description, screenshots)
       const updated = isDev
-        ? await bugApi.devUpdate(bugId, { status: newStatus })
-        : await bugApi.updateStatus(bugId, newStatus);
+        ? await bugApi.devUpdate(bugId, projectId!, { status: newStatus })
+        : await bugApi.updateStatus(bugId, projectId!, newStatus);
       setBug(updated);
       toast.success(`Estado actualizado a ${newStatus}`);
     } catch (err: any) {
@@ -150,7 +150,7 @@ export const useBugDetails = () => {
         // Update bug status if applicable
         if (newStatus && bug) {
           try {
-            await bugApi.updateStatus(bugId, newStatus);
+            await bugApi.updateStatus(bugId, projectId!, newStatus);
           } catch (err) {
             console.error('Error updating bug status:', err);
             toast.error('Error al actualizar status del bug automáticamente');
@@ -171,7 +171,7 @@ export const useBugDetails = () => {
     if (!bugId || !isDev) return;
 
     try {
-      await bugApi.devUpdate(bugId, { fix_description: fixDescription });
+      await bugApi.devUpdate(bugId, projectId!, { fix_description: fixDescription });
       toast.success('Descripción del fix guardada');
     } catch (err) {
       toast.error('Error al guardar descripción');
@@ -187,12 +187,12 @@ export const useBugDetails = () => {
       Array.from(files).forEach((file) => formData.append('files', file));
 
       toast.loading('Subiendo evidencia...');
-      await bugApi.devUpdate(bugId, { screenshots: formData } as any);
+      await bugApi.devUpdate(bugId, projectId!, { screenshots: formData } as any);
       toast.dismiss();
       toast.success('Evidencia subida correctamente');
 
       // Reload bug to show new screenshots
-      const updated = await bugApi.getById(bugId);
+      const updated = await bugApi.getById(bugId, projectId!);
       setBug(updated);
     } catch (err) {
       toast.dismiss();

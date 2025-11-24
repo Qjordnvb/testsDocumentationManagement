@@ -12,11 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 
-from backend.database import get_db
+from backend.database import get_db, UserDB
 from backend.models import BugReport
 from backend.services.bug_service import BugService
 from backend.generators import BugReportGenerator
 from backend.config import settings
+from backend.api.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -164,6 +165,8 @@ async def get_bugs_grouped(
 @router.get("/bugs/{bug_id}")
 async def get_bug_by_id(
     bug_id: str,
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
+    current_user: UserDB = Depends(get_current_user),
     service: BugService = Depends(get_bug_service_dependency)
 ):
     """
@@ -171,18 +174,20 @@ async def get_bug_by_id(
 
     Args:
         bug_id: Bug ID
+        project_id: Project ID (part of composite key)
+        current_user: Current authenticated user (for organization validation)
         service: Injected BugService instance
 
     Returns:
         Bug details
 
     Raises:
-        HTTPException: If bug not found
+        HTTPException: If bug not found or access denied
     """
-    print(f"🔍 GET /bugs/{bug_id}")
+    print(f"🔍 GET /bugs/{bug_id}?project_id={project_id} - User: {current_user.id} (Org: {current_user.organization_id})")
 
     try:
-        bug = service.get_bug_by_id(bug_id)
+        bug = service.get_bug_by_id(bug_id, project_id, current_user.organization_id)
 
         print(f"   ✅ Bug found: {bug['title']}")
         print(f"   📤 Returning bug data:")
@@ -245,6 +250,8 @@ async def create_bug(
 async def update_bug(
     bug_id: str,
     updates: Dict[str, Any],
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
+    current_user: UserDB = Depends(get_current_user),
     service: BugService = Depends(get_bug_service_dependency)
 ):
     """
@@ -253,19 +260,21 @@ async def update_bug(
     Args:
         bug_id: Bug ID to update
         updates: Dictionary with fields to update
+        project_id: Project ID (part of composite key)
+        current_user: Current authenticated user (for organization validation)
         service: Injected BugService instance
 
     Returns:
         Updated bug
 
     Raises:
-        HTTPException: If bug not found
+        HTTPException: If bug not found or access denied
     """
-    print(f"✏️  PUT /bugs/{bug_id}")
+    print(f"✏️  PUT /bugs/{bug_id}?project_id={project_id} - User: {current_user.id} (Org: {current_user.organization_id})")
     print(f"   Update data: {updates}")
 
     try:
-        updated_bug = service.update_bug(bug_id, updates)
+        updated_bug = service.update_bug(bug_id, project_id, current_user.organization_id, updates)
 
         print(f"   ✅ Bug updated: {updated_bug['id']}")
 
@@ -349,6 +358,8 @@ async def dev_update_bug(
 @router.delete("/bugs/{bug_id}")
 async def delete_bug(
     bug_id: str,
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
+    current_user: UserDB = Depends(get_current_user),
     service: BugService = Depends(get_bug_service_dependency)
 ):
     """
@@ -356,18 +367,20 @@ async def delete_bug(
 
     Args:
         bug_id: Bug ID to delete
+        project_id: Project ID (part of composite key)
+        current_user: Current authenticated user (for organization validation)
         service: Injected BugService instance
 
     Returns:
         Success message
 
     Raises:
-        HTTPException: If bug not found
+        HTTPException: If bug not found or access denied
     """
-    print(f"🗑️  DELETE /bugs/{bug_id}")
+    print(f"🗑️  DELETE /bugs/{bug_id}?project_id={project_id} - User: {current_user.id} (Org: {current_user.organization_id})")
 
     try:
-        deleted = service.delete_bug(bug_id)
+        deleted = service.delete_bug(bug_id, project_id, current_user.organization_id)
 
         if not deleted:
             raise ValueError(f"Bug {bug_id} not found")

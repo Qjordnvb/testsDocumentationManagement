@@ -2,7 +2,7 @@
  * Stories Page business logic
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '@/app/providers/ProjectContext';
 import { useTestGenerationQueue } from '@/shared/stores';
@@ -40,14 +40,7 @@ export const useStories = () => {
     }
   }, [projectId, currentProject, navigate]);
 
-  // Load stories
-  useEffect(() => {
-    if (projectId) {
-      loadStories();
-    }
-  }, [projectId]);
-
-  const loadStories = async () => {
+  const loadStories = useCallback(async () => {
     if (!projectId) return;
 
     try {
@@ -61,29 +54,33 @@ export const useStories = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
 
-  const handleUploadSuccess = () => {
+  // Load stories
+  useEffect(() => {
+    if (projectId) {
+      loadStories();
+    }
+  }, [projectId, loadStories]);
+
+  const handleUploadSuccess = useCallback(() => {
     loadStories();
     setUploadModalOpen(false);
-  };
+  }, [loadStories]);
 
-  const handleGenerate = (story: UserStory) => {
+  const handleGenerate = useCallback((story: UserStory) => {
     setSelectedStory(story);
     setGenerateModalOpen(true);
-  };
+  }, []);
 
-  const handleTestCasesSaved = () => {
-    // Navigate to tests page after saving test cases
-    if (projectId) {
-      navigate(`/projects/${projectId}/tests`);
-    }
-  };
+  const handleTestCasesSaved = useCallback(() => {
+    loadStories();
+  }, [loadStories]);
 
   // Set callback for test generation queue
   useEffect(() => {
-    setOnTestCasesSaved(() => handleTestCasesSaved);
-  }, [projectId]);
+    setOnTestCasesSaved(handleTestCasesSaved);
+  }, [handleTestCasesSaved, setOnTestCasesSaved]);
 
   return {
     projectId,
@@ -96,6 +93,7 @@ export const useStories = () => {
     generateModalOpen,
     setGenerateModalOpen,
     selectedStory,
+    setSelectedStory,
     viewMode,
     setViewMode,
     handleUploadSuccess,

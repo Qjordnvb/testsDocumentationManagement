@@ -134,24 +134,27 @@ class ExecutionService:
             print(f"[ERROR] Failed to serialize step_results: {str(e)}")
             raise ValueError(f"Failed to serialize step results: {str(e)}")
 
-        # 5. Create Execution Record
+        # 5. Create Execution Record with multi-tenant isolation
         print(f"[DEBUG] Creating execution record...")
         new_execution = TestExecutionDB(
             test_case_id=execution_data.test_case_id,
+            project_id=test_case.project_id,  # CRITICAL: Multi-tenant composite FK
+            organization_id=test_case.organization_id,  # CRITICAL: Multi-tenant composite FK
             executed_by=execution_data.executed_by,
             execution_date=datetime.now(),
             status=final_status,
             environment=execution_data.environment,
-            version=execution_data.version,
-            execution_time_minutes=round(execution_data.execution_time_seconds / 60, 2),
-            passed_steps=passed_steps,
-            failed_steps=failed_steps,
-            total_steps=total_steps,
-            step_results=serialized_steps,
-            evidence_files=json.dumps(execution_data.evidence_files) if execution_data.evidence_files else None,
+            # version=execution_data.version,  # Removed: Not in DB
+            duration_seconds=execution_data.execution_time_seconds, # FIX: Map to duration_seconds
+            # execution_time_minutes=round(execution_data.execution_time_seconds / 60, 2), # Removed: Not in DB
+            # passed_steps=passed_steps,  # Removed: Not in DB
+            # failed_steps=failed_steps,  # Removed: Not in DB
+            # total_steps=total_steps,  # Removed: Not in DB
+            steps_results=serialized_steps,
+            # evidence_files=json.dumps(execution_data.evidence_files) if execution_data.evidence_files else None, # Removed: Not in DB
             notes=execution_data.notes,
-            failure_reason=execution_data.failure_reason,
-            bug_ids=",".join(execution_data.bug_ids) if execution_data.bug_ids else None
+            # failure_reason=execution_data.failure_reason, # Removed: Not in DB
+            # bug_ids=",".join(execution_data.bug_ids) if execution_data.bug_ids else None # Removed: Not in DB
         )
 
         self.db.add(new_execution)
@@ -161,8 +164,8 @@ class ExecutionService:
         test_case.last_executed = datetime.now()
         test_case.status = final_status
         test_case.executed_by = execution_data.executed_by
-        if new_execution.execution_time_minutes:
-            test_case.actual_time_minutes = int(new_execution.execution_time_minutes)
+        if new_execution.duration_seconds:
+            test_case.actual_time_minutes = int(new_execution.duration_seconds / 60)
 
         print(f"[DEBUG] Test case updated, committing to database...")
         self.db.commit()
@@ -173,7 +176,7 @@ class ExecutionService:
         return {
             "message": "Execution saved successfully",
             "execution_id": new_execution.id,
-            "status": new_execution.status.value
+            "status": new_execution.status
         }
 
     def get_test_case_executions(self, test_case_id: str, limit: int = 10) -> Dict[str, Any]:
@@ -207,21 +210,42 @@ class ExecutionService:
         # Format response
         result = []
         for ex in executions:
-            bug_ids_list = ex.bug_ids.split(",") if ex.bug_ids else []
-            print(f"[DEBUG] Execution {ex.id}: bug_ids raw = '{ex.bug_ids}', parsed = {bug_ids_list}")
+            # Calculate metrics from steps_results JSON
+            passed_steps = 0
+            failed_steps = 0
+            total_steps = 0
+            evidence_count = 0
+
+            if ex.steps_results:
+                try:
+                    steps = json.loads(ex.steps_results)
+                    total_steps = len(steps)
+                    passed_steps = sum(1 for s in steps if s.get('status') == 'PASSED')
+                    failed_steps = sum(1 for s in steps if s.get('status') == 'FAILED')
+                    evidence_count = sum(1 for s in steps if s.get('evidence_file'))
+                except json.JSONDecodeError:
+                    pass
+
+            # Get bugs linked to this execution
+            bugs = self.db.query(BugReportDB).filter(
+                BugReportDB.execution_id == ex.id,
+                BugReportDB.test_case_id == test_case_id
+            ).all()
+            bug_ids_list = [bug.id for bug in bugs]
 
             result.append({
                 "execution_id": ex.id,
                 "executed_by": ex.executed_by,
                 "execution_date": ex.execution_date.isoformat(),
-                "status": ex.status.value,
+                "status": ex.status,
                 "environment": ex.environment,
-                "version": ex.version,
-                "execution_time_minutes": ex.execution_time_minutes,
-                "passed_steps": ex.passed_steps,
-                "failed_steps": ex.failed_steps,
-                "total_steps": ex.total_steps,
-                "evidence_count": len(json.loads(ex.evidence_files)) if ex.evidence_files else 0,
+                "version": None,
+                "execution_time_minutes": round(ex.duration_seconds / 60, 2) if ex.duration_seconds else 0,
+                "duration_seconds": ex.duration_seconds,
+                "passed_steps": passed_steps,
+                "failed_steps": failed_steps,
+                "total_steps": total_steps,
+                "evidence_count": evidence_count,
                 "notes": ex.notes,
                 "bug_ids": bug_ids_list
             })
@@ -277,18 +301,18 @@ class ExecutionService:
             print(f"   → Linked bug {bug.id} to execution {execution_id}")
 
         # Update execution's bug_ids field
-        if linked_bug_ids:
-            existing_bugs = execution.bug_ids.split(",") if execution.bug_ids else []
-            all_bugs = list(set(existing_bugs + linked_bug_ids))  # Remove duplicates
-            execution.bug_ids = ",".join(all_bugs)
-            print(f"   ✅ Updated execution {execution_id} bug_ids: {execution.bug_ids}")
+        # if linked_bug_ids:
+        #     existing_bugs = execution.bug_ids.split(",") if execution.bug_ids else []
+        #     all_bugs = list(set(existing_bugs + linked_bug_ids))  # Remove duplicates
+        #     execution.bug_ids = ",".join(all_bugs)
+        #     print(f"   ✅ Updated execution {execution_id} bug_ids: {execution.bug_ids}")
 
         self.db.commit()
 
         return {
             "message": f"Linked {len(linked_bug_ids)} bugs to execution {execution_id}",
             "linked_bugs": linked_bug_ids,
-            "execution_bug_ids": execution.bug_ids.split(",") if execution.bug_ids else []
+            "execution_bug_ids": [] # execution.bug_ids.split(",") if execution.bug_ids else []
         }
 
     def get_execution_details(self, execution_id: int) -> Dict[str, Any]:
@@ -314,28 +338,44 @@ class ExecutionService:
             raise ValueError(f"Execution {execution_id} not found")
 
         # Parse JSON fields
-        step_results = json.loads(execution.step_results) if execution.step_results else []
-        evidence_files = json.loads(execution.evidence_files) if execution.evidence_files else []
+        step_results = json.loads(execution.steps_results) if execution.steps_results else []
 
-        print(f"[DEBUG] Execution {execution_id} has {len(step_results)} steps and {len(evidence_files)} evidence files")
+        print(f"[DEBUG] Execution {execution_id} has {len(step_results)} steps")
+
+        # Calculate metrics from step_results
+        passed_steps = sum(1 for s in step_results if s.get('status') == 'PASSED')
+        failed_steps = sum(1 for s in step_results if s.get('status') == 'FAILED')
+        total_steps = len(step_results)
+        evidence_count = sum(1 for s in step_results if s.get('evidence_file'))
+
+        # Get evidence files from step_results
+        evidence_files = [s.get('evidence_file') for s in step_results if s.get('evidence_file')]
+
+        # Get bugs linked to this execution
+        bugs = self.db.query(BugReportDB).filter(
+            BugReportDB.execution_id == execution_id
+        ).all()
+        bug_ids_list = [bug.id for bug in bugs]
 
         return {
             "execution_id": execution.id,
             "test_case_id": execution.test_case_id,
             "executed_by": execution.executed_by,
             "execution_date": execution.execution_date.isoformat(),
-            "status": execution.status.value,
+            "status": execution.status,
             "environment": execution.environment,
-            "version": execution.version,
-            "execution_time_minutes": execution.execution_time_minutes,
-            "passed_steps": execution.passed_steps,
-            "failed_steps": execution.failed_steps,
-            "total_steps": execution.total_steps,
+            "version": None,
+            "execution_time_minutes": round(execution.duration_seconds / 60, 2) if execution.duration_seconds else 0,
+            "duration_seconds": execution.duration_seconds,
+            "passed_steps": passed_steps,
+            "failed_steps": failed_steps,
+            "total_steps": total_steps,
             "step_results": step_results,
             "evidence_files": evidence_files,
+            "evidence_count": evidence_count,
             "notes": execution.notes,
-            "failure_reason": execution.failure_reason,
-            "bug_ids": execution.bug_ids.split(",") if execution.bug_ids else []
+            "failure_reason": None,
+            "bug_ids": bug_ids_list
         }
 
     def validate_evidence_path(self, file_path: str) -> Path:

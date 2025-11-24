@@ -286,7 +286,12 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
           }
 
           // No active job - check if test cases exist
-          const hasTestCases = story.test_case_ids && story.test_case_ids.length > 0;
+          // Defensive check: verify array exists, has elements, and elements are valid strings
+          const hasTestCases =
+            story.test_case_ids &&
+            Array.isArray(story.test_case_ids) &&
+            story.test_case_ids.length > 0 &&
+            story.test_case_ids.some(id => id && id.trim().length > 0);
 
           if (hasTestCases) {
             // Has test cases - show "View Tests" button (+ Generate if role allows)

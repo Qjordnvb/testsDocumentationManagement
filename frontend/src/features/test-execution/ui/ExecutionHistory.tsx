@@ -139,7 +139,7 @@ export const ExecutionHistory: React.FC<Props> = ({ testCaseId, onSelectExecutio
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {execution.execution_time_minutes.toFixed(1)} min
+                      {(execution.execution_time_minutes ?? (execution.duration_seconds ? execution.duration_seconds / 60 : 0)).toFixed(1)} min
                     </span>
                     <span className="font-mono">
                       {execution.environment}

@@ -483,7 +483,7 @@ class ReportService:
                         status_run.font.color.rgb = RGBColor(255, 165, 0)
                     status_run.font.bold = True
 
-                    row_cells[3].text = f"{execution.execution_time_minutes:.1f}" if execution.execution_time_minutes else "0.0"
+                    row_cells[3].text = f"{(execution.duration_seconds / 60):.1f}" if execution.duration_seconds else "0.0"
 
                     # Calculate scenario-specific step counts
                     if steps:
@@ -494,9 +494,16 @@ class ReportService:
                         row_cells[5].text = str(scenario_failed)
                         row_cells[6].text = str(scenario_total)
                     else:
-                        row_cells[4].text = str(execution.passed_steps)
-                        row_cells[5].text = str(execution.failed_steps)
-                        row_cells[6].text = str(execution.total_steps)
+                        # Calculate from all step_results if no scenario-specific steps
+                        try:
+                            all_steps = json.loads(execution.step_results) if execution.step_results else []
+                            row_cells[4].text = str(sum(1 for s in all_steps if s.get('status') == 'PASSED'))
+                            row_cells[5].text = str(sum(1 for s in all_steps if s.get('status') == 'FAILED'))
+                            row_cells[6].text = str(len(all_steps))
+                        except:
+                            row_cells[4].text = "0"
+                            row_cells[5].text = "0"
+                            row_cells[6].text = "0"
 
                 doc.add_paragraph()
 

@@ -15,7 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from backend.database import get_db
+from backend.database import get_db, UserDB
+from backend.api.dependencies import get_current_user
 from backend.models import CreateProjectDTO, UpdateProjectDTO
 from backend.services.project_service import ProjectService
 
@@ -30,19 +31,31 @@ def get_project_service_dependency(db: Session = Depends(get_db)) -> ProjectServ
 @router.get("/projects")
 async def get_projects(
     assigned_to: Optional[str] = Query(None, description="Filter projects by bugs assigned to user email"),
-    service: ProjectService = Depends(get_project_service_dependency)
+    service: ProjectService = Depends(get_project_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
-    Get all projects with metrics, optionally filtered by assigned bugs
+    Get all projects from current user's organization, optionally filtered by assigned bugs
 
     Args:
         assigned_to: Optional email filter for projects with assigned bugs
         service: Injected ProjectService instance
+        current_user: Current authenticated user
 
     Returns:
         Dictionary with projects list
     """
-    projects = service.get_all_projects(assigned_to=assigned_to)
+    print(f"📋 GET /projects - Requested by: {current_user.id} ({current_user.role})")
+    print(f"   Organization: {current_user.organization_id}")
+
+    # CRITICAL: Filter projects by organization_id
+    projects = service.get_all_projects(
+        organization_id=current_user.organization_id,
+        assigned_to=assigned_to
+    )
+
+    print(f"   Found {len(projects)} projects in organization {current_user.organization_id}")
+
     return {"projects": projects}
 
 
@@ -78,19 +91,26 @@ async def get_project(
 @router.post("/projects")
 async def create_project(
     project_data: CreateProjectDTO,
-    service: ProjectService = Depends(get_project_service_dependency)
+    service: ProjectService = Depends(get_project_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
-    Create a new project
+    Create a new project in the current user's organization
 
     Args:
         project_data: Project creation data
         service: Injected ProjectService instance
+        current_user: Current authenticated user
 
     Returns:
         Created project with metrics
     """
-    return service.create_project(project_data)
+    print(f"📁 POST /projects - Creating project: {project_data.name}")
+    print(f"   Created by: {current_user.id} ({current_user.email})")
+    print(f"   Organization: {current_user.organization_id}")
+
+    # CRITICAL: Pass user's organization_id to assign project to their organization
+    return service.create_project(project_data, organization_id=current_user.organization_id)
 
 
 @router.put("/projects/{project_id}")
@@ -156,14 +176,19 @@ async def delete_project(
 @router.get("/projects/{project_id}/stats")
 async def get_project_stats(
     project_id: str,
-    service: ProjectService = Depends(get_project_service_dependency)
+    service: ProjectService = Depends(get_project_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Get detailed statistics for a project
 
+    For developers: Shows only bugs assigned to them
+    For QA/Admin: Shows all project bugs
+
     Args:
         project_id: Project ID
         service: Injected ProjectService instance
+        current_user: Current authenticated user
 
     Returns:
         Project statistics dictionary
@@ -171,7 +196,10 @@ async def get_project_stats(
     Raises:
         HTTPException: 404 if project not found
     """
-    stats = service.get_project_stats(project_id)
+    # Pass user email if developer role, otherwise None (show all)
+    assigned_to = current_user.email if current_user.role.value == 'dev' else None
+
+    stats = service.get_project_stats(project_id, assigned_to=assigned_to)
 
     if not stats:
         raise HTTPException(

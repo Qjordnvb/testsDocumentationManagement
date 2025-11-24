@@ -104,22 +104,30 @@ class BugService:
 
         return {"grouped_bugs": grouped_bugs}
 
-    def get_bug_by_id(self, bug_id: str) -> Dict[str, Any]:
+    def get_bug_by_id(self, bug_id: str, project_id: str, organization_id: str) -> Dict[str, Any]:
         """
         Get a specific bug by ID
 
         Args:
             bug_id: Bug ID
+            project_id: Project ID (part of composite key)
+            organization_id: Organization ID (part of composite key)
 
         Returns:
             Bug dictionary
 
         Raises:
-            ValueError: If bug not found
+            ValueError: If bug not found or access denied
         """
-        bug = self.db.query(BugReportDB).filter(BugReportDB.id == bug_id).first()
+        # CRITICAL: Bugs have composite PK (id, project_id, organization_id)
+        bug = self.db.query(BugReportDB).filter(
+            BugReportDB.id == bug_id,
+            BugReportDB.project_id == project_id,
+            BugReportDB.organization_id == organization_id
+        ).first()
+
         if not bug:
-            raise ValueError(f"Bug {bug_id} not found")
+            raise ValueError(f"Bug {bug_id} not found in project {project_id}")
 
         bug_dict = self._bug_to_dict(bug)
         # Include attachments alias for frontend compatibility
@@ -143,6 +151,11 @@ class BugService:
         # Determine project_id
         project_id = self._determine_project_id(bug)
 
+        # Get project to obtain organization_id for multi-tenant isolation
+        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        if not project:
+            raise ValueError(f"Project {project_id} not found")
+
         # Generate bug ID if not provided
         if not bug.id:
             bug_count = self.db.query(BugReportDB).filter(
@@ -155,8 +168,8 @@ class BugService:
         bug_gen = BugReportGenerator()
         doc_path = bug_gen.generate_bug_report(bug, settings.output_dir)
 
-        # Create DB record
-        db_bug = self._create_bug_db_record(bug, project_id, doc_path)
+        # Create DB record with organization_id for multi-tenant isolation
+        db_bug = self._create_bug_db_record(bug, project_id, project.organization_id, doc_path)
         self.db.add(db_bug)
         self.db.commit()
         self.db.refresh(db_bug)
@@ -166,23 +179,31 @@ class BugService:
 
         return self._bug_to_dict(db_bug)
 
-    def update_bug(self, bug_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    def update_bug(self, bug_id: str, project_id: str, organization_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update an existing bug
 
         Args:
             bug_id: Bug ID to update
+            project_id: Project ID (part of composite key)
+            organization_id: Organization ID (part of composite key)
             updates: Dictionary with fields to update
 
         Returns:
             Updated bug dictionary
 
         Raises:
-            ValueError: If bug not found
+            ValueError: If bug not found or access denied
         """
-        bug = self.db.query(BugReportDB).filter(BugReportDB.id == bug_id).first()
+        # CRITICAL: Bugs have composite PK (id, project_id, organization_id)
+        bug = self.db.query(BugReportDB).filter(
+            BugReportDB.id == bug_id,
+            BugReportDB.project_id == project_id,
+            BugReportDB.organization_id == organization_id
+        ).first()
+
         if not bug:
-            raise ValueError(f"Bug {bug_id} not found")
+            raise ValueError(f"Bug {bug_id} not found in project {project_id}")
 
         # Update allowed fields
         self._apply_bug_updates(bug, updates)
@@ -194,17 +215,25 @@ class BugService:
         bug_dict["attachments"] = bug_dict["screenshots"]
         return bug_dict
 
-    def delete_bug(self, bug_id: str) -> bool:
+    def delete_bug(self, bug_id: str, project_id: str, organization_id: str) -> bool:
         """
         Delete a bug report
 
         Args:
             bug_id: Bug ID to delete
+            project_id: Project ID (part of composite key)
+            organization_id: Organization ID (part of composite key)
 
         Returns:
-            True if deleted, False if not found
+            True if deleted, False if not found or access denied
         """
-        bug = self.db.query(BugReportDB).filter(BugReportDB.id == bug_id).first()
+        # CRITICAL: Bugs have composite PK (id, project_id, organization_id)
+        bug = self.db.query(BugReportDB).filter(
+            BugReportDB.id == bug_id,
+            BugReportDB.project_id == project_id,
+            BugReportDB.organization_id == organization_id
+        ).first()
+
         if not bug:
             return False
 
@@ -245,8 +274,8 @@ class BugService:
 
         return project_id
 
-    def _create_bug_db_record(self, bug: BugReport, project_id: str, doc_path: str) -> BugReportDB:
-        """Create BugReportDB instance from BugReport"""
+    def _create_bug_db_record(self, bug: BugReport, project_id: str, organization_id: str, doc_path: str) -> BugReportDB:
+        """Create BugReportDB instance from BugReport with multi-tenant isolation"""
         import os  # Add missing import
 
         steps_str = '\n'.join(bug.steps_to_reproduce) if bug.steps_to_reproduce else None
@@ -255,6 +284,7 @@ class BugService:
         return BugReportDB(
             id=bug.id,
             project_id=project_id,
+            organization_id=organization_id,  # CRITICAL: Multi-tenant isolation
             title=bug.title,
             description=bug.description,
             steps_to_reproduce=steps_str,
@@ -267,21 +297,21 @@ class BugService:
             environment=bug.environment,
             browser=bug.browser,
             os=bug.os,
-            version=bug.version,
+            version=bug.version,  # Uncommented: Now in DB
             user_story_id=bug.user_story_id,
             test_case_id=bug.test_case_id,
-            scenario_name=bug.scenario_name,
-            screenshots=screenshots_str,
-            logs=bug.logs,
-            notes=bug.notes,
-            workaround=bug.workaround,
-            root_cause=bug.root_cause,
-            fix_description=bug.fix_description,
+            scenario_name=bug.scenario_name,  # Uncommented: Now in DB
+            attachments=screenshots_str,  # FIX: Map screenshots to attachments field
+            # logs=bug.logs,
+            # notes=bug.notes,
+            # workaround=bug.workaround,
+            # root_cause=bug.root_cause,
+            # fix_description=bug.fix_description,
             reported_by=bug.reported_by,
             assigned_to=bug.assigned_to,
-            verified_by=bug.verified_by,
-            reported_date=bug.reported_date or datetime.now(),
-            document_path=doc_path
+            # verified_by=bug.verified_by,
+            # reported_date=bug.reported_date or datetime.now(),
+            # document_path=doc_path
         )
 
     def _link_bug_to_execution(self, bug: BugReport, bug_id: str):
@@ -300,11 +330,12 @@ class BugService:
         allowed_fields = [
             "title", "description", "steps_to_reproduce", "expected_behavior", "actual_behavior",
             "severity", "priority", "bug_type", "status",
-            "environment", "browser", "os", "version",
-            "scenario_name",
-            "screenshots", "logs", "notes", "workaround", "root_cause", "fix_description",
-            "assigned_to", "verified_by",
-            "assigned_date", "fixed_date", "verified_date", "closed_date"
+            "environment", "browser", "os",
+            "version", "scenario_name", # Uncommented: Now in DB
+            "screenshots",
+            # "logs", "notes", "workaround", "root_cause", "fix_description",
+            "assigned_to",
+            # "verified_by", "assigned_date", "fixed_date", "verified_date", "closed_date"
         ]
 
         for field, value in updates.items():
@@ -312,7 +343,11 @@ class BugService:
                 # Handle list conversions
                 if field == "steps_to_reproduce" and isinstance(value, list):
                     value = '\n'.join(value) if value else None
-                elif field in ["screenshots", "logs"] and isinstance(value, list):
+                elif field == "screenshots" and isinstance(value, list):
+                    # Map screenshots to attachments field
+                    field = "attachments"
+                    value = json.dumps(value) if value else None
+                elif field == "logs" and isinstance(value, list):
                     value = json.dumps(value) if value else None
 
                 # Handle enum fields
@@ -333,10 +368,11 @@ class BugService:
 
     def _bug_to_dict(self, bug: BugReportDB) -> Dict[str, Any]:
         """Convert BugReportDB to dictionary"""
-        screenshots_list = json.loads(bug.screenshots) if bug.screenshots else []
+        screenshots_list = json.loads(bug.attachments) if bug.attachments else []
 
         return {
             "id": bug.id,
+            "project_id": bug.project_id,
             "title": bug.title,
             "description": bug.description,
             "steps_to_reproduce": bug.steps_to_reproduce.split('\n') if bug.steps_to_reproduce else [],
@@ -349,25 +385,25 @@ class BugService:
             "environment": bug.environment,
             "browser": bug.browser,
             "os": bug.os,
-            "version": bug.version,
+            "version": bug.version, # Uncommented: Now in DB
             "user_story_id": bug.user_story_id,
             "test_case_id": bug.test_case_id,
-            "scenario_name": bug.scenario_name,
+            "scenario_name": bug.scenario_name, # Uncommented: Now in DB
             "screenshots": screenshots_list,
-            "logs": bug.logs,
-            "notes": bug.notes,
-            "workaround": bug.workaround,
-            "root_cause": bug.root_cause,
-            "fix_description": bug.fix_description,
+            "logs": None,
+            "notes": None,
+            "workaround": None,
+            "root_cause": None,
+            "fix_description": None,
             "reported_by": bug.reported_by,
             "assigned_to": bug.assigned_to,
-            "verified_by": bug.verified_by,
-            "reported_date": bug.reported_date.isoformat() if bug.reported_date else None,
-            "assigned_date": bug.assigned_date.isoformat() if bug.assigned_date else None,
-            "fixed_date": bug.fixed_date.isoformat() if bug.fixed_date else None,
-            "verified_date": bug.verified_date.isoformat() if bug.verified_date else None,
-            "closed_date": bug.closed_date.isoformat() if bug.closed_date else None,
-            "document_path": bug.document_path,
+            "verified_by": None,
+            "reported_date": bug.created_date.isoformat() if bug.created_date else None,
+            "assigned_date": None,
+            "fixed_date": None,
+            "verified_date": None,
+            "closed_date": None,
+            "document_path": None,
         }
 
 

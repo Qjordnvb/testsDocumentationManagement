@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from passlib.context import CryptContext
 
-from backend.database import UserDB
+from backend.database import UserDB, OrganizationDB
 from backend.api.dependencies import create_access_token
 from backend.models import Role
 
@@ -178,11 +178,18 @@ class AuthService:
         if not user:
             raise ValueError(f"User {user_id} not found")
 
+        # Get organization name
+        organization = self.db.query(OrganizationDB).filter(
+            OrganizationDB.id == user.organization_id
+        ).first()
+
         return {
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
+            "organization_id": user.organization_id,
+            "organization_name": organization.name if organization else None,
             "is_active": user.is_active,
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "last_login": user.last_login.isoformat() if user.last_login else None,
@@ -199,12 +206,19 @@ class AuthService:
         return pwd_context.verify(plain_password, hashed_password)
 
     def _user_to_dict(self, user: UserDB) -> Dict[str, Any]:
-        """Convert UserDB to dictionary"""
+        """Convert UserDB to dictionary with organization info"""
+        # Get organization name
+        organization = self.db.query(OrganizationDB).filter(
+            OrganizationDB.id == user.organization_id
+        ).first()
+
         return {
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
+            "organization_id": user.organization_id,
+            "organization_name": organization.name if organization else None,
             "is_active": user.is_active,
         }
 

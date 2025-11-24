@@ -38,22 +38,25 @@ async def get_users(
     current_user: UserDB = Depends(require_role(Role.ADMIN, Role.MANAGER))
 ):
     """
-    Get all users
+    Get all users from current user's organization
 
     Only ADMIN and MANAGER roles can view users.
+    Users can only see other users from their own organization.
 
     Args:
         service: Injected UserService instance
         current_user: Current authenticated user (ADMIN or MANAGER)
 
     Returns:
-        List of all users
+        List of users from the same organization
     """
     print(f"📋 GET /users - Requested by: {current_user.id} ({current_user.role})")
+    print(f"   Organization: {current_user.organization_id}")
 
-    users = service.get_all_users()
+    # CRITICAL: Filter users by organization_id
+    users = service.get_all_users(organization_id=current_user.organization_id)
 
-    print(f"   Found {len(users)} users")
+    print(f"   Found {len(users)} users in organization {current_user.organization_id}")
 
     return users
 
@@ -107,6 +110,7 @@ async def create_user_invitation(
 
     Creates a user invitation without password. The invited user will
     complete their registration by setting their password.
+    The user will be assigned to the same organization as the admin.
 
     Only ADMIN role can create invitations.
 
@@ -123,16 +127,20 @@ async def create_user_invitation(
     """
     print(f"📨 POST /users/invite - Creating invitation: {invitation_data.email}")
     print(f"   Created by: {current_user.id} ({current_user.email})")
+    print(f"   Organization: {current_user.organization_id}")
 
     try:
+        # CRITICAL: Pass admin's organization_id to assign user to same organization
         result = service.create_invitation(
             email=invitation_data.email,
             full_name=invitation_data.full_name,
             role=invitation_data.role,
-            invited_by=current_user.email
+            invited_by=current_user.email,
+            organization_id=current_user.organization_id  # Assign to admin's organization
         )
 
         print(f"   ✅ Invitation created: {result['user_id']} - {result['email']} ({result['role']})")
+        print(f"   🏢 Organization: {result['organization_id']}")
         print(f"   ⏳ Status: Pending registration")
 
         return result
@@ -156,6 +164,7 @@ async def create_user(
 
     This endpoint is kept for backward compatibility.
     New implementations should use POST /users/invite to create invitations.
+    The user will be assigned to the same organization as the admin.
 
     Only ADMIN role can create users.
 
@@ -172,17 +181,20 @@ async def create_user(
     """
     print(f"📝 POST /users - Creating user: {user_data.email}")
     print(f"   Created by: {current_user.id}")
+    print(f"   Organization: {current_user.organization_id}")
 
     try:
+        # CRITICAL: Pass admin's organization_id
         new_user = service.create_user(
             email=user_data.email,
             password=user_data.password,
             full_name=user_data.full_name,
             role=user_data.role,
-            created_by=current_user.id
+            organization_id=current_user.organization_id  # Assign to admin's organization
         )
 
         print(f"   ✅ User created: {new_user.id} - {new_user.email} ({new_user.role})")
+        print(f"   🏢 Organization: {new_user.organization_id}")
 
         return new_user
 

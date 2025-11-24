@@ -136,6 +136,7 @@ export const apiService = {
   // Queue test generation task (Celery background job)
   queueTestGeneration: async (
     storyId: string,
+    projectId: string,
     numTestCases: number = 5,
     scenariosPerTest: number = 3,
     testTypes: string[] = ['FUNCTIONAL', 'UI'],
@@ -152,6 +153,7 @@ export const apiService = {
       null,
       {
         params: {
+          project_id: projectId,
           num_test_cases: numTestCases,
           scenarios_per_test: scenariosPerTest,
           test_types: testTypes,
@@ -174,6 +176,15 @@ export const apiService = {
     error?: string;
   }> => {
     const { data } = await api.get(`/generate-test-cases/status/${taskId}`);
+    return data;
+  },
+
+  // Create multiple test cases at once (after AI generation)
+  createTestCasesBatch: async (payload: {
+    user_story_id: string;
+    test_cases: any[];
+  }): Promise<any> => {
+    const { data } = await api.post('/test-cases/batch', payload);
     return data;
   },
 

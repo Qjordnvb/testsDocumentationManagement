@@ -91,7 +91,7 @@ export const BugReportModal: React.FC<Props> = ({
     hasLoadedBugRef.current = true; // Mark as loaded immediately to prevent race conditions
     setIsLoadingBug(true);
 
-    bugApi.getById(existingBugId)
+    bugApi.getById(existingBugId, projectId)
       .then((bug) => {
         console.log('✅ Bug loaded:', bug);
 
@@ -335,7 +335,7 @@ export const BugReportModal: React.FC<Props> = ({
         };
 
         console.log('📝 Updating bug with data:', updateData);
-        resultBug = await bugApi.update(existingBugId, updateData);
+        resultBug = await bugApi.update(existingBugId, projectId, updateData);
         toast.success(`Bug ${resultBug.id} updated successfully`);
       } else {
         // Create new bug - Use CreateBugDTO (all fields including context)

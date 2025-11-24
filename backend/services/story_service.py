@@ -7,7 +7,7 @@ Handles business logic for user story management operations following SOLID prin
 - Open/Closed: Easy to extend with new user story operations
 """
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
@@ -70,16 +70,19 @@ class StoryService:
             raise ValueError(f"Parse errors: {result.errors}")
 
         # Save to database with batch processing
+        # CRITICAL: Pass organization_id for multi-tenant isolation
         saved_stories, updated_stories = self._batch_save_stories(
             result.user_stories,
-            project_id
+            project_id,
+            project.organization_id  # Get from validated project
         )
 
-        # Fetch the saved stories
+        # Fetch the saved stories (with multi-tenant isolation)
         all_story_ids = [s.id for s in result.user_stories]
         db_stories = self.db.query(UserStoryDB).filter(
             UserStoryDB.id.in_(all_story_ids),
-            UserStoryDB.project_id == project_id
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == project.organization_id
         ).all()
 
         # Format stories
@@ -118,8 +121,13 @@ class StoryService:
         if not project:
             raise ValueError(f"Project {project_id} not found")
 
-        # Filter stories by project
-        stories = self.db.query(UserStoryDB).filter(UserStoryDB.project_id == project_id).all()
+        # Filter stories by project AND organization WITH eager loading of test_cases
+        stories = self.db.query(UserStoryDB).options(
+            selectinload(UserStoryDB.test_cases)
+        ).filter(
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == project.organization_id
+        ).all()
 
         return [self._story_to_dict_with_test_cases(story) for story in stories]
 
@@ -267,7 +275,8 @@ class StoryService:
     def _batch_save_stories(
         self,
         user_stories: List[UserStory],
-        project_id: str
+        project_id: str,
+        organization_id: str
     ) -> tuple[List[str], List[str]]:
         """
         Save user stories to database using batch processing
@@ -275,6 +284,7 @@ class StoryService:
         Args:
             user_stories: List of user stories to save
             project_id: Project ID to associate stories with
+            organization_id: Organization ID for multi-tenant isolation
 
         Returns:
             Tuple of (saved_story_ids, updated_story_ids)
@@ -300,6 +310,7 @@ class StoryService:
             story_data = {
                 'id': user_story.id,
                 'project_id': project_id,
+                'organization_id': organization_id,  # CRITICAL: Multi-tenant isolation
                 'title': user_story.title,
                 'description': user_story.description,
                 'priority': user_story.priority.value if hasattr(user_story.priority, 'value') else user_story.priority,
