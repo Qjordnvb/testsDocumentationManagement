@@ -94,26 +94,28 @@ async def download_file(filename: str):
 @router.get("/projects/{project_id}/reports/bug-summary")
 async def generate_bug_summary_report(
     project_id: str,
-    service: ReportService = Depends(get_report_service_dependency)
+    service: ReportService = Depends(get_report_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Generate Bug Summary Report for Dev Team
-    Returns a Word document with all bugs for the project
+    Returns a Word document with all bugs for the project (multi-tenant safe)
 
     Args:
         project_id: Project ID
         service: Injected ReportService instance
+        current_user: Current authenticated user
 
     Returns:
         File response with Word document
 
     Raises:
-        HTTPException: If project not found or no bugs found
+        HTTPException: If project not found, no access, or no bugs found
     """
-    print(f"📊 GET /projects/{project_id}/reports/bug-summary")
+    print(f"📊 GET /projects/{project_id}/reports/bug-summary - User: {current_user.email}")
 
     try:
-        file_path = service.generate_bug_summary_report(project_id)
+        file_path = service.generate_bug_summary_report(project_id, current_user.organization_id)
 
         filename = Path(file_path).name
 
@@ -183,14 +185,16 @@ async def generate_test_execution_report(
 
 @router.get("/reports/consolidated")
 async def generate_consolidated_report(
-    service: ReportService = Depends(get_report_service_dependency)
+    service: ReportService = Depends(get_report_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Generate Consolidated Report for Manager
-    Returns a Word document with metrics from all projects
+    Returns a Word document with metrics from all projects IN USER'S ORGANIZATION
 
     Args:
         service: Injected ReportService instance
+        current_user: Current authenticated user
 
     Returns:
         File response with Word document
@@ -198,10 +202,10 @@ async def generate_consolidated_report(
     Raises:
         HTTPException: If no projects found
     """
-    print(f"📊 GET /reports/consolidated")
+    print(f"📊 GET /reports/consolidated - User: {current_user.email}, Org: {current_user.organization_id}")
 
     try:
-        file_path = service.generate_consolidated_report()
+        file_path = service.generate_consolidated_report(current_user.organization_id)
 
         filename = Path(file_path).name
 

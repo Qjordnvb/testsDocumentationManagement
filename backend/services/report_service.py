@@ -133,24 +133,28 @@ class ReportService:
             "files": files
         }
 
-    def generate_bug_summary_report(self, project_id: str) -> str:
+    def generate_bug_summary_report(self, project_id: str, organization_id: str) -> str:
         """
         Generate Bug Summary Report for Dev Team
-        Returns path to generated Word document
+        Returns path to generated Word document (multi-tenant safe)
 
         Args:
             project_id: Project ID
+            organization_id: Organization ID for validation
 
         Returns:
             Path to generated file
 
         Raises:
-            ValueError: If project not found or no bugs found
+            ValueError: If project not found, no access, or no bugs found
         """
-        # Validate project exists
-        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        # Validate project exists AND belongs to organization
+        project = self.db.query(ProjectDB).filter(
+            ProjectDB.id == project_id,
+            ProjectDB.organization_id == organization_id
+        ).first()
         if not project:
-            raise ValueError(f"Project {project_id} not found")
+            raise ValueError(f"Project {project_id} not found or access denied")
 
         # Get all bugs for the project
         bugs_db = self.db.query(BugReportDB).filter(BugReportDB.project_id == project_id).all()
@@ -294,10 +298,13 @@ class ReportService:
 
         return str(file_path)
 
-    def generate_consolidated_report(self) -> str:
+    def generate_consolidated_report(self, organization_id: str) -> str:
         """
         Generate Consolidated Report for Manager
-        Returns path to generated Word document
+        Returns path to generated Word document for ORGANIZATION ONLY
+
+        Args:
+            organization_id: Organization ID to filter projects
 
         Returns:
             Path to generated file
@@ -305,8 +312,10 @@ class ReportService:
         Raises:
             ValueError: If no projects found
         """
-        # Get all projects
-        projects = self.db.query(ProjectDB).all()
+        # Get projects for THIS ORGANIZATION ONLY
+        projects = self.db.query(ProjectDB).filter(
+            ProjectDB.organization_id == organization_id
+        ).all()
 
         if not projects:
             raise ValueError("No projects found")
