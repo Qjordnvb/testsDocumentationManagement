@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 
 from backend.database import get_db
+from backend.database.models import UserDB
+from backend.api.dependencies import get_current_user
 from backend.services.report_service import ReportService
 from backend.config import settings
 
