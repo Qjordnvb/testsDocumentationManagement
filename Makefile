@@ -203,5 +203,18 @@ db.close()"; \
 	else \
 		echo "❌ Base de datos no existe"; \
 	fi
+
+db-migrate-cascade: ## 🔄 Migrar constraint de bugs a CASCADE delete
+	@echo "🔄 Ejecutando migración CASCADE para bug_reports..."
+	@echo ""
+	@echo "⚠️  Esta migración:"
+	@echo "   - Cambia constraint de test_case_id a CASCADE"
+	@echo "   - Futuros deletes de test cases eliminarán sus bugs"
+	@echo "   - NO afecta datos existentes"
+	@echo ""
+	@docker compose exec backend python backend/migrate_cascade_delete_bugs.py
+	@echo ""
+	@echo "✅ Migración completada."
+
 # ==================== Default ====================
 .DEFAULT_GOAL := help
