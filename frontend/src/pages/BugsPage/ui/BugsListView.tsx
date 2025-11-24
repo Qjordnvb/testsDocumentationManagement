@@ -39,28 +39,28 @@ export const BugsListView = ({ bugs, activeFiltersCount, onBugClick }: BugsListV
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-max">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ID / Título
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Severidad
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Prioridad
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Tipo
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="hidden xl:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Reportado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Asignado a
               </th>
             </tr>
@@ -73,58 +73,52 @@ export const BugsListView = ({ bugs, activeFiltersCount, onBugClick }: BugsListV
                 className="hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 {/* ID / Title */}
-                <td className="px-6 py-4">
-                  <div className="flex items-start gap-3">
-                    {getStatusIcon(bug.status)}
+                <td className="px-3 md:px-6 py-4">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-shrink-0">{getStatusIcon(bug.status)}</div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-mono font-medium text-blue-600">{bug.id}</p>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5 truncate">
+                      <p className="text-xs md:text-sm font-mono font-medium text-blue-600">{bug.id}</p>
+                      <p className="text-xs md:text-sm font-medium text-gray-900 mt-0.5 line-clamp-2">
                         {bug.title}
                       </p>
-                      {bug.user_story_id && (
-                        <p className="text-xs text-gray-500 mt-1">Story: {bug.user_story_id}</p>
-                      )}
-                      {bug.test_case_id && (
-                        <p className="text-xs text-gray-500">Test: {bug.test_case_id}</p>
-                      )}
                     </div>
                   </div>
                 </td>
 
                 {/* Severity */}
-                <td className="px-6 py-4">
+                <td className="px-2 md:px-4 py-4">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${getSeverityBadgeClass(bug.severity)}`}
+                    className={`px-2 py-1 rounded-full text-xs font-bold ${getSeverityBadgeClass(bug.severity)}`}
                   >
                     {bug.severity}
                   </span>
                 </td>
 
-                {/* Priority */}
-                <td className="px-6 py-4">
+                {/* Priority - hidden on small screens */}
+                <td className="hidden lg:table-cell px-4 py-4">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityBadgeClass(bug.priority)}`}
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadgeClass(bug.priority)}`}
                   >
                     {bug.priority}
                   </span>
                 </td>
 
                 {/* Status */}
-                <td className="px-6 py-4">
+                <td className="px-2 md:px-4 py-4">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(bug.status)}`}
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(bug.status)}`}
                   >
                     {bug.status.replace('_', ' ')}
                   </span>
                 </td>
 
-                {/* Type */}
-                <td className="px-6 py-4">
+                {/* Type - hidden on small screens */}
+                <td className="hidden md:table-cell px-4 py-4">
                   <span className="text-sm text-gray-700">{bug.bug_type}</span>
                 </td>
 
-                {/* Reported Date */}
-                <td className="px-6 py-4">
+                {/* Reported Date - hidden on smaller screens */}
+                <td className="hidden xl:table-cell px-4 py-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar size={14} />
                     {formatDate(bug.reported_date)}
@@ -135,17 +129,19 @@ export const BugsListView = ({ bugs, activeFiltersCount, onBugClick }: BugsListV
                   </div>
                 </td>
 
-                {/* Assigned To */}
-                <td className="px-6 py-4">
+                {/* Assigned To - hidden on small screens */}
+                <td className="hidden lg:table-cell px-4 py-4">
                   {bug.assigned_to ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                        <User size={14} className="text-blue-600" />
+                      <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <User size={12} className="text-blue-600" />
                       </div>
-                      <span className="text-sm text-gray-900">{bug.assigned_to}</span>
+                      <span className="text-xs text-gray-900 truncate max-w-[120px]" title={bug.assigned_to}>
+                        {bug.assigned_to}
+                      </span>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400 italic">Sin asignar</span>
+                    <span className="text-xs text-gray-400 italic">Sin asignar</span>
                   )}
                 </td>
               </tr>

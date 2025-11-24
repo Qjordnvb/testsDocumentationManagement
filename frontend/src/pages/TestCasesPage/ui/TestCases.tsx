@@ -21,7 +21,7 @@ import { TestRunnerModal } from '@/features/test-execution/ui/TestRunnerModal';
 import { ExecutionDetailsModal } from '@/features/test-execution/ui/ExecutionDetailsModal';
 import { ExecutionHistory } from '@/features/test-execution/ui/ExecutionHistory';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor/GherkinEditor';
-import { Badge } from '@/shared/ui';
+import { Badge, ConfirmModal } from '@/shared/ui';
 
 export const TestCases = () => {
   const {
@@ -69,6 +69,9 @@ export const TestCases = () => {
     loadData,
     suiteRefs,
     highlightedSuite,
+    deletingTestCaseId,
+    setDeletingTestCaseId,
+    confirmDelete,
   } = useTestCasesPage();
 
   if (loading) {
@@ -242,14 +245,15 @@ export const TestCases = () => {
 
                           return (
                             <>
-                              <tr key={testCase.id} className="border-b hover:bg-gray-50">
+                              <tr
+                                key={testCase.id}
+                                className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                                onClick={() => toggleTestCase(testCase.id)}
+                              >
                                 <td className="py-3">
-                                  <button
-                                    onClick={() => toggleTestCase(testCase.id)}
-                                    className="text-gray-500 hover:text-gray-700"
-                                  >
+                                  <div className="text-gray-500">
                                     {isTestExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                  </button>
+                                  </div>
                                 </td>
                                 <td className="py-3">
                                   <span className="font-mono text-sm text-gray-700">{testCase.id}</span>
@@ -302,7 +306,7 @@ export const TestCases = () => {
                                     {testCase.status}
                                   </Badge>
                                 </td>
-                                <td className="py-3">
+                                <td className="py-3" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex gap-1 justify-end">
                                     <button
                                       onClick={() => handleRunTest(testCase)}
@@ -453,6 +457,18 @@ export const TestCases = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deletingTestCaseId}
+        onClose={() => setDeletingTestCaseId(null)}
+        onConfirm={confirmDelete}
+        title="Eliminar Test Case"
+        message="¿Estás seguro de que deseas eliminar este test case? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 };

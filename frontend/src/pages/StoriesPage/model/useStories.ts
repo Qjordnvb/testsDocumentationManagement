@@ -77,6 +77,17 @@ export const useStories = () => {
     loadStories();
   }, [loadStories]);
 
+  const handleUpdateStory = useCallback(async (storyId: string, updates: Partial<UserStory>) => {
+    try {
+      await storyApi.update(storyId, updates);
+      // Refresh stories after update to reflect changes
+      await loadStories();
+    } catch (err) {
+      console.error('Error updating story:', err);
+      throw err; // Re-throw so StoryTable can handle the error
+    }
+  }, [loadStories]);
+
   // Set callback for test generation queue
   useEffect(() => {
     setOnTestCasesSaved(handleTestCasesSaved);
@@ -98,6 +109,7 @@ export const useStories = () => {
     setViewMode,
     handleUploadSuccess,
     handleGenerate,
+    handleUpdateStory,
     loadStories,
   };
 };

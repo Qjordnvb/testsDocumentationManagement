@@ -31,6 +31,7 @@ export const useTestCasesPage = () => {
   const [gherkinContent, setGherkinContent] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
+  const [deletingTestCaseId, setDeletingTestCaseId] = useState<string | null>(null);
 
   // Test Runner states
   const [runningTestCase, setRunningTestCase] = useState<TestCase | null>(null);
@@ -228,16 +229,22 @@ export const useTestCasesPage = () => {
   };
 
   // Handlers
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este test case?')) return;
+  const handleDelete = (id: string) => {
+    setDeletingTestCaseId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingTestCaseId) return;
 
     try {
-      await testCaseApi.delete(id);
+      await testCaseApi.delete(deletingTestCaseId);
       await loadData();
       toast.success('Test case eliminado exitosamente');
     } catch (err: any) {
       console.error('Error deleting test case:', err);
       toast.error('Error al eliminar test case');
+    } finally {
+      setDeletingTestCaseId(null);
     }
   };
 
@@ -408,5 +415,10 @@ export const useTestCasesPage = () => {
     handleOpenGherkin,
     handleSaveGherkin,
     loadData,
+
+    // Delete confirmation
+    deletingTestCaseId,
+    setDeletingTestCaseId,
+    confirmDelete,
   };
 };

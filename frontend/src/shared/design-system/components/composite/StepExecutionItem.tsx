@@ -63,7 +63,7 @@ export const StepExecutionItem = ({
       case 'blocked':
         return <AlertCircle className="w-4 h-4" />;
       default:
-        return <div className="w-4 h-4 rounded-full border-2 border-gray-400" />;
+        return null; // No icon for pending status - cleaner UI
     }
   };
 

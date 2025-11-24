@@ -4,7 +4,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
-import { StoryTable } from '@/widgets/story-table';
+import { StoryTable, UserStoryCard } from '@/widgets/story-table';
 import { Button, LoadingSpinner } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
@@ -30,6 +30,7 @@ export const Stories = () => {
     setViewMode,
     handleUploadSuccess,
     handleGenerate,
+    handleUpdateStory,
     loadStories,
   } = useStories();
 
@@ -130,14 +131,21 @@ export const Stories = () => {
           stories={stories}
           onGenerateTests={handleGenerate}
           onViewTests={handleViewTests}
+          onUpdateStory={handleUpdateStory}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stories.map((story) => (
-            <div key={story.id} className="card">
-              <div className="font-semibold">{story.title}</div>
-              {/* UserStoryCard needs props update */}
-            </div>
+            <UserStoryCard
+              key={story.id}
+              story={story}
+              onGenerateTests={() => handleGenerate(story)}
+              onViewTests={handleViewTests}
+              onEdit={(storyId) => {
+                // TODO: Implement edit modal
+                console.log('Edit story:', storyId);
+              }}
+            />
           ))}
         </div>
       )}
