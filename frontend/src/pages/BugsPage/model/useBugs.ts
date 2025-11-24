@@ -70,8 +70,23 @@ export const useBugs = () => {
         ? bugsData.filter((bug) => bug.assigned_to === user?.email)
         : bugsData;
 
+      // Also filter grouped bugs for DEV role
+      const filteredGroupedBugs = isDev
+        ? (groupedData.grouped_bugs || []).map((testCaseGroup) => ({
+            ...testCaseGroup,
+            scenarios: testCaseGroup.scenarios.map((scenarioGroup) => ({
+              ...scenarioGroup,
+              bugs: scenarioGroup.bugs.filter((bug) => bug.assigned_to === user?.email),
+              bug_count: scenarioGroup.bugs.filter((bug) => bug.assigned_to === user?.email).length,
+            })).filter((scenarioGroup) => scenarioGroup.bug_count > 0), // Remove empty scenarios
+            total_bugs: testCaseGroup.scenarios
+              .flatMap((sg) => sg.bugs)
+              .filter((bug) => bug.assigned_to === user?.email).length,
+          })).filter((testCaseGroup) => testCaseGroup.total_bugs > 0) // Remove empty test cases
+        : (groupedData.grouped_bugs || []);
+
       setBugs(filteredBugs);
-      setGroupedBugs(groupedData.grouped_bugs || []);
+      setGroupedBugs(filteredGroupedBugs);
     } catch (err: any) {
       console.error('Error loading bugs:', err);
       setError(err.message || 'Error al cargar bugs');

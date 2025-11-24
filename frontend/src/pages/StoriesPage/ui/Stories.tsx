@@ -2,15 +2,18 @@
  * Stories Page Main Component
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
-import { StoryTable } from '@/widgets/story-table';
-import { Button, LoadingSpinner } from '@/shared/ui';
+import type { UserStory } from '@/entities/user-story';
+import { StoryTable, UserStoryCard } from '@/widgets/story-table';
+import { Button, SkeletonTable, EmptyState } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
-import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
+import { getTypographyPreset } from '@/shared/design-system/tokens';
 import { useStories } from '../model';
 import { UploadModal } from '@/features/upload-excel/ui/UploadModal';
 import { GenerateModal } from '@/features/generate-tests/ui/GenerateModal';
+import { EditStoryModal } from '@/features/story-management/ui';
 
 export const Stories = () => {
   const navigate = useNavigate();
@@ -30,8 +33,11 @@ export const Stories = () => {
     setViewMode,
     handleUploadSuccess,
     handleGenerate,
+    handleUpdateStory,
     loadStories,
   } = useStories();
+
+  const [editingStory, setEditingStory] = useState<UserStory | null>(null);
 
   const handleViewTests = (storyId: string) => {
     // Navigate to test cases page with story filter using React Router
@@ -42,14 +48,11 @@ export const Stories = () => {
 
   const bodySmall = getTypographyPreset('bodySmall');
   const body = getTypographyPreset('body');
-  const headingLarge = getTypographyPreset('headingLarge');
 
   if (isLoading) {
     return (
       <PageLayout title={currentProject?.name || 'Loading...'}>
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="lg" label="Loading stories..." center />
-        </div>
+        <SkeletonTable rows={5} columns={6} />
       </PageLayout>
     );
   }
@@ -109,35 +112,41 @@ export const Stories = () => {
 
       {/* Stories List */}
       {stories.length === 0 ? (
-        <div className="card text-center py-16">
-          <div className="text-7xl mb-6">📝</div>
-          <h2 className={`${headingLarge.className} font-bold ${colors.gray.text900} mb-3`}>
-            No User Stories
-          </h2>
-          <p className={`${colors.gray.text600} mb-8 ${body.className}`}>
-            Upload an Excel file to import user stories
-          </p>
-          <Button
-            variant="primary"
-            leftIcon={<Upload size={16} />}
-            onClick={() => setUploadModalOpen(true)}
-          >
-            Upload Excel File
-          </Button>
+        <div className="card">
+          <EmptyState
+            emoji="📖"
+            message="¡Comienza tu proyecto con User Stories!"
+            description="Sube un archivo Excel con tus historias de usuario para comenzar"
+            motivation="Las grandes aplicaciones empiezan con historias bien definidas ✨"
+            size="lg"
+            action={
+              <Button
+                variant="primary"
+                leftIcon={<Upload size={16} />}
+                onClick={() => setUploadModalOpen(true)}
+              >
+                Subir Archivo Excel
+              </Button>
+            }
+          />
         </div>
       ) : viewMode === 'table' ? (
         <StoryTable
           stories={stories}
           onGenerateTests={handleGenerate}
           onViewTests={handleViewTests}
+          onUpdateStory={handleUpdateStory}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stories.map((story) => (
-            <div key={story.id} className="card">
-              <div className="font-semibold">{story.title}</div>
-              {/* UserStoryCard needs props update */}
-            </div>
+            <UserStoryCard
+              key={story.id}
+              story={story}
+              onGenerateTests={() => handleGenerate(story)}
+              onViewTests={handleViewTests}
+              onEdit={() => setEditingStory(story)}
+            />
           ))}
         </div>
       )}
@@ -163,6 +172,19 @@ export const Stories = () => {
           }}
           onSuccess={() => {
             loadStories();
+          }}
+        />
+      )}
+
+      {/* Edit Story Modal */}
+      {editingStory && (
+        <EditStoryModal
+          isOpen={!!editingStory}
+          story={editingStory}
+          onClose={() => setEditingStory(null)}
+          onSave={async (storyId, updates) => {
+            await handleUpdateStory(storyId, updates);
+            setEditingStory(null);
           }}
         />
       )}

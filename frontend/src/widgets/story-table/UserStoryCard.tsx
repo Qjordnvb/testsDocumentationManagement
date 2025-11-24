@@ -23,8 +23,7 @@ export const UserStoryCard: React.FC<Props> = ({
   onViewTests,
   onEdit,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const { hasRole } = useAuth();
 
   const bodySmall = getTypographyPreset('bodySmall');
@@ -72,13 +71,7 @@ export const UserStoryCard: React.FC<Props> = ({
   };
 
   return (
-    <div
-      className={`relative card transition-all duration-200 ${
-        isHovered ? 'shadow-xl scale-[1.02]' : 'hover:shadow-lg'
-      }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="relative card hover:shadow-lg transition-shadow">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -90,10 +83,10 @@ export const UserStoryCard: React.FC<Props> = ({
           </span>
         </div>
 
-        {/* Mobile menu button */}
+        {/* Actions menu button */}
         <button
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className={`md:hidden p-2 ${borderRadius.base} hover:bg-gray-100 transition-colors`}
+          onClick={() => setShowActionsMenu(!showActionsMenu)}
+          className={`p-2 ${borderRadius.base} hover:bg-gray-100 transition-colors ${showActionsMenu ? 'bg-gray-100' : ''}`}
         >
           <MoreVertical size={18} className={colors.gray.text600} />
         </button>
@@ -173,55 +166,14 @@ export const UserStoryCard: React.FC<Props> = ({
         {story.status}
       </div>
 
-      {/* Desktop Hover Overlay */}
-      {isHovered && (
-        <div className="hidden md:block absolute inset-0 bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="space-y-3 w-full">
-            {hasTests ? (
-              <Button
-                variant="ghost"
-                size="md"
-                onClick={() => onViewTests(story.id)}
-                leftIcon={<Eye size={18} />}
-                className="w-full bg-white hover:bg-gray-50"
-              >
-                Ver Tests ({story.test_case_ids!.length})
-              </Button>
-            ) : (
-              // Only ADMIN and QA can generate tests
-              hasRole('admin', 'qa') && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => onGenerateTests(story.id)}
-                  leftIcon={<Beaker size={18} />}
-                  className="w-full"
-                >
-                  Generate Tests
-                </Button>
-              )
-            )}
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={() => onEdit(story.id)}
-              leftIcon={<Edit2 size={18} />}
-              className="w-full bg-white hover:bg-gray-50"
-            >
-              Edit Story
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Menu Dropdown */}
-      {showMobileMenu && (
-        <div className="md:hidden absolute top-12 right-4 bg-white border border-gray-200 rounded-lg shadow-xl z-10 py-2 min-w-[200px]">
+      {/* Actions Menu Dropdown */}
+      {showActionsMenu && (
+        <div className="absolute top-12 right-4 bg-white border border-gray-200 rounded-lg shadow-xl z-10 py-2 min-w-[200px]">
           {hasTests ? (
             <button
               onClick={() => {
                 onViewTests(story.id);
-                setShowMobileMenu(false);
+                setShowActionsMenu(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${body.className}`}
             >
@@ -234,7 +186,7 @@ export const UserStoryCard: React.FC<Props> = ({
               <button
                 onClick={() => {
                   onGenerateTests(story.id);
-                  setShowMobileMenu(false);
+                  setShowActionsMenu(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${body.className}`}
               >
@@ -243,16 +195,19 @@ export const UserStoryCard: React.FC<Props> = ({
               </button>
             )
           )}
-          <button
-            onClick={() => {
-              onEdit(story.id);
-              setShowMobileMenu(false);
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${body.className}`}
-          >
-            <Edit2 size={18} className={colors.gray.text600} />
-            <span>Edit Story</span>
-          </button>
+          {/* Only QA and ADMIN can edit */}
+          {hasRole('admin', 'qa') && (
+            <button
+              onClick={() => {
+                onEdit(story.id);
+                setShowActionsMenu(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${body.className}`}
+            >
+              <Edit2 size={18} className={colors.gray.text600} />
+              <span>Edit Story</span>
+            </button>
+          )}
         </div>
       )}
     </div>

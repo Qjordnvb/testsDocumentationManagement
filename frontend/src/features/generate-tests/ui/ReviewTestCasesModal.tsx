@@ -8,6 +8,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
 import { batchCreateTestCases } from '../api/generateTests';
 import { CheckCircle2, AlertCircle, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
+import { useProject } from '@/app/providers/ProjectContext';
 import type { SuggestedTestCase } from '../api/generateTests';
 import {
   colors,
@@ -38,6 +39,7 @@ export const ReviewTestCasesModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const { currentProject } = useProject();
 
   // Update state when suggestedTests prop changes
   useEffect(() => {
@@ -64,12 +66,17 @@ export const ReviewTestCasesModal = ({
 
   // Handle save all
   const handleSaveAll = async () => {
+    if (!currentProject) {
+      setSaveError("Error crítico: No se pudo identificar el proyecto actual.");
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
 
     try {
       await batchCreateTestCases({
         user_story_id: userStoryId,
+        project_id: currentProject.id,
         test_cases: testCases.map(tc => ({
           suggested_id: tc.suggested_id,
           title: tc.title,

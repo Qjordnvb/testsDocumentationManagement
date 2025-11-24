@@ -488,7 +488,11 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
                                 {row.original.acceptance_criteria.map((criterion: any, index: number) => (
                                   <li
                                     key={criterion.id || index}
-                                    onClick={() => !hasRole('dev') && onUpdateStory && toggleCriteria(row.original, index)}
+                                    onClick={() => {
+                                      if (!hasRole('dev') && onUpdateStory) {
+                                        toggleCriteria(row.original, index);
+                                      }
+                                    }}
                                     className={`flex items-start gap-2 ${!hasRole('dev') && onUpdateStory ? 'cursor-pointer hover:bg-gray-100 p-2 -ml-2 rounded-md transition-colors' : 'p-2 -ml-2'}`}
                                     title={!hasRole('dev') && onUpdateStory ? (criterion.completed ? 'Click para desmarcar' : 'Click para marcar como completado') : ''}
                                   >

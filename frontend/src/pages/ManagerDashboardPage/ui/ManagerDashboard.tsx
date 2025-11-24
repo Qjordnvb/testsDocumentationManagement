@@ -4,7 +4,7 @@
  */
 
 import { BarChart3 } from 'lucide-react';
-import { LoadingSpinner } from '@/shared/ui';
+import { SkeletonCard } from '@/shared/ui';
 import { useManagerDashboard } from '../model';
 import { FiltersSection } from './FiltersSection';
 import { GlobalStatsCards } from './GlobalStatsCards';
@@ -29,8 +29,12 @@ export const ManagerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" label="Cargando dashboard de métricas..." center />
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }

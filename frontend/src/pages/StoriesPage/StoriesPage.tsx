@@ -254,7 +254,7 @@ export const StoriesPage = () => {
       />
 
       {/* Generate Tests Modal */}
-      {selectedStory && (
+      {selectedStory && projectId && (
         <GenerateModal
           isOpen={generateModalOpen}
           onClose={() => {
@@ -262,6 +262,7 @@ export const StoriesPage = () => {
             setSelectedStory(null);
           }}
           story={selectedStory}
+          projectId={projectId}
           onSuccess={handleGenerateSuccess}
         />
       )}

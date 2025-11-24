@@ -4,7 +4,7 @@
  */
 
 import type { TestCaseGroup } from '@/entities/bug';
-import { Bug as BugIcon, ChevronDown, ChevronRight, Calendar, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, User } from 'lucide-react';
 import { EmptyState } from '@/shared/ui';
 import {
   getStatusIcon,
@@ -34,9 +34,11 @@ export const BugsGroupedView = ({
     return (
       <div className="card">
         <EmptyState
-          icon={<BugIcon className="w-full h-full" />}
-          message="No se encontraron bugs agrupados"
-          description="Los bugs se agruparán automáticamente por Test Case y Scenario cuando sean reportados"
+          emoji="🎯"
+          message="No hay bugs agrupados"
+          description="Los bugs se agruparán automáticamente por Test Case y Scenario cuando sean reportados desde las ejecuciones"
+          motivation="¡Perfecto! Ningún test ha fallado todavía 🚀"
+          size="lg"
         />
       </div>
     );

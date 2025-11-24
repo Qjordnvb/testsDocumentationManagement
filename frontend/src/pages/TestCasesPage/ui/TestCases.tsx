@@ -16,14 +16,17 @@ import {
   Plus
 } from 'lucide-react';
 import { useTestCasesPage } from '../model';
+import { useAuth } from '@/app/providers';
 import { TestCaseFormModal } from '@/features/test-case-management/ui/TestCaseFormModal';
 import { TestRunnerModal } from '@/features/test-execution/ui/TestRunnerModal';
 import { ExecutionDetailsModal } from '@/features/test-execution/ui/ExecutionDetailsModal';
 import { ExecutionHistory } from '@/features/test-execution/ui/ExecutionHistory';
 import { GherkinEditor } from '@/shared/ui/GherkinEditor/GherkinEditor';
-import { Badge } from '@/shared/ui';
+import { Badge, ConfirmModal } from '@/shared/ui';
 
 export const TestCases = () => {
+  const { hasRole } = useAuth();
+  const isDev = hasRole('dev');
   const {
     projectId,
     currentProject,
@@ -69,6 +72,9 @@ export const TestCases = () => {
     loadData,
     suiteRefs,
     highlightedSuite,
+    deletingTestCaseId,
+    setDeletingTestCaseId,
+    confirmDelete,
   } = useTestCasesPage();
 
   if (loading) {
@@ -212,13 +218,15 @@ export const TestCases = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteSuite(suite, e)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                    title="Eliminar suite completo"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {!isDev && (
+                    <button
+                      onClick={(e) => handleDeleteSuite(suite, e)}
+                      className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                      title="Eliminar suite completo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Test Cases Table */}
@@ -242,14 +250,15 @@ export const TestCases = () => {
 
                           return (
                             <>
-                              <tr key={testCase.id} className="border-b hover:bg-gray-50">
+                              <tr
+                                key={testCase.id}
+                                className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                                onClick={() => toggleTestCase(testCase.id)}
+                              >
                                 <td className="py-3">
-                                  <button
-                                    onClick={() => toggleTestCase(testCase.id)}
-                                    className="text-gray-500 hover:text-gray-700"
-                                  >
+                                  <div className="text-gray-500">
                                     {isTestExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                  </button>
+                                  </div>
                                 </td>
                                 <td className="py-3">
                                   <span className="font-mono text-sm text-gray-700">{testCase.id}</span>
@@ -302,37 +311,41 @@ export const TestCases = () => {
                                     {testCase.status}
                                   </Badge>
                                 </td>
-                                <td className="py-3">
-                                  <div className="flex gap-1 justify-end">
-                                    <button
-                                      onClick={() => handleRunTest(testCase)}
-                                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                      title="Ejecutar test"
-                                    >
-                                      <Play size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleOpenGherkin(testCase)}
-                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                      title="Ver/Editar Gherkin"
-                                    >
-                                      <FileText size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingTestCase(testCase)}
-                                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                      title="Editar test case"
-                                    >
-                                      <Edit size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(testCase.id)}
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                      title="Eliminar test case"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </div>
+                                <td className="py-3" onClick={(e) => e.stopPropagation()}>
+                                  {!isDev ? (
+                                    <div className="flex gap-1 justify-end">
+                                      <button
+                                        onClick={() => handleRunTest(testCase)}
+                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                        title="Ejecutar test"
+                                      >
+                                        <Play size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleOpenGherkin(testCase)}
+                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Ver/Editar Gherkin"
+                                      >
+                                        <FileText size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingTestCase(testCase)}
+                                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Editar test case"
+                                      >
+                                        <Edit size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(testCase.id)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Eliminar test case"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-gray-400 text-right">Solo lectura</div>
+                                  )}
                                 </td>
                               </tr>
                               {/* Execution History Row */}
@@ -453,6 +466,18 @@ export const TestCases = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deletingTestCaseId}
+        onClose={() => setDeletingTestCaseId(null)}
+        onConfirm={confirmDelete}
+        title="Eliminar Test Case"
+        message="¿Estás seguro de que deseas eliminar este test case? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 };

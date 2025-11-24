@@ -3,7 +3,7 @@
  */
 
 import { Bug as BugIcon, List, LayoutGrid } from 'lucide-react';
-import { LoadingSpinner, FormError } from '@/shared/ui';
+import { SkeletonTable, FormError } from '@/shared/ui';
 import { useBugs } from '../model';
 import { FiltersSection } from './FiltersSection';
 import { BugsListView } from './BugsListView';
@@ -41,8 +41,8 @@ export const BugsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" label="Cargando bugs..." center />
+      <div className="space-y-6 p-6">
+        <SkeletonTable rows={8} columns={7} />
       </div>
     );
   }
