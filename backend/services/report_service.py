@@ -383,9 +383,9 @@ class ReportService:
         for execution in executions:
             test_case_id = execution.test_case_id
 
-            if execution.step_results:
+            if execution.steps_results:
                 try:
-                    step_results = json.loads(execution.step_results)
+                    step_results = json.loads(execution.steps_results)
 
                     # Group steps by scenario
                     scenario_steps = defaultdict(list)

@@ -55,6 +55,7 @@ class TestPlanGenerator:
         output_dir: str,
         project_name: str,
         format: str = "both",  # markdown, pdf, or both
+        metrics: Dict[str, Any] = None,  # Project metrics (coverage, bugs, etc)
     ) -> Dict[str, str]:
         """
         Generate comprehensive test plan
@@ -65,6 +66,7 @@ class TestPlanGenerator:
             output_dir: Output directory
             project_name: Name of the project
             format: Output format (markdown, pdf, or both)
+            metrics: Optional dictionary with project metrics
 
         Returns:
             Dictionary with paths to generated files
@@ -77,14 +79,14 @@ class TestPlanGenerator:
         # Generate markdown
         if format in ["markdown", "both"]:
             markdown_path = self._generate_markdown(
-                user_stories, test_cases, output_path, project_name
+                user_stories, test_cases, output_path, project_name, metrics
             )
             generated_files["markdown"] = markdown_path
 
         # Generate PDF
         if format in ["pdf", "both"]:
             pdf_path = self._generate_pdf(
-                user_stories, test_cases, output_path, project_name
+                user_stories, test_cases, output_path, project_name, metrics
             )
             generated_files["pdf"] = pdf_path
 
@@ -96,6 +98,7 @@ class TestPlanGenerator:
         test_cases: List[TestCase],
         output_path: Path,
         project_name: str,
+        metrics: Dict[str, Any] = None,
     ) -> str:
         """Generate markdown test plan"""
 
@@ -126,6 +129,18 @@ class TestPlanGenerator:
             lines.append(
                 f"- **{us.id}**: {us.title} (Priority: {us.priority.value if us.priority else 'N/A'})"
             )
+
+        # Add metrics section if available
+        if metrics:
+            lines.extend([
+                "",
+                "### 2.2 Project Metrics",
+                "",
+                f"**Test Coverage:** {metrics.get('test_coverage', 0)}% ({metrics.get('stories_with_tests', 0)}/{metrics.get('total_stories', 0)} stories covered)",
+                f"**Total Bugs:** {metrics.get('total_bugs', 0)} (Critical: {metrics.get('critical_bugs', 0)}, Open: {metrics.get('open_bugs', 0)})",
+                f"**Test Executions:** {metrics.get('total_executions', 0)} (Passed: {metrics.get('passed_tests', 0)}, Failed: {metrics.get('failed_tests', 0)})",
+                f"**Pass Rate:** {metrics.get('pass_rate', 0)}%",
+            ])
 
         lines.extend([
             "",
@@ -256,6 +271,7 @@ class TestPlanGenerator:
         test_cases: List[TestCase],
         output_path: Path,
         project_name: str,
+        metrics: Dict[str, Any] = None,
     ) -> str:
         """Generate PDF test plan"""
 
@@ -304,10 +320,43 @@ class TestPlanGenerator:
         elements.append(
             Paragraph(f"<b>Total Test Cases:</b> {len(test_cases)}", self.styles["Normal"])
         )
+
+        # Add metrics if available
+        if metrics:
+            elements.append(Spacer(1, 0.1 * inch))
+            elements.append(Paragraph("2.1 Project Metrics", self.styles["Heading3"]))
+            elements.append(
+                Paragraph(
+                    f"<b>Test Coverage:</b> {metrics.get('test_coverage', 0)}% "
+                    f"({metrics.get('stories_with_tests', 0)}/{metrics.get('total_stories', 0)} stories covered)",
+                    self.styles["Normal"]
+                )
+            )
+            elements.append(
+                Paragraph(
+                    f"<b>Total Bugs:</b> {metrics.get('total_bugs', 0)} "
+                    f"(Critical: {metrics.get('critical_bugs', 0)}, Open: {metrics.get('open_bugs', 0)})",
+                    self.styles["Normal"]
+                )
+            )
+            elements.append(
+                Paragraph(
+                    f"<b>Test Executions:</b> {metrics.get('total_executions', 0)} "
+                    f"(Passed: {metrics.get('passed_tests', 0)}, Failed: {metrics.get('failed_tests', 0)})",
+                    self.styles["Normal"]
+                )
+            )
+            elements.append(
+                Paragraph(
+                    f"<b>Pass Rate:</b> {metrics.get('pass_rate', 0)}%",
+                    self.styles["Normal"]
+                )
+            )
+
         elements.append(Spacer(1, 0.2 * inch))
 
         # User Stories Table
-        elements.append(Paragraph("2.1 Features to be Tested", self.styles["Heading3"]))
+        elements.append(Paragraph("2.2 Features to be Tested" if metrics else "2.1 Features to be Tested", self.styles["Heading3"]))
         us_data = [["ID", "Title", "Priority"]]
         for us in user_stories[:10]:  # Limit to first 10 for space
             us_data.append([
