@@ -1,7 +1,7 @@
 """
 Test Plan document generator (Markdown and PDF)
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pathlib import Path
 from datetime import datetime
 import markdown
