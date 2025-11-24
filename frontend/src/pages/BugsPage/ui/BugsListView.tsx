@@ -24,13 +24,23 @@ export const BugsListView = ({ bugs, activeFiltersCount, onBugClick }: BugsListV
     return (
       <div className="card">
         <EmptyState
-          icon={<BugIcon className="w-full h-full" />}
-          message="No se encontraron bugs"
+          emoji={activeFiltersCount > 0 ? "🔍" : "🎉"}
+          message={
+            activeFiltersCount > 0
+              ? "No se encontraron bugs con estos filtros"
+              : "¡Excelente! No hay bugs reportados"
+          }
           description={
             activeFiltersCount > 0
               ? 'Intenta ajustar los filtros para ver más resultados'
-              : 'Los bugs reportados desde ejecuciones aparecerán aquí'
+              : 'Los bugs reportados desde ejecuciones de test aparecerán aquí'
           }
+          motivation={
+            activeFiltersCount > 0
+              ? undefined
+              : '¡Sigue así! Un código sin bugs es un código feliz 😊'
+          }
+          size="lg"
         />
       </div>
     );

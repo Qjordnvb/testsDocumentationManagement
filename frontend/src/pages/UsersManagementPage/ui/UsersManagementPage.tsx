@@ -113,16 +113,18 @@ export const UsersManagementPage = () => {
 
         {users.length === 0 && (
           <EmptyState
-            icon={<Users className="w-full h-full" />}
-            message="No hay usuarios registrados"
-            description="Crea tu primera invitación para agregar usuarios al sistema"
+            emoji="👥"
+            message="¡Comienza a construir tu equipo!"
+            description="Crea invitaciones para agregar usuarios al sistema"
+            motivation="Un gran equipo empieza con la primera invitación 🚀"
+            size="lg"
             action={
               <Button
                 variant="primary"
                 leftIcon={<Plus />}
                 onClick={() => setShowCreateModal(true)}
               >
-                Crear Invitación
+                Crear Primera Invitación
               </Button>
             }
           />

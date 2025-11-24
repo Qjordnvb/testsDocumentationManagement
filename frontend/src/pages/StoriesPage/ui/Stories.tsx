@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
 import type { UserStory } from '@/entities/user-story';
 import { StoryTable, UserStoryCard } from '@/widgets/story-table';
-import { Button, SkeletonTable } from '@/shared/ui';
+import { Button, SkeletonTable, EmptyState } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 import { useStories } from '../model';
@@ -113,21 +113,23 @@ export const Stories = () => {
 
       {/* Stories List */}
       {stories.length === 0 ? (
-        <div className="card text-center py-16">
-          <div className="text-7xl mb-6">📝</div>
-          <h2 className={`${headingLarge.className} font-bold ${colors.gray.text900} mb-3`}>
-            No User Stories
-          </h2>
-          <p className={`${colors.gray.text600} mb-8 ${body.className}`}>
-            Upload an Excel file to import user stories
-          </p>
-          <Button
-            variant="primary"
-            leftIcon={<Upload size={16} />}
-            onClick={() => setUploadModalOpen(true)}
-          >
-            Upload Excel File
-          </Button>
+        <div className="card">
+          <EmptyState
+            emoji="📖"
+            message="¡Comienza tu proyecto con User Stories!"
+            description="Sube un archivo Excel con tus historias de usuario para comenzar"
+            motivation="Las grandes aplicaciones empiezan con historias bien definidas ✨"
+            size="lg"
+            action={
+              <Button
+                variant="primary"
+                leftIcon={<Upload size={16} />}
+                onClick={() => setUploadModalOpen(true)}
+              >
+                Subir Archivo Excel
+              </Button>
+            }
+          />
         </div>
       ) : viewMode === 'table' ? (
         <StoryTable
