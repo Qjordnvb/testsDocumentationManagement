@@ -6,7 +6,7 @@
 import type { BugStatus } from '@/entities/bug';
 import { TestRunnerModal } from '@/features/test-execution/ui';
 import { EditBugModal } from '@/features/bug-management/ui';
-import { Button, LoadingSpinner } from '@/shared/ui';
+import { Button, SkeletonCard } from '@/shared/ui';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
   Bug as BugIcon,
@@ -96,8 +96,12 @@ export const BugDetailsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" label="Cargando detalles del bug..." center />
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }

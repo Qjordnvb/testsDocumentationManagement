@@ -4,7 +4,7 @@
  */
 
 import { AlertCircle } from 'lucide-react';
-import { LoadingSpinner } from '@/shared/ui';
+import { SkeletonCard } from '@/shared/ui';
 import { CreateProjectModal } from '@/features/project-management';
 import { useAuth } from '@/app/providers';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
@@ -33,8 +33,12 @@ export const ProjectsList = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <LoadingSpinner size="xl" variant="emoji" label="Cargando proyectos..." center />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }

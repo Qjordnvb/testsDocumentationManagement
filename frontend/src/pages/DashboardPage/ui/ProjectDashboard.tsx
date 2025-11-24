@@ -3,7 +3,7 @@
  * Shows project statistics and metrics
  */
 
-import { LoadingSpinner } from '@/shared/ui';
+import { SkeletonCard } from '@/shared/ui';
 import { MetricCard } from '@/widgets/dashboard-stats/MetricCard';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 import { useProjectDashboard } from '../model';
@@ -30,8 +30,12 @@ export const ProjectDashboard = () => {
   // Loading state
   if (isLoadingStats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" label="Cargando estadísticas..." center />
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }

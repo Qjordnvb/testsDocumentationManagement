@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/widgets/layout';
 import type { UserStory } from '@/entities/user-story';
 import { StoryTable, UserStoryCard } from '@/widgets/story-table';
-import { Button, LoadingSpinner } from '@/shared/ui';
+import { Button, SkeletonTable } from '@/shared/ui';
 import { Upload, RefreshCw, AlertCircle, LayoutGrid, Table } from 'lucide-react';
 import { colors, getTypographyPreset } from '@/shared/design-system/tokens';
 import { useStories } from '../model';
@@ -53,9 +53,7 @@ export const Stories = () => {
   if (isLoading) {
     return (
       <PageLayout title={currentProject?.name || 'Loading...'}>
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="lg" label="Loading stories..." center />
-        </div>
+        <SkeletonTable rows={5} columns={6} />
       </PageLayout>
     );
   }

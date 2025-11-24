@@ -4,7 +4,7 @@
  */
 
 import { Users, Plus, Trash2 } from 'lucide-react';
-import { LoadingSpinner, EmptyState, RoleBadge, Badge, Button } from '@/shared/ui';
+import { SkeletonTable, EmptyState, RoleBadge, Badge, Button } from '@/shared/ui';
 import { useUsersManagement } from '../model';
 import { RegistrationStatusBadge } from './RegistrationStatusBadge';
 import { CreateInvitationModal } from './CreateInvitationModal';
@@ -22,8 +22,8 @@ export const UsersManagementPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" label="Cargando usuarios..." center />
+      <div className="space-y-6">
+        <SkeletonTable rows={6} columns={5} />
       </div>
     );
   }
