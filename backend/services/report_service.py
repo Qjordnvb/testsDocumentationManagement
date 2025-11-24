@@ -55,9 +55,27 @@ class ReportService:
         if not project:
             raise ValueError(f"Project {project_id} not found")
 
-        # Get user stories and test cases for this project only
+        # Get project data
         user_stories_db = self.db.query(UserStoryDB).filter(UserStoryDB.project_id == project_id).all()
         test_cases_db = self.db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
+        bugs_db = self.db.query(BugReportDB).filter(BugReportDB.project_id == project_id).all()
+        executions_db = self.db.query(TestExecutionDB).filter(TestExecutionDB.project_id == project_id).all()
+
+        # Calculate metrics
+        total_stories = len(user_stories_db)
+        stories_with_tests = len([s for s in user_stories_db if test_cases_db and any(tc.user_story_id == s.id for tc in test_cases_db)])
+        test_coverage = (stories_with_tests / total_stories * 100) if total_stories > 0 else 0
+
+        # Bug stats
+        total_bugs = len(bugs_db)
+        critical_bugs = len([b for b in bugs_db if b.severity == 'Critical'])
+        open_bugs = len([b for b in bugs_db if b.status in ['Open', 'In Progress']])
+
+        # Execution stats
+        total_executions = len(executions_db)
+        passed_tests = len([e for e in executions_db if e.status == 'passed'])
+        failed_tests = len([e for e in executions_db if e.status == 'failed'])
+        pass_rate = (passed_tests / total_executions * 100) if total_executions > 0 else 0
 
         # Convert to models (simplified)
         user_stories = [
@@ -86,13 +104,28 @@ class ReportService:
 
         # Generate test plan
         settings.ensure_directories()
+        # Prepare metrics
+        metrics = {
+            'total_stories': total_stories,
+            'stories_with_tests': stories_with_tests,
+            'test_coverage': round(test_coverage, 1),
+            'total_bugs': total_bugs,
+            'critical_bugs': critical_bugs,
+            'open_bugs': open_bugs,
+            'total_executions': total_executions,
+            'passed_tests': passed_tests,
+            'failed_tests': failed_tests,
+            'pass_rate': round(pass_rate, 1)
+        }
+
         test_plan_gen = TestPlanGenerator()
         files = test_plan_gen.generate_test_plan(
             user_stories=user_stories,
             test_cases=test_cases,
             output_dir=settings.output_dir,
             project_name=project.name,
-            format=format
+            format=format,
+            metrics=metrics
         )
 
         return {
