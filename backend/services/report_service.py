@@ -209,7 +209,7 @@ class ReportService:
 
         return str(file_path)
 
-    def generate_test_execution_report(self, project_id: str) -> str:
+    def generate_test_execution_report(self, project_id: str, organization_id: str) -> str:
         """
         Generate Test Execution Summary Report for QA Manager
         Returns path to generated Word document
@@ -223,10 +223,13 @@ class ReportService:
         Raises:
             ValueError: If project not found or no test cases found
         """
-        # Validate project exists
-        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        # Validate project exists AND belongs to organization
+        project = self.db.query(ProjectDB).filter(
+            ProjectDB.id == project_id,
+            ProjectDB.organization_id == organization_id
+        ).first()
         if not project:
-            raise ValueError(f"Project {project_id} not found")
+            raise ValueError(f"Project {project_id} not found or access denied")
 
         # Get test cases for the project
         test_cases = self.db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()

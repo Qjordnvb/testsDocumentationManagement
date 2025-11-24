@@ -141,7 +141,8 @@ async def generate_bug_summary_report(
 @router.get("/projects/{project_id}/reports/test-execution-summary")
 async def generate_test_execution_report(
     project_id: str,
-    service: ReportService = Depends(get_report_service_dependency)
+    service: ReportService = Depends(get_report_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Generate Test Execution Summary Report for QA Manager
@@ -160,7 +161,7 @@ async def generate_test_execution_report(
     print(f"📊 GET /projects/{project_id}/reports/test-execution-summary")
 
     try:
-        file_path = service.generate_test_execution_report(project_id)
+        file_path = service.generate_test_execution_report(project_id, current_user.organization_id)
 
         filename = Path(file_path).name
 
