@@ -40,6 +40,10 @@ class ReportService:
         """
         Generate test plan document for a specific project
 
+        **Multi-tenancy**: Automatically filters all data by organization_id through
+        composite keys (project_id, organization_id). Only data from the project's
+        organization will be included in the report.
+
         Args:
             project_id: Project ID to generate test plan for
             format: Format - "pdf", "docx", or "both"
