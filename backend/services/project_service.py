@@ -15,6 +15,7 @@ import json
 
 from backend.database import ProjectDB, UserStoryDB, TestCaseDB, BugReportDB
 from backend.models import CreateProjectDTO, UpdateProjectDTO, ProjectStatus
+from backend.utils import generate_sequential_id
 
 
 class ProjectService:
@@ -226,13 +227,19 @@ class ProjectService:
 
     def _generate_unique_project_id(self) -> str:
         """Generate a unique project ID in format PROJ-001"""
-        project_count = self.db.query(ProjectDB).count()
-        project_id = f"PROJ-{str(project_count + 1).zfill(3)}"
+        last_project = self.db.query(ProjectDB).order_by(ProjectDB.id.desc()).first()
+        last_id = last_project.id if last_project else None
+
+        # Generate new ID using centralized utility
+        project_id = generate_sequential_id("PROJ", last_id)
 
         # Handle edge case: ID collision (shouldn't happen but be defensive)
-        while self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first():
-            project_count += 1
-            project_id = f"PROJ-{str(project_count + 1).zfill(3)}"
+        max_attempts = 100
+        attempts = 0
+        while self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first() and attempts < max_attempts:
+            last_num = int(project_id.split('-')[1])
+            project_id = f"PROJ-{last_num + 1:03d}"
+            attempts += 1
 
         return project_id
 

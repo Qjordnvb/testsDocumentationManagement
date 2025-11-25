@@ -17,6 +17,7 @@ from backend.database import BugReportDB, TestCaseDB, ProjectDB, UserStoryDB, Te
 from backend.models import BugReport, BugStatus, BugSeverity, BugPriority, BugType
 from backend.generators import BugReportGenerator
 from backend.config import settings
+from backend.utils import generate_composite_id
 
 
 class BugService:
@@ -161,7 +162,8 @@ class BugService:
             bug_count = self.db.query(BugReportDB).filter(
                 BugReportDB.project_id == project_id
             ).count()
-            bug.id = f"BUG-{project_id}-{str(bug_count + 1).zfill(3)}"
+            # Generate composite ID using centralized utility
+            bug.id = generate_composite_id("BUG", project_id, bug_count)
 
         # Generate document
         settings.ensure_directories()

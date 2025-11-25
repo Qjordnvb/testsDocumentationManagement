@@ -14,6 +14,7 @@ from datetime import datetime
 from backend.database import UserDB
 from backend.api.dependencies import hash_password
 from backend.models import Role
+from backend.utils import generate_sequential_id
 
 
 class UserService:
@@ -281,16 +282,19 @@ class UserService:
     def _generate_unique_user_id(self) -> str:
         """Generate a unique user ID in format USR-001"""
         last_user = self.db.query(UserDB).order_by(UserDB.id.desc()).first()
-        if last_user:
-            last_num = int(last_user.id.split('-')[1])
-            new_id = f"USR-{last_num + 1:03d}"
-        else:
-            new_id = "USR-001"
+        last_id = last_user.id if last_user else None
+
+        # Generate new ID using centralized utility
+        new_id = generate_sequential_id("USR", last_id)
 
         # Handle edge case: ID collision (shouldn't happen but be defensive)
-        while self.db.query(UserDB).filter(UserDB.id == new_id).first():
-            last_num += 1
+        max_attempts = 100  # Prevent infinite loop
+        attempts = 0
+        while self.db.query(UserDB).filter(UserDB.id == new_id).first() and attempts < max_attempts:
+            # If collision, manually increment and try again
+            last_num = int(new_id.split('-')[1])
             new_id = f"USR-{last_num + 1:03d}"
+            attempts += 1
 
         return new_id
 
