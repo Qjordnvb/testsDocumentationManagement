@@ -1,10 +1,11 @@
 """
 Project data model
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator, EmailStr
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+import re
 
 
 class ProjectStatus(str, Enum):
@@ -68,12 +69,43 @@ class Project(BaseModel):
 class CreateProjectDTO(BaseModel):
     """DTO for creating a new project"""
     name: str = Field(..., description="Project name", min_length=1, max_length=200)
-    description: Optional[str] = Field(None, description="Project description")
-    client: Optional[str] = Field(None, description="Client name")
+    description: Optional[str] = Field(None, max_length=2000, description="Project description")
+    client: Optional[str] = Field(None, max_length=200, description="Client name")
     team_members: Optional[List[str]] = Field(None, description="Team member emails/names")
     default_test_types: Optional[List[str]] = Field(None, description="Default test types")
     start_date: Optional[datetime] = Field(None, description="Project start date")
     end_date: Optional[datetime] = Field(None, description="Project end date")
+
+    @validator('name', 'description', 'client')
+    def strip_whitespace(cls, v):
+        """Strip leading/trailing whitespace from text fields"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('team_members')
+    def validate_team_members(cls, v):
+        """Validate team member emails format"""
+        if v:
+            cleaned = []
+            for member in v:
+                member = member.strip()
+                # Simple email validation (allows both emails and names)
+                if '@' in member:
+                    # Basic email format check
+                    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', member):
+                        raise ValueError(f"Invalid email format: {member}")
+                cleaned.append(member)
+            return cleaned
+        return v
+
+    @validator('end_date')
+    def validate_end_date(cls, v, values):
+        """Ensure end_date is after start_date"""
+        if v and 'start_date' in values and values['start_date']:
+            if v < values['start_date']:
+                raise ValueError("end_date must be after start_date")
+        return v
 
     class Config:
         json_schema_extra = {
@@ -90,14 +122,45 @@ class CreateProjectDTO(BaseModel):
 
 class UpdateProjectDTO(BaseModel):
     """DTO for updating a project"""
-    name: Optional[str] = Field(None, description="Project name")
-    description: Optional[str] = Field(None, description="Project description")
-    client: Optional[str] = Field(None, description="Client name")
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="Project name")
+    description: Optional[str] = Field(None, max_length=2000, description="Project description")
+    client: Optional[str] = Field(None, max_length=200, description="Client name")
     team_members: Optional[List[str]] = Field(None, description="Team member emails/names")
     status: Optional[ProjectStatus] = Field(None, description="Project status")
     default_test_types: Optional[List[str]] = Field(None, description="Default test types")
     start_date: Optional[datetime] = Field(None, description="Project start date")
     end_date: Optional[datetime] = Field(None, description="Project end date")
+
+    @validator('name', 'description', 'client')
+    def strip_whitespace(cls, v):
+        """Strip leading/trailing whitespace from text fields"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('team_members')
+    def validate_team_members(cls, v):
+        """Validate team member emails format"""
+        if v:
+            cleaned = []
+            for member in v:
+                member = member.strip()
+                # Simple email validation (allows both emails and names)
+                if '@' in member:
+                    # Basic email format check
+                    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', member):
+                        raise ValueError(f"Invalid email format: {member}")
+                cleaned.append(member)
+            return cleaned
+        return v
+
+    @validator('end_date')
+    def validate_end_date(cls, v, values):
+        """Ensure end_date is after start_date"""
+        if v and 'start_date' in values and values['start_date']:
+            if v < values['start_date']:
+                raise ValueError("end_date must be after start_date")
+        return v
 
     class Config:
         json_schema_extra = {

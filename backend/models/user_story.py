@@ -1,10 +1,11 @@
 """
 User Story data model
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+import re
 
 
 class Priority(str, Enum):
@@ -28,8 +29,15 @@ class Status(str, Enum):
 class AcceptanceCriteria(BaseModel):
     """Single acceptance criteria for a user story"""
     id: Optional[str] = None
-    description: str
+    description: str = Field(..., min_length=1, max_length=500, description="Acceptance criteria description")
     completed: bool = False
+
+    @validator('description')
+    def strip_description(cls, v):
+        """Strip whitespace from description"""
+        if v:
+            return v.strip()
+        return v
 
 
 class UserStory(BaseModel):
@@ -38,9 +46,9 @@ class UserStory(BaseModel):
     Flexible to accommodate different input formats
     """
     # Core fields
-    id: str = Field(..., description="Unique identifier (e.g., US-001)")
-    title: str = Field(..., description="User story title")
-    description: str = Field(..., description="Detailed description or user story format")
+    id: str = Field(..., min_length=1, max_length=50, description="Unique identifier (e.g., US-001)")
+    title: str = Field(..., min_length=1, max_length=200, description="User story title")
+    description: str = Field(..., min_length=1, max_length=2000, description="Detailed description or user story format")
 
     # Optional fields that might come from different sources
     acceptance_criteria: List[AcceptanceCriteria] = Field(
@@ -94,6 +102,38 @@ class UserStory(BaseModel):
                 "status": "To Do"
             }
         }
+
+    @validator('id')
+    def validate_id_format(cls, v):
+        """Validate user story ID format (e.g., US-001, US-PROJ-001)"""
+        if v:
+            # Allow flexible formats: US-XXX, US-PROJ-XXX, etc.
+            # Just ensure it starts with letters and contains at least one number
+            if not re.match(r'^[A-Z]+-.*\d', v):
+                raise ValueError("User story ID must follow format like 'US-001' or 'US-PROJ-001'")
+            return v.strip()
+        return v
+
+    @validator('title', 'description')
+    def strip_whitespace(cls, v):
+        """Strip leading/trailing whitespace from text fields"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('story_points')
+    def validate_story_points(cls, v):
+        """Ensure story points are positive"""
+        if v is not None and v <= 0:
+            raise ValueError("Story points must be greater than 0")
+        return v
+
+    @validator('sprint', 'epic', 'assigned_to')
+    def strip_optional_strings(cls, v):
+        """Strip whitespace from optional string fields"""
+        if v:
+            return v.strip()
+        return v
 
     def get_criteria_text(self) -> str:
         """Get all acceptance criteria as formatted text"""

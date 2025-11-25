@@ -1,7 +1,7 @@
 """
 User data models for authentication and authorization
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional
 from datetime import datetime
 from enum import Enum
@@ -50,6 +50,20 @@ class CreateUserDTO(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=200, description="User's full name")
     role: Role = Field(..., description="User role")
 
+    @validator('full_name')
+    def strip_full_name(cls, v):
+        """Strip whitespace from full name"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('password')
+    def validate_password(cls, v):
+        """Ensure password is not just whitespace"""
+        if not v or not v.strip():
+            raise ValueError("Password cannot be empty or just whitespace")
+        return v
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -68,6 +82,21 @@ class UpdateUserDTO(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1, max_length=200, description="User's full name")
     role: Optional[Role] = Field(None, description="User role")
     is_active: Optional[bool] = Field(None, description="Whether user is active")
+
+    @validator('full_name')
+    def strip_full_name(cls, v):
+        """Strip whitespace from full name"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('password')
+    def validate_password(cls, v):
+        """Ensure password is not just whitespace"""
+        if v is not None:
+            if not v.strip():
+                raise ValueError("Password cannot be empty or just whitespace")
+        return v
 
     class Config:
         json_schema_extra = {
@@ -152,6 +181,20 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, description="Password (min 8 chars)")
     full_name: str = Field(..., min_length=1, max_length=200, description="User's full name")
 
+    @validator('full_name')
+    def strip_full_name(cls, v):
+        """Strip whitespace from full name"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('password')
+    def validate_password(cls, v):
+        """Ensure password is not just whitespace"""
+        if not v or not v.strip():
+            raise ValueError("Password cannot be empty or just whitespace")
+        return v
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -189,6 +232,13 @@ class CreateUserInvitationDTO(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     full_name: str = Field(..., min_length=1, max_length=200, description="User's full name")
     role: Role = Field(..., description="User role")
+
+    @validator('full_name')
+    def strip_full_name(cls, v):
+        """Strip whitespace from full name"""
+        if v:
+            return v.strip()
+        return v
 
     class Config:
         json_schema_extra = {

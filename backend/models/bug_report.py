@@ -1,7 +1,7 @@
 """
 Bug Report data model
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -55,16 +55,17 @@ class BugReport(BaseModel):
     """
     # Core identification
     id: Optional[str] = Field(default=None, description="Bug ID (e.g., BUG-001)")
-    title: str = Field(..., description="Brief bug title")
+    title: str = Field(..., min_length=1, max_length=200, description="Brief bug title")
 
     # Bug details
-    description: str = Field(..., description="Detailed bug description")
+    description: str = Field(..., min_length=1, max_length=2000, description="Detailed bug description")
     steps_to_reproduce: List[str] = Field(
         ...,
-        description="Step-by-step reproduction steps"
+        min_items=1,
+        description="Step-by-step reproduction steps (at least one step required)"
     )
-    expected_behavior: str = Field(..., description="What should happen")
-    actual_behavior: str = Field(..., description="What actually happens")
+    expected_behavior: str = Field(..., min_length=1, max_length=500, description="What should happen")
+    actual_behavior: str = Field(..., min_length=1, max_length=500, description="What actually happens")
 
     # Classification
     severity: BugSeverity = Field(default=BugSeverity.MEDIUM)
@@ -162,6 +163,52 @@ class BugReport(BaseModel):
                 "user_story_id": "US-001"
             }
         }
+
+    @validator('title', 'description', 'expected_behavior', 'actual_behavior')
+    def strip_whitespace(cls, v):
+        """Strip leading/trailing whitespace from text fields"""
+        if v:
+            return v.strip()
+        return v
+
+    @validator('steps_to_reproduce')
+    def validate_steps(cls, v):
+        """Ensure each reproduction step is not empty"""
+        if not v:
+            raise ValueError("At least one reproduction step is required")
+
+        # Strip whitespace and validate each step
+        cleaned_steps = []
+        for i, step in enumerate(v):
+            if not step or not step.strip():
+                raise ValueError(f"Reproduction step {i+1} cannot be empty or whitespace")
+            cleaned_steps.append(step.strip())
+
+        return cleaned_steps
+
+    @validator('fixed_date')
+    def validate_fixed_date(cls, v, values):
+        """Ensure fixed_date is after reported_date"""
+        if v and 'reported_date' in values and values['reported_date']:
+            if v < values['reported_date']:
+                raise ValueError("fixed_date cannot be before reported_date")
+        return v
+
+    @validator('verified_date')
+    def validate_verified_date(cls, v, values):
+        """Ensure verified_date is after fixed_date"""
+        if v and 'fixed_date' in values and values['fixed_date']:
+            if v < values['fixed_date']:
+                raise ValueError("verified_date cannot be before fixed_date")
+        return v
+
+    @validator('closed_date')
+    def validate_closed_date(cls, v, values):
+        """Ensure closed_date is after reported_date"""
+        if v and 'reported_date' in values and values['reported_date']:
+            if v < values['reported_date']:
+                raise ValueError("closed_date cannot be before reported_date")
+        return v
 
     def to_markdown(self) -> str:
         """Convert bug report to markdown format"""
