@@ -3,6 +3,7 @@ Backend utilities package
 """
 from .security import hash_password, verify_password
 from .id_generator import generate_sequential_id, generate_composite_id, check_id_collision
+from .logger import get_logger
 
 __all__ = [
     "hash_password",
@@ -10,4 +11,5 @@ __all__ = [
     "generate_sequential_id",
     "generate_composite_id",
     "check_id_collision",
+    "get_logger",
 ]

@@ -16,22 +16,39 @@ from contextlib import asynccontextmanager
 from backend.config import settings
 from backend.api.routes2 import router
 from backend.database import init_db
+from backend.middleware.logging import LoggingMiddleware, configure_logging, get_logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
+    # Configure structured logging
+    configure_logging(debug=settings.debug)
+    logger = get_logger(__name__)
+
     # Startup
-    print(f"Starting {settings.app_name} v{settings.app_version}")
+    logger.info(
+        "application_starting",
+        app_name=settings.app_name,
+        version=settings.app_version,
+        debug_mode=settings.debug,
+    )
+
     settings.ensure_directories()
+    logger.debug("directories_ensured")
+
     init_db()
-    print("Database initialized")
-    print(f"Server running in {'DEBUG' if settings.debug else 'PRODUCTION'} mode")
+    logger.info("database_initialized")
+
+    logger.info(
+        "application_ready",
+        mode="DEBUG" if settings.debug else "PRODUCTION",
+    )
 
     yield
 
     # Shutdown
-    print("Shutting down...")
+    logger.info("application_shutting_down")
 
 
 # Create FastAPI app
@@ -50,6 +67,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Logging middleware (logs all HTTP requests/responses)
+app.add_middleware(LoggingMiddleware)
 
 # Include API routes
 app.include_router(router, prefix="/api/v1", tags=["QA Automation"])
