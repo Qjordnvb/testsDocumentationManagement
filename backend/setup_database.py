@@ -20,11 +20,8 @@ from sqlalchemy import text
 from database.db import SessionLocal, engine, Base
 # Importamos todos los modelos para asegurar que SQLAlchemy los registre antes del create_all
 from database.models import UserDB, ProjectDB, UserStoryDB, TestCaseDB, OrganizationDB, BugReportDB, TestExecutionDB, Role, Priority, Status, TestType, TestPriority, TestStatus
-from passlib.context import CryptContext
+from utils import hash_password
 import json
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Colors for terminal output
 class Colors:
@@ -150,7 +147,7 @@ def create_admin_user(org_id: str, admin_email: str, skip_confirmation: bool = F
             if not confirm_action(f"Create admin {admin_email} in {org_id}?", skip_confirmation):
                 return False
 
-        hashed_password = pwd_context.hash("admin123")
+        hashed_password = hash_password("admin123")
 
         # Generar ID único en formato USR-001
         last_user = db.query(UserDB).order_by(UserDB.id.desc()).first()

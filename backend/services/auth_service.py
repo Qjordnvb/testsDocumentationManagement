@@ -10,15 +10,11 @@ Handles business logic for authentication operations following SOLID principles:
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
 from datetime import datetime
-from passlib.context import CryptContext
 
 from backend.database import UserDB, OrganizationDB
 from backend.api.dependencies import create_access_token
 from backend.models import Role
-
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from backend.utils import hash_password, verify_password
 
 
 class AuthService:
@@ -199,11 +195,11 @@ class AuthService:
 
     def _hash_password(self, password: str) -> str:
         """Hash a plain text password"""
-        return pwd_context.hash(password)
+        return hash_password(password)
 
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a plain text password against a hashed password"""
-        return pwd_context.verify(plain_password, hashed_password)
+        return verify_password(plain_password, hashed_password)
 
     def _user_to_dict(self, user: UserDB) -> Dict[str, Any]:
         """Convert UserDB to dictionary with organization info"""

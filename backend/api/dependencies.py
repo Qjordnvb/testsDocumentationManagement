@@ -4,7 +4,6 @@ FastAPI dependencies for dependency injection
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-import bcrypt
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -13,6 +12,7 @@ from backend.integrations import GeminiClient
 from backend.config import settings
 from backend.database import get_db, UserDB
 from backend.models import Role
+from backend.utils import hash_password, verify_password  # Re-exported for backwards compatibility
 
 
 # ============================================================================
@@ -30,33 +30,8 @@ def get_gemini_client() -> GeminiClient:
 
 security = HTTPBearer()
 
-
-def hash_password(password: str) -> str:
-    """
-    Hash password using bcrypt
-
-    Args:
-        password: Plain text password
-
-    Returns:
-        Hashed password
-    """
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode(), salt).decode()
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    """
-    Verify password against hash
-
-    Args:
-        password: Plain text password
-        hashed: Hashed password
-
-    Returns:
-        True if password matches, False otherwise
-    """
-    return bcrypt.checkpw(password.encode(), hashed.encode())
+# Note: hash_password() and verify_password() are imported from backend.utils.security
+# and re-exported here for backwards compatibility with existing code
 
 
 def create_access_token(user_id: str, role: str, expires_delta: Optional[timedelta] = None) -> str:
