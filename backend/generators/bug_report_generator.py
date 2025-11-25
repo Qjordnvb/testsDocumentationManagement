@@ -327,31 +327,94 @@ class BugReportGenerator:
                     # Bugs count
                     doc.add_paragraph(f"({len(scenario_bugs)} bug{'s' if len(scenario_bugs) > 1 else ''})")
 
-                    # Create table for this scenario's bugs
-                    table = doc.add_table(rows=1, cols=7)
-                    table.style = "Light Grid Accent 1"
-
-                    # Header row
-                    headers = ["ID", "Title", "Severity", "Priority", "Status", "Type", "Reported By"]
-                    header_cells = table.rows[0].cells
-                    for i, header in enumerate(headers):
-                        header_cells[i].text = header
-                        header_cells[i].paragraphs[0].runs[0].font.bold = True
-
-                    # Add bugs for this scenario
+                    # Show detailed information for each bug
                     for bug in scenario_bugs:
-                        row_cells = table.add_row().cells
-                        row_cells[0].text = bug.id or "TBD"
-                        row_cells[1].text = bug.title[:40] + "..." if len(bug.title) > 40 else bug.title
-                        row_cells[2].text = bug.severity.value
-                        # Color code severity
-                        severity_run = row_cells[2].paragraphs[0].runs[0]
+                        # Bug header with ID and Title
+                        bug_heading = doc.add_heading(f"Bug: {bug.id or 'TBD'} - {bug.title}", level=4)
+                        bug_heading.paragraph_format.left_indent = Inches(0.5)
+
+                        # Status badges
+                        status_para = doc.add_paragraph()
+                        status_para.paragraph_format.left_indent = Inches(0.5)
+
+                        # Add severity with color
+                        severity_run = status_para.add_run(f"⚠️ {bug.severity.value}")
                         severity_run.font.color.rgb = self._get_severity_color(bug.severity)
                         severity_run.font.bold = True
-                        row_cells[3].text = bug.priority.value
-                        row_cells[4].text = bug.status.value
-                        row_cells[5].text = bug.bug_type.value
-                        row_cells[6].text = bug.reported_by or "N/A"
+                        status_para.add_run(f"  |  Priority: {bug.priority.value}")
+                        status_para.add_run(f"  |  Status: {bug.status.value}")
+                        status_para.add_run(f"  |  Type: {bug.bug_type.value}")
+
+                        # Steps to Reproduce
+                        if bug.steps_to_reproduce:
+                            steps_para = doc.add_paragraph()
+                            steps_para.paragraph_format.left_indent = Inches(0.5)
+                            steps_run = steps_para.add_run("📋 Steps to Reproduce:")
+                            steps_run.bold = True
+                            for i, step in enumerate(bug.steps_to_reproduce, 1):
+                                step_para = doc.add_paragraph(f"{i}. {step}", style="List Number 2")
+                                step_para.paragraph_format.left_indent = Inches(0.75)
+
+                        # Expected vs Actual (side by side table)
+                        if bug.expected_behavior or bug.actual_behavior:
+                            comparison_para = doc.add_paragraph()
+                            comparison_para.paragraph_format.left_indent = Inches(0.5)
+                            comparison_run = comparison_para.add_run("✅ Expected vs ❌ Actual:")
+                            comparison_run.bold = True
+
+                            comparison_table = doc.add_table(rows=2, cols=2)
+                            comparison_table.style = "Light Grid Accent 1"
+
+                            # Headers
+                            comparison_table.rows[0].cells[0].text = "Expected Behavior"
+                            comparison_table.rows[0].cells[1].text = "Actual Behavior"
+                            for cell in comparison_table.rows[0].cells:
+                                cell.paragraphs[0].runs[0].font.bold = True
+
+                            # Content
+                            comparison_table.rows[1].cells[0].text = bug.expected_behavior or "N/A"
+                            comparison_table.rows[1].cells[1].text = bug.actual_behavior or "N/A"
+
+                        # Environment Details
+                        if bug.environment or bug.browser or bug.os or bug.version:
+                            env_para = doc.add_paragraph()
+                            env_para.paragraph_format.left_indent = Inches(0.5)
+                            env_run = env_para.add_run("🌐 Environment:")
+                            env_run.bold = True
+
+                            env_details = []
+                            if bug.environment:
+                                env_details.append(f"Env: {bug.environment}")
+                            if bug.browser:
+                                env_details.append(f"Browser: {bug.browser}")
+                            if bug.os:
+                                env_details.append(f"OS: {bug.os}")
+                            if bug.version:
+                                env_details.append(f"Version: {bug.version}")
+
+                            env_text = "  •  ".join(env_details)
+                            detail_para = doc.add_paragraph(env_text)
+                            detail_para.paragraph_format.left_indent = Inches(0.75)
+
+                        # Screenshots/Attachments
+                        if bug.screenshots:
+                            screenshot_para = doc.add_paragraph()
+                            screenshot_para.paragraph_format.left_indent = Inches(0.5)
+                            screenshot_run = screenshot_para.add_run("🖼️ Screenshots:")
+                            screenshot_run.bold = True
+                            for screenshot in bug.screenshots:
+                                img_para = doc.add_paragraph(f"• {screenshot}", style="List Bullet 2")
+                                img_para.paragraph_format.left_indent = Inches(0.75)
+
+                        # Reported by
+                        reported_para = doc.add_paragraph()
+                        reported_para.paragraph_format.left_indent = Inches(0.5)
+                        reported_para.add_run(f"👤 Reported by: {bug.reported_by or 'N/A'}")
+                        if bug.reported_date:
+                            reported_para.add_run(f"  |  📅 Date: {bug.reported_date.strftime('%Y-%m-%d')}")
+
+                        # Add spacing between bugs
+                        doc.add_paragraph()
 
                     doc.add_paragraph()  # Add spacing between scenarios
 

@@ -95,7 +95,12 @@ export const useManagerDashboard = () => {
       setDownloadingReport(true);
       toast.loading('Generando reporte consolidado de todos los proyectos...');
 
-      const response = await fetch('/api/v1/reports/consolidated');
+      const token = sessionStorage.getItem('auth_token');
+      const response = await fetch('/api/v1/reports/consolidated', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
       if (!response.ok) {
         const error = await response.json();

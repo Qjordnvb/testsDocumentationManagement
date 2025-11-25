@@ -79,12 +79,18 @@ export const useStories = () => {
 
   const handleUpdateStory = useCallback(async (storyId: string, updates: Partial<UserStory>) => {
     try {
+      // Optimistic update - update local state immediately
+      setStories(prev => prev.map(story =>
+        story.id === storyId ? { ...story, ...updates } : story
+      ));
+
+      // Then update server
       await storyApi.update(storyId, updates);
-      // Refresh stories after update to reflect changes
-      await loadStories();
     } catch (err) {
       console.error('Error updating story:', err);
-      throw err; // Re-throw so StoryTable can handle the error
+      // Revert on error
+      await loadStories();
+      throw err;
     }
   }, [loadStories]);
 

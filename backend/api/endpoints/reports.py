@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 
 from backend.database import get_db
+from backend.database.models import UserDB
+from backend.api.dependencies import get_current_user
 from backend.services.report_service import ReportService
 from backend.config import settings
 
@@ -28,19 +30,19 @@ def get_report_service_dependency(db: Session = Depends(get_db)) -> ReportServic
 @router.post("/generate-test-plan")
 async def generate_test_plan(
     project_id: str = Query(..., description="Project ID to generate test plan for"),
-    format: str = Query(default="both", description="Format: pdf, docx, or both"),
+    format: str = Query(default="pdf", description="Format: pdf or docx"),
     service: ReportService = Depends(get_report_service_dependency)
 ):
     """
-    Generate test plan document for a specific project
+    Generate test plan document for a specific project and return the file
 
     Args:
         project_id: Project ID to generate test plan for
-        format: Format - "pdf", "docx", or "both"
+        format: Format - "pdf" or "docx" (default: pdf)
         service: Injected ReportService instance
 
     Returns:
-        Generated files info
+        File response with generated document
 
     Raises:
         HTTPException: If project not found
@@ -48,11 +50,39 @@ async def generate_test_plan(
     print(f"📊 POST /generate-test-plan - Project: {project_id}, Format: {format}")
 
     try:
+        # Generate files
         result = service.generate_test_plan(project_id, format)
+        files = result['files']
 
-        print(f"   ✅ Test plan generated: {result['files']}")
+        print(f"   ✅ Test plan generated: {files}")
 
-        return result
+        # Determine which file to return based on format
+        if format == "docx":
+            file_path = files.get('docx')
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        else:
+            # Default to PDF for "pdf" or "both"
+            file_path = files.get('pdf')
+            media_type = "application/pdf"
+
+        if not file_path or not Path(file_path).exists():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Generated file not found: {file_path}"
+            )
+
+        filename = Path(file_path).name
+
+        print(f"   📄 Returning file: {filename}")
+
+        return FileResponse(
+            path=str(file_path),
+            filename=filename,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
 
     except ValueError as e:
         print(f"   ❌ Error: {str(e)}")
@@ -94,26 +124,28 @@ async def download_file(filename: str):
 @router.get("/projects/{project_id}/reports/bug-summary")
 async def generate_bug_summary_report(
     project_id: str,
-    service: ReportService = Depends(get_report_service_dependency)
+    service: ReportService = Depends(get_report_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Generate Bug Summary Report for Dev Team
-    Returns a Word document with all bugs for the project
+    Returns a Word document with all bugs for the project (multi-tenant safe)
 
     Args:
         project_id: Project ID
         service: Injected ReportService instance
+        current_user: Current authenticated user
 
     Returns:
         File response with Word document
 
     Raises:
-        HTTPException: If project not found or no bugs found
+        HTTPException: If project not found, no access, or no bugs found
     """
-    print(f"📊 GET /projects/{project_id}/reports/bug-summary")
+    print(f"📊 GET /projects/{project_id}/reports/bug-summary - User: {current_user.email}")
 
     try:
-        file_path = service.generate_bug_summary_report(project_id)
+        file_path = service.generate_bug_summary_report(project_id, current_user.organization_id)
 
         filename = Path(file_path).name
 
@@ -139,7 +171,8 @@ async def generate_bug_summary_report(
 @router.get("/projects/{project_id}/reports/test-execution-summary")
 async def generate_test_execution_report(
     project_id: str,
-    service: ReportService = Depends(get_report_service_dependency)
+    service: ReportService = Depends(get_report_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Generate Test Execution Summary Report for QA Manager
@@ -158,7 +191,7 @@ async def generate_test_execution_report(
     print(f"📊 GET /projects/{project_id}/reports/test-execution-summary")
 
     try:
-        file_path = service.generate_test_execution_report(project_id)
+        file_path = service.generate_test_execution_report(project_id, current_user.organization_id)
 
         filename = Path(file_path).name
 
@@ -183,14 +216,16 @@ async def generate_test_execution_report(
 
 @router.get("/reports/consolidated")
 async def generate_consolidated_report(
-    service: ReportService = Depends(get_report_service_dependency)
+    service: ReportService = Depends(get_report_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
 ):
     """
     Generate Consolidated Report for Manager
-    Returns a Word document with metrics from all projects
+    Returns a Word document with metrics from all projects IN USER'S ORGANIZATION
 
     Args:
         service: Injected ReportService instance
+        current_user: Current authenticated user
 
     Returns:
         File response with Word document
@@ -198,10 +233,10 @@ async def generate_consolidated_report(
     Raises:
         HTTPException: If no projects found
     """
-    print(f"📊 GET /reports/consolidated")
+    print(f"📊 GET /reports/consolidated - User: {current_user.email}, Org: {current_user.organization_id}")
 
     try:
-        file_path = service.generate_consolidated_report()
+        file_path = service.generate_consolidated_report(current_user.organization_id)
 
         filename = Path(file_path).name
 

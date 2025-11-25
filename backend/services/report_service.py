@@ -55,9 +55,27 @@ class ReportService:
         if not project:
             raise ValueError(f"Project {project_id} not found")
 
-        # Get user stories and test cases for this project only
+        # Get project data
         user_stories_db = self.db.query(UserStoryDB).filter(UserStoryDB.project_id == project_id).all()
         test_cases_db = self.db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
+        bugs_db = self.db.query(BugReportDB).filter(BugReportDB.project_id == project_id).all()
+        executions_db = self.db.query(TestExecutionDB).filter(TestExecutionDB.project_id == project_id).all()
+
+        # Calculate metrics
+        total_stories = len(user_stories_db)
+        stories_with_tests = len([s for s in user_stories_db if test_cases_db and any(tc.user_story_id == s.id for tc in test_cases_db)])
+        test_coverage = (stories_with_tests / total_stories * 100) if total_stories > 0 else 0
+
+        # Bug stats
+        total_bugs = len(bugs_db)
+        critical_bugs = len([b for b in bugs_db if b.severity == 'Critical'])
+        open_bugs = len([b for b in bugs_db if b.status in ['Open', 'In Progress']])
+
+        # Execution stats
+        total_executions = len(executions_db)
+        passed_tests = len([e for e in executions_db if e.status == 'passed'])
+        failed_tests = len([e for e in executions_db if e.status == 'failed'])
+        pass_rate = (passed_tests / total_executions * 100) if total_executions > 0 else 0
 
         # Convert to models (simplified)
         user_stories = [
@@ -86,13 +104,28 @@ class ReportService:
 
         # Generate test plan
         settings.ensure_directories()
+        # Prepare metrics
+        metrics = {
+            'total_stories': total_stories,
+            'stories_with_tests': stories_with_tests,
+            'test_coverage': round(test_coverage, 1),
+            'total_bugs': total_bugs,
+            'critical_bugs': critical_bugs,
+            'open_bugs': open_bugs,
+            'total_executions': total_executions,
+            'passed_tests': passed_tests,
+            'failed_tests': failed_tests,
+            'pass_rate': round(pass_rate, 1)
+        }
+
         test_plan_gen = TestPlanGenerator()
         files = test_plan_gen.generate_test_plan(
             user_stories=user_stories,
             test_cases=test_cases,
             output_dir=settings.output_dir,
             project_name=project.name,
-            format=format
+            format=format,
+            metrics=metrics
         )
 
         return {
@@ -100,24 +133,28 @@ class ReportService:
             "files": files
         }
 
-    def generate_bug_summary_report(self, project_id: str) -> str:
+    def generate_bug_summary_report(self, project_id: str, organization_id: str) -> str:
         """
         Generate Bug Summary Report for Dev Team
-        Returns path to generated Word document
+        Returns path to generated Word document (multi-tenant safe)
 
         Args:
             project_id: Project ID
+            organization_id: Organization ID for validation
 
         Returns:
             Path to generated file
 
         Raises:
-            ValueError: If project not found or no bugs found
+            ValueError: If project not found, no access, or no bugs found
         """
-        # Validate project exists
-        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        # Validate project exists AND belongs to organization
+        project = self.db.query(ProjectDB).filter(
+            ProjectDB.id == project_id,
+            ProjectDB.organization_id == organization_id
+        ).first()
         if not project:
-            raise ValueError(f"Project {project_id} not found")
+            raise ValueError(f"Project {project_id} not found or access denied")
 
         # Get all bugs for the project
         bugs_db = self.db.query(BugReportDB).filter(BugReportDB.project_id == project_id).all()
@@ -128,6 +165,18 @@ class ReportService:
         # Convert to Pydantic models
         bugs = []
         for bug_db in bugs_db:
+            # Parse attachments if stored as JSON
+            screenshots = []
+            if bug_db.attachments:
+                try:
+                    attachments_data = json.loads(bug_db.attachments)
+                    screenshots = attachments_data if isinstance(attachments_data, list) else []
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            # Fallback to screenshot_path if available
+            if bug_db.screenshot_path and not screenshots:
+                screenshots = [bug_db.screenshot_path]
+
             bug = BugReport(
                 id=bug_db.id,
                 title=bug_db.title,
@@ -146,20 +195,20 @@ class ReportService:
                 user_story_id=bug_db.user_story_id,
                 test_case_id=bug_db.test_case_id,
                 scenario_name=bug_db.scenario_name,
-                screenshots=json.loads(bug_db.screenshots) if bug_db.screenshots else [],
-                logs=bug_db.logs,
-                notes=bug_db.notes,
-                workaround=bug_db.workaround,
-                root_cause=bug_db.root_cause,
-                fix_description=bug_db.fix_description,
+                screenshots=screenshots,
+                logs=None,  # DB has log_file_path, not logs content
+                notes=None,  # Field not in current DB schema
+                workaround=None,  # Field not in current DB schema
+                root_cause=None,  # Field not in current DB schema
+                fix_description=None,  # Field not in current DB schema
                 reported_by=bug_db.reported_by or "Unknown",
                 assigned_to=bug_db.assigned_to,
-                verified_by=bug_db.verified_by,
-                reported_date=bug_db.reported_date,
-                assigned_date=bug_db.assigned_date,
-                fixed_date=bug_db.fixed_date,
-                verified_date=bug_db.verified_date,
-                closed_date=bug_db.closed_date
+                verified_by=None,  # Field not in current DB schema
+                reported_date=bug_db.created_date,  # Map created_date to reported_date
+                assigned_date=None,  # Field not in current DB schema
+                fixed_date=bug_db.resolved_date,  # Map resolved_date to fixed_date
+                verified_date=None,  # Field not in current DB schema
+                closed_date=bug_db.resolved_date if bug_db.status == BugStatus.CLOSED else None
             )
             bugs.append(bug)
 
@@ -172,7 +221,7 @@ class ReportService:
 
         return str(file_path)
 
-    def generate_test_execution_report(self, project_id: str) -> str:
+    def generate_test_execution_report(self, project_id: str, organization_id: str) -> str:
         """
         Generate Test Execution Summary Report for QA Manager
         Returns path to generated Word document
@@ -186,10 +235,13 @@ class ReportService:
         Raises:
             ValueError: If project not found or no test cases found
         """
-        # Validate project exists
-        project = self.db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+        # Validate project exists AND belongs to organization
+        project = self.db.query(ProjectDB).filter(
+            ProjectDB.id == project_id,
+            ProjectDB.organization_id == organization_id
+        ).first()
         if not project:
-            raise ValueError(f"Project {project_id} not found")
+            raise ValueError(f"Project {project_id} not found or access denied")
 
         # Get test cases for the project
         test_cases = self.db.query(TestCaseDB).filter(TestCaseDB.project_id == project_id).all()
@@ -261,10 +313,13 @@ class ReportService:
 
         return str(file_path)
 
-    def generate_consolidated_report(self) -> str:
+    def generate_consolidated_report(self, organization_id: str) -> str:
         """
         Generate Consolidated Report for Manager
-        Returns path to generated Word document
+        Returns path to generated Word document for ORGANIZATION ONLY
+
+        Args:
+            organization_id: Organization ID to filter projects
 
         Returns:
             Path to generated file
@@ -272,8 +327,10 @@ class ReportService:
         Raises:
             ValueError: If no projects found
         """
-        # Get all projects
-        projects = self.db.query(ProjectDB).all()
+        # Get projects for THIS ORGANIZATION ONLY
+        projects = self.db.query(ProjectDB).filter(
+            ProjectDB.organization_id == organization_id
+        ).all()
 
         if not projects:
             raise ValueError("No projects found")
@@ -326,9 +383,9 @@ class ReportService:
         for execution in executions:
             test_case_id = execution.test_case_id
 
-            if execution.step_results:
+            if execution.steps_results:
                 try:
-                    step_results = json.loads(execution.step_results)
+                    step_results = json.loads(execution.steps_results)
 
                     # Group steps by scenario
                     scenario_steps = defaultdict(list)

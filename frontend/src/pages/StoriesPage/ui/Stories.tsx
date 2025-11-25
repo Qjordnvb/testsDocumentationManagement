@@ -171,7 +171,9 @@ export const Stories = () => {
             setSelectedStory(null);
           }}
           onSuccess={() => {
-            loadStories();
+            // No reload needed - generation is async via queue
+            setGenerateModalOpen(false);
+            setSelectedStory(null);
           }}
         />
       )}
