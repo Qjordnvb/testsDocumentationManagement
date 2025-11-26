@@ -18,6 +18,7 @@ export function useTestGenerationPolling() {
     stopPolling,
     isPolling,
     getActiveJobs,
+    notifyTestCasesSaved,
   } = useTestGenerationQueue();
 
   const intervalRef = useRef<number | null>(null);
@@ -49,23 +50,52 @@ export function useTestGenerationPolling() {
         if (status.status === 'completed') {
           const job = jobs[taskId];
 
-          // ✅ TEST CASES READY FOR REVIEW (NO AUTO-SAVE)
-          // User must click "Listo para revisar" badge to open ReviewTestCasesModal and save
+          // ✅ SAVE TEST CASES TO DATABASE
           if (status.result?.suggested_test_cases && status.result?.story_id) {
-            const testCaseCount = status.result.suggested_test_cases.length;
+            try {
+              // Transform suggested test cases to batch format
+              const testCasesToSave = status.result.suggested_test_cases.map((tc: any) => ({
+                suggested_id: tc.suggested_id,
+                title: tc.title,
+                description: tc.description,
+                user_story_id: status.result.story_id,
+                test_type: tc.test_type,
+                priority: tc.priority,
+                status: tc.status,
+                gherkin_content: tc.gherkin_content,
+              }));
 
-            toast.success(
-              `✅ Generación completa! ${testCaseCount} test case${testCaseCount !== 1 ? 's' : ''} listo${testCaseCount !== 1 ? 's' : ''} para revisar.\nClick en el badge "Listo para revisar" para ver y guardar.`,
-              { duration: 6000 }
-            );
+              // Call batch create endpoint (WITH AUTHENTICATION and multi-tenant isolation)
+              const result = await apiService.createTestCasesBatch({
+                user_story_id: status.result.story_id,
+                test_cases: testCasesToSave,
+                project_id: job.projectId,
+              });
 
-            console.log(`✅ Test cases ready for review (${testCaseCount}):`, status.result.suggested_test_cases);
+              console.log('✅ Test cases saved successfully:', result);
+
+              toast.success(
+                `Test Cases Saved! ${testCasesToSave.length} test cases created for ${job?.storyTitle || 'user story'}`,
+                { duration: 5000 }
+              );
+
+              // Notify that test cases were saved (triggers refresh in StoriesPage)
+              notifyTestCasesSaved();
+            } catch (error: any) {
+              console.error('❌ Error saving test cases:', error);
+
+              const errorMessage = error?.response?.data?.detail || error?.message || 'Unknown error';
+
+              toast.error(
+                `Failed to Save - ${errorMessage}`,
+                { duration: 7000 }
+              );
+            }
           } else {
             // No test cases in result (shouldn't happen)
-            toast.error(
-              'Generación completada pero no se generaron test cases. Intenta nuevamente.',
-              { duration: 5000 }
-            );
+            toast('No Test Cases - Generation completed but no test cases were returned', {
+              duration: 5000,
+            });
           }
 
           // Mark as completed

@@ -9,7 +9,6 @@ import { Button } from '@/shared/ui/Button';
 import { batchCreateTestCases } from '../api/generateTests';
 import { CheckCircle2, AlertCircle, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
 import { useProject } from '@/app/providers/ProjectContext';
-import { useTestGenerationQueue } from '@/shared/stores';
 import type { SuggestedTestCase } from '../api/generateTests';
 import {
   colors,
@@ -23,7 +22,6 @@ interface ReviewTestCasesModalProps {
   suggestedTests: SuggestedTestCase[];
   userStoryId: string;
   userStoryTitle: string;
-  taskId?: string; // Optional: Celery task ID to remove from queue after save
   onSuccess?: () => void;
 }
 
@@ -33,7 +31,6 @@ export const ReviewTestCasesModal = ({
   suggestedTests: initialSuggestions,
   userStoryId,
   userStoryTitle,
-  taskId,
   onSuccess,
 }: ReviewTestCasesModalProps) => {
   const [testCases, setTestCases] = useState<SuggestedTestCase[]>(initialSuggestions);
@@ -43,7 +40,6 @@ export const ReviewTestCasesModal = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const { currentProject } = useProject();
-  const { removeJob, notifyTestCasesSaved } = useTestGenerationQueue();
 
   // Update state when suggestedTests prop changes
   useEffect(() => {
@@ -94,14 +90,6 @@ export const ReviewTestCasesModal = ({
       });
 
       setSaveSuccess(true);
-
-      // Remove job from queue (if taskId provided)
-      if (taskId) {
-        removeJob(taskId);
-      }
-
-      // Notify that test cases were saved (triggers refresh in StoriesPage)
-      notifyTestCasesSaved();
 
       // Auto-close after 1.5 seconds
       setTimeout(() => {

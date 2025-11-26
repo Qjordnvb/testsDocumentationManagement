@@ -63,8 +63,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
 
   // Auth and Queue
   const { hasRole } = useAuth();
-  // Subscribe to jobs state so component re-renders when jobs are added/updated
-  const { getActiveJobForStory, jobs } = useTestGenerationQueue();
+  const { getActiveJobForStory } = useTestGenerationQueue();
 
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
@@ -356,7 +355,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
         },
       }),
     ],
-    [onGenerateTests, hasRole, bodySmall, body, getActiveJobForStory, onViewTests, jobs]
+    [onGenerateTests, hasRole, bodySmall, body, getActiveJobForStory, onViewTests]
   );
 
   const table = useReactTable({
@@ -614,7 +613,6 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
           suggestedTests={selectedJob.result.suggested_test_cases || []}
           userStoryId={selectedJob.storyId}
           userStoryTitle={selectedJob.storyTitle || ''}
-          taskId={selectedJob.taskId}
           onSuccess={() => {
             setReviewModalOpen(false);
             setSelectedJob(null);
