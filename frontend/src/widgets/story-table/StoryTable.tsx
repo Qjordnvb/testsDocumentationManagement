@@ -63,7 +63,8 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
 
   // Auth and Queue
   const { hasRole } = useAuth();
-  const { getActiveJobForStory } = useTestGenerationQueue();
+  // Subscribe to jobs state so component re-renders when jobs are added/updated
+  const { getActiveJobForStory, jobs } = useTestGenerationQueue();
 
   // Typography presets
   const bodySmall = getTypographyPreset('bodySmall');
@@ -355,7 +356,7 @@ export const StoryTable = ({ stories, onGenerateTests, onUpdateStory, onViewTest
         },
       }),
     ],
-    [onGenerateTests, hasRole, bodySmall, body, getActiveJobForStory, onViewTests]
+    [onGenerateTests, hasRole, bodySmall, body, getActiveJobForStory, onViewTests, jobs]
   );
 
   const table = useReactTable({
