@@ -5,7 +5,7 @@
 
 import type { BugStatus } from '@/entities/bug';
 import { TestRunnerModal } from '@/features/test-execution/ui';
-import { EditBugModal } from '@/features/bug-management/ui';
+import { EditBugModal, MarkAsFixedModal, ReopenBugModal } from '@/features/bug-management/ui';
 import { Button, SkeletonCard } from '@/shared/ui';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
@@ -23,6 +23,9 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Paperclip,
+  Wrench,
+  RotateCcw,
+  LockIcon,
 } from 'lucide-react';
 import { useBugDetails } from '../model';
 import {
@@ -75,11 +78,18 @@ export const BugDetailsPage = () => {
     error,
     updatingStatus,
     isDev,
+    isQA,
+    isAdmin,
+    isManager,
     showTestRunner,
     setShowTestRunner,
     gherkinContent,
     showEditModal,
     setShowEditModal,
+    showMarkAsFixedModal,
+    setShowMarkAsFixedModal,
+    showReopenModal,
+    setShowReopenModal,
     handleStatusChange,
     handleRetest,
     handleTestExecutionComplete,
@@ -87,7 +97,13 @@ export const BugDetailsPage = () => {
     navigateBack,
     navigateToTests,
     navigateToStories,
-    setBug,
+    handleMarkAsInProgress,
+    handleOpenMarkAsFixedModal,
+    handleConfirmMarkAsFixed,
+    handleVerifyFix,
+    handleOpenReopenModal,
+    handleConfirmReopen,
+    handleCloseBug,
   } = useBugDetails();
 
   const bodySmall = getTypographyPreset('bodySmall');
@@ -120,29 +136,29 @@ export const BugDetailsPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-6 overflow-x-hidden">
+    <div className="w-full max-w-full min-w-0 space-y-6 p-4 md:p-6 overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
+      <div className="flex flex-col md:flex-row items-start justify-between gap-4 w-full max-w-full min-w-0 overflow-hidden">
+        <div className="flex items-start gap-4 min-w-0 flex-1 max-w-full overflow-hidden">
           <button
             onClick={navigateBack}
-            className={`p-2 hover:bg-gray-100 ${borderRadius.lg} transition-colors`}
+            className={`p-2 hover:bg-gray-100 ${borderRadius.lg} transition-colors flex-shrink-0`}
           >
             <ArrowLeft size={24} />
           </button>
-          <div>
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              {getStatusIcon(bug.status)}
-              <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900} break-words`}>
+          <div className="min-w-0 flex-1 max-w-full overflow-hidden">
+            <div className="flex items-center gap-3 mb-2 flex-wrap min-w-0 max-w-full overflow-hidden">
+              <div className="flex-shrink-0">{getStatusIcon(bug.status)}</div>
+              <h1 className={`${headingLarge.className} font-bold ${colors.gray.text900} break-words min-w-0 flex-1 max-w-full overflow-hidden`}>
                 {bug.title}
               </h1>
             </div>
-            <p className={`${bodySmall.className} ${colors.gray.text600} font-mono`}>{bug.id}</p>
+            <p className={`${bodySmall.className} ${colors.gray.text600} font-mono break-all min-w-0 max-w-full overflow-hidden`}>{bug.id}</p>
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap flex-shrink-0 w-full md:w-auto min-w-0 max-w-full">
           {/* Re-ejecutar Test: Only QA can retest */}
           {testCase && !isDev && (
             <Button
@@ -169,16 +185,16 @@ export const BugDetailsPage = () => {
       </div>
 
       {/* Status, Severity, Priority */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="card w-full max-w-full min-w-0 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full max-w-full min-w-0">
           {/* Status */}
-          <div>
+          <div className="min-w-0">
             <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
             <select
               value={bug.status}
               onChange={(e) => handleStatusChange(e.target.value as BugStatus)}
               disabled={updatingStatus}
-              className={`w-full px-3 py-2 rounded-lg text-sm font-medium ${getStatusBadgeClass(bug.status)} ${
+              className={`w-full max-w-full px-3 py-2 rounded-lg text-sm font-medium ${getStatusBadgeClass(bug.status)} ${
                 updatingStatus ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               }`}
             >
@@ -207,20 +223,20 @@ export const BugDetailsPage = () => {
           </div>
 
           {/* Severity */}
-          <div>
+          <div className="min-w-0">
             <label className="block text-sm font-medium text-gray-700 mb-2">Severidad</label>
             <div
-              className={`px-4 py-2 rounded-lg text-sm font-bold text-center ${getSeverityBadgeClass(bug.severity)}`}
+              className={`px-4 py-2 rounded-lg text-sm font-bold text-center max-w-full ${getSeverityBadgeClass(bug.severity)}`}
             >
               {bug.severity}
             </div>
           </div>
 
           {/* Priority */}
-          <div>
+          <div className="min-w-0">
             <label className="block text-sm font-medium text-gray-700 mb-2">Prioridad</label>
             <div
-              className={`px-4 py-2 rounded-lg text-sm font-medium text-center ${getPriorityBadgeClass(bug.priority)}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium text-center max-w-full ${getPriorityBadgeClass(bug.priority)}`}
             >
               {bug.priority}
             </div>
@@ -229,119 +245,119 @@ export const BugDetailsPage = () => {
       </div>
 
       {/* Description */}
-      <div className="card">
+      <div className="card w-full max-w-full min-w-0 overflow-hidden">
         <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FileText size={20} />
           Descripción
         </h2>
-        <p className="text-gray-700 whitespace-pre-wrap">{bug.description}</p>
+        <p className="text-gray-700 whitespace-pre-wrap break-words max-w-full min-w-0">{bug.description}</p>
       </div>
 
       {/* Steps to Reproduce */}
-      <div className="card">
+      <div className="card w-full max-w-full min-w-0 overflow-hidden">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Pasos para Reproducir</h2>
-        <ol className="space-y-2">
+        <ol className="space-y-2 min-w-0">
           {bug.steps_to_reproduce.map((step, index) => (
-            <li key={index} className="flex items-start gap-3">
+            <li key={index} className="flex items-start gap-3 min-w-0 max-w-full overflow-hidden">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-bold">
                 {index + 1}
               </span>
-              <span className="text-gray-700 flex-1">{step}</span>
+              <span className="text-gray-700 flex-1 break-words min-w-0 max-w-full">{step}</span>
             </li>
           ))}
         </ol>
       </div>
 
       {/* Expected vs Actual Behavior */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full max-w-full min-w-0">
         {/* Expected Behavior */}
-        <div className="card">
+        <div className="card w-full min-w-0 max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <CheckCircle2 size={18} className="text-green-600" />
             Comportamiento Esperado
           </h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{bug.expected_behavior}</p>
+          <p className="text-gray-700 whitespace-pre-wrap break-words max-w-full min-w-0">{bug.expected_behavior}</p>
         </div>
 
         {/* Actual Behavior */}
-        <div className="card">
+        <div className="card w-full min-w-0 max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <XCircle size={18} className="text-red-600" />
             Comportamiento Real
           </h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{bug.actual_behavior}</p>
+          <p className="text-gray-700 whitespace-pre-wrap break-words max-w-full min-w-0">{bug.actual_behavior}</p>
         </div>
       </div>
 
       {/* Environment & Links */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full max-w-full min-w-0">
         {/* Environment Info */}
-        <div className="card">
+        <div className="card w-full min-w-0 max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Entorno</h2>
-          <div className="space-y-3">
-            <div>
+          <div className="space-y-3 min-w-0">
+            <div className="min-w-0">
               <label className="text-sm font-medium text-gray-600">Environment</label>
-              <p className="text-gray-900 font-mono">{bug.environment}</p>
+              <p className="text-gray-900 font-mono break-words max-w-full min-w-0">{bug.environment}</p>
             </div>
             {bug.browser && (
-              <div>
+              <div className="min-w-0">
                 <label className="text-sm font-medium text-gray-600">Browser</label>
-                <p className="text-gray-900">{bug.browser}</p>
+                <p className="text-gray-900 break-words max-w-full min-w-0">{bug.browser}</p>
               </div>
             )}
             {bug.os && (
-              <div>
+              <div className="min-w-0">
                 <label className="text-sm font-medium text-gray-600">OS</label>
-                <p className="text-gray-900">{bug.os}</p>
+                <p className="text-gray-900 break-words max-w-full min-w-0">{bug.os}</p>
               </div>
             )}
             {bug.version && (
-              <div>
+              <div className="min-w-0">
                 <label className="text-sm font-medium text-gray-600">Version</label>
-                <p className="text-gray-900 font-mono">{bug.version}</p>
+                <p className="text-gray-900 font-mono break-words max-w-full min-w-0">{bug.version}</p>
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               <label className="text-sm font-medium text-gray-600">Bug Type</label>
-              <p className="text-gray-900">{bug.bug_type}</p>
+              <p className="text-gray-900 break-words max-w-full min-w-0">{bug.bug_type}</p>
             </div>
           </div>
         </div>
 
         {/* Links */}
-        <div className="card">
+        <div className="card w-full min-w-0 max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <LinkIcon size={18} />
             Enlaces
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             {bug.test_case_id && (
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <label className="text-sm font-medium text-gray-600">Test Case</label>
                 <button
                   onClick={navigateToTests}
-                  className="block text-blue-600 hover:text-blue-800 font-mono text-sm underline"
+                  className="block text-blue-600 hover:text-blue-800 font-mono text-sm underline break-all max-w-full min-w-0"
                 >
                   {bug.test_case_id}
                 </button>
-                {testCase && <p className="text-xs text-gray-500 mt-1">{testCase.title}</p>}
+                {testCase && <p className="text-xs text-gray-500 mt-1 break-words max-w-full min-w-0">{testCase.title}</p>}
               </div>
             )}
             {bug.user_story_id && (
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <label className="text-sm font-medium text-gray-600">User Story</label>
                 <button
                   onClick={navigateToStories}
-                  className="block text-blue-600 hover:text-blue-800 font-mono text-sm underline"
+                  className="block text-blue-600 hover:text-blue-800 font-mono text-sm underline break-all max-w-full min-w-0"
                 >
                   {bug.user_story_id}
                 </button>
               </div>
             )}
             {bug.execution_id && (
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <label className="text-sm font-medium text-gray-600">Ejecución Origen</label>
-                <p className="text-gray-900 font-mono">#{bug.execution_id}</p>
+                <p className="text-gray-900 font-mono break-all max-w-full min-w-0">#{bug.execution_id}</p>
               </div>
             )}
           </div>
@@ -349,139 +365,236 @@ export const BugDetailsPage = () => {
       </div>
 
       {/* People & Dates */}
-      <div className="card">
+      <div className="card w-full max-w-full min-w-0 overflow-hidden">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <User size={18} />
           Personas y Fechas
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-full min-w-0">
           {/* Reported */}
-          <div>
+          <div className="min-w-0">
             <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
               <Calendar size={14} />
               Reportado
             </label>
-            <p className="text-gray-900 font-medium mt-1">{bug.reported_by}</p>
-            <p className="text-xs text-gray-500">{formatDate(bug.reported_date)}</p>
+            <p className="text-gray-900 font-medium mt-1 break-words">{bug.reported_by}</p>
+            <p className="text-xs text-gray-500 break-words">{formatDate(bug.reported_date)}</p>
           </div>
 
           {/* Assigned */}
           {bug.assigned_to && (
-            <div>
+            <div className="min-w-0">
               <label className="text-sm font-medium text-gray-600">Asignado</label>
-              <p className="text-gray-900 font-medium mt-1">{bug.assigned_to}</p>
+              <p className="text-gray-900 font-medium mt-1 break-words">{bug.assigned_to}</p>
               {bug.assigned_date && (
-                <p className="text-xs text-gray-500">{formatDate(bug.assigned_date)}</p>
+                <p className="text-xs text-gray-500 break-words">{formatDate(bug.assigned_date)}</p>
               )}
             </div>
           )}
 
           {/* Fixed */}
           {bug.fixed_date && (
-            <div>
+            <div className="min-w-0">
               <label className="text-sm font-medium text-gray-600">Corregido</label>
-              <p className="text-xs text-gray-500 mt-1">{formatDate(bug.fixed_date)}</p>
+              <p className="text-xs text-gray-500 mt-1 break-words">{formatDate(bug.fixed_date)}</p>
             </div>
           )}
 
           {/* Verified */}
           {bug.verified_by && (
-            <div>
+            <div className="min-w-0">
               <label className="text-sm font-medium text-gray-600">Verificado</label>
-              <p className="text-gray-900 font-medium mt-1">{bug.verified_by}</p>
+              <p className="text-gray-900 font-medium mt-1 break-words">{bug.verified_by}</p>
               {bug.verified_date && (
-                <p className="text-xs text-gray-500">{formatDate(bug.verified_date)}</p>
+                <p className="text-xs text-gray-500 break-words">{formatDate(bug.verified_date)}</p>
               )}
             </div>
           )}
 
           {/* Closed */}
           {bug.closed_date && (
-            <div>
+            <div className="min-w-0">
               <label className="text-sm font-medium text-gray-600">Cerrado</label>
-              <p className="text-xs text-gray-500 mt-1">{formatDate(bug.closed_date)}</p>
+              <p className="text-xs text-gray-500 mt-1 break-words">{formatDate(bug.closed_date)}</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* DEV: Fix Documentation Section */}
-      {isDev && (
-        <div className="card bg-blue-50 border-l-4 border-blue-500">
+      {/* Workflow Action Buttons */}
+      <div className="card bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 w-full max-w-full min-w-0 overflow-hidden">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 break-words max-w-full">
+          <Wrench size={18} className="text-blue-600 flex-shrink-0" />
+          Workflow Actions
+        </h2>
+
+        <div className="flex flex-wrap gap-3 w-full min-w-0 max-w-full overflow-hidden">
+          {/* DEV: Mark as In Progress */}
+          {isDev && bug.status === 'Assigned' && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleMarkAsInProgress}
+              disabled={updatingStatus}
+              leftIcon={<Clock size={18} />}
+            >
+              Mark as In Progress
+            </Button>
+          )}
+
+          {/* DEV: Mark as Fixed */}
+          {isDev && bug.status === 'In Progress' && (
+            <Button
+              variant="success"
+              size="md"
+              onClick={handleOpenMarkAsFixedModal}
+              disabled={updatingStatus}
+              leftIcon={<CheckCircle2 size={18} />}
+            >
+              Mark as Fixed
+            </Button>
+          )}
+
+          {/* QA: Verify Fix */}
+          {isQA && bug.status === 'Fixed' && (
+            <>
+              <Button
+                variant="success"
+                size="md"
+                onClick={handleVerifyFix}
+                disabled={updatingStatus}
+                leftIcon={<CheckCircle2 size={18} />}
+              >
+                ✅ Verify Fix
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={handleOpenReopenModal}
+                disabled={updatingStatus}
+                leftIcon={<RotateCcw size={18} />}
+              >
+                ❌ Reopen Bug
+              </Button>
+            </>
+          )}
+
+          {/* ADMIN/MANAGER: Close Bug */}
+          {(isAdmin || isManager) && bug.status === 'Verified' && (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={handleCloseBug}
+              disabled={updatingStatus}
+              leftIcon={<LockIcon size={18} />}
+            >
+              Close Bug
+            </Button>
+          )}
+
+          {/* Show info if no actions available */}
+          {!isDev && !isQA && !isAdmin && !isManager && (
+            <p className="text-sm text-gray-600 italic">
+              No workflow actions available for your role
+            </p>
+          )}
+
+          {isDev && bug.status !== 'Assigned' && bug.status !== 'In Progress' && (
+            <p className="text-sm text-gray-600 italic">
+              No DEV actions available for status: {bug.status}
+            </p>
+          )}
+
+          {isQA && bug.status !== 'Fixed' && (
+            <p className="text-sm text-gray-600 italic">
+              QA actions available when status is "Fixed"
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Fix Documentation (DEV wrote this) */}
+      {bug.fix_description && (
+        <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500 w-full max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Edit size={18} className="text-blue-600" />
-            Documentación del Fix (Solo DEV)
+            <Wrench size={18} className="text-green-600" />
+            Fix del Desarrollador
           </h2>
-          <div className="space-y-4">
-            {/* Fix Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descripción del Fix
-              </label>
-              <textarea
-                value={bug.fix_description || ''}
-                onChange={(e) => {
-                  // Update bug state locally
-                  setBug((prev) => (prev ? { ...prev, fix_description: e.target.value } : null));
-                }}
-                onBlur={async (e) => {
-                  // Save on blur using the handler from the hook
-                  const { handleFixDescriptionUpdate } = useBugDetails();
-                  await handleFixDescriptionUpdate(e.target.value);
-                }}
-                placeholder="Describe cómo solucionaste el bug, cambios realizados, etc..."
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
 
-            {/* Upload Screenshots of Fix */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Evidencia del Fix (Screenshots)
-              </label>
-              <p className="text-xs text-gray-500 mb-2">
-                Sube capturas de pantalla que demuestren que el bug fue solucionado
-              </p>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={async (e) => {
-                  const files = e.target.files;
-                  if (!files || files.length === 0 || !bugId) return;
-
-                  const { handleScreenshotsUpload } = useBugDetails();
-                  await handleScreenshotsUpload(files);
-                }}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-lg file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100
-                  cursor-pointer"
-              />
+          {/* Fix Description */}
+          <div className="mb-4 min-w-0 max-w-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fix Description
+            </label>
+            <div className="bg-white rounded-lg p-4 border border-green-200 overflow-hidden">
+              <p className="text-gray-800 whitespace-pre-wrap break-words max-w-full">{bug.fix_description}</p>
             </div>
+          </div>
+
+          {/* Root Cause */}
+          {bug.root_cause && (
+            <div className="mb-4 min-w-0 max-w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Root Cause
+              </label>
+              <div className="bg-white rounded-lg p-4 border border-green-200 overflow-hidden">
+                <p className="text-gray-800 whitespace-pre-wrap break-words max-w-full">{bug.root_cause}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Workaround */}
+          {bug.workaround && (
+            <div className="mb-4 min-w-0 max-w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Workaround (Temporary Solution)
+              </label>
+              <div className="bg-white rounded-lg p-4 border border-green-200 overflow-hidden">
+                <p className="text-gray-800 whitespace-pre-wrap break-words max-w-full">{bug.workaround}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Fixed Date */}
+          {bug.fixed_date && (
+            <div className="text-sm text-gray-600">
+              <Calendar size={14} className="inline mr-1" />
+              Fixed on: {formatDate(bug.fixed_date)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Reopen Notes (QA feedback) */}
+      {bug.notes && bug.status === 'Reopened' && (
+        <div className="card bg-gradient-to-br from-orange-50 to-red-50 border-l-4 border-orange-500 w-full max-w-full overflow-hidden">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <AlertCircle size={18} className="text-orange-600" />
+            QA Feedback - Por qué se reabrió
+          </h2>
+
+          <div className="bg-white rounded-lg p-4 border border-orange-200 overflow-hidden">
+            <p className="text-gray-800 whitespace-pre-wrap break-words max-w-full">{bug.notes}</p>
           </div>
         </div>
       )}
 
+
       {/* Evidence & Attachments */}
       {bug.attachments && bug.attachments.length > 0 && (
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <ImageIcon size={18} />
+        <div className="card w-full max-w-full min-w-0 overflow-hidden">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 break-words max-w-full">
+            <ImageIcon size={18} className="flex-shrink-0" />
             Evidencia Original ({bug.attachments.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-full min-w-0">
             {bug.attachments.map((attachment, index) => {
               // Check if it's an image file
               const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment);
 
               if (isImage) {
                 return (
-                  <div key={index} className="group relative">
+                  <div key={index} className="group relative min-w-0 max-w-full">
                     <div
                       className={`${borderRadius.lg} overflow-hidden border ${colors.gray.border200} hover:border-blue-400 transition-all hover:shadow-lg`}
                     >
@@ -507,7 +620,7 @@ export const BugDetailsPage = () => {
                         </a>
                       </div>
                     </div>
-                    <p className={`${bodySmall.className} ${colors.gray.text600} mt-1 truncate`}>
+                    <p className={`${bodySmall.className} ${colors.gray.text600} mt-1 truncate max-w-full`}>
                       {attachment.split('/').pop()}
                     </p>
                   </div>
@@ -517,17 +630,17 @@ export const BugDetailsPage = () => {
                 return (
                   <div
                     key={index}
-                    className={`p-4 border ${colors.gray.border200} ${borderRadius.lg} hover:border-blue-400 hover:bg-gray-50 transition-all`}
+                    className={`p-4 border ${colors.gray.border200} ${borderRadius.lg} hover:border-blue-400 hover:bg-gray-50 transition-all min-w-0 max-w-full`}
                   >
                     <a
                       href={`/api/v1/evidence/${attachment}`}
                       download
-                      className="flex items-center gap-3 group"
+                      className="flex items-center gap-3 group min-w-0 max-w-full"
                     >
-                      <Paperclip size={20} className={colors.gray.text500} />
-                      <div className="flex-1 min-w-0">
+                      <Paperclip size={20} className={`${colors.gray.text500} flex-shrink-0`} />
+                      <div className="flex-1 min-w-0 max-w-full overflow-hidden">
                         <p
-                          className={`${bodySmall.className} ${colors.gray.text900} font-medium truncate group-hover:text-blue-600`}
+                          className={`${bodySmall.className} ${colors.gray.text900} font-medium truncate group-hover:text-blue-600 max-w-full`}
                         >
                           {attachment.split('/').pop()}
                         </p>
@@ -563,6 +676,26 @@ export const BugDetailsPage = () => {
           onClose={() => setShowEditModal(false)}
           bug={bug}
           onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Mark as Fixed Modal (DEV) */}
+      {bugId && (
+        <MarkAsFixedModal
+          isOpen={showMarkAsFixedModal}
+          onClose={() => setShowMarkAsFixedModal(false)}
+          onConfirm={handleConfirmMarkAsFixed}
+          bugId={bugId}
+        />
+      )}
+
+      {/* Reopen Bug Modal (QA) */}
+      {bugId && (
+        <ReopenBugModal
+          isOpen={showReopenModal}
+          onClose={() => setShowReopenModal(false)}
+          onConfirm={handleConfirmReopen}
+          bugId={bugId}
         />
       )}
     </div>

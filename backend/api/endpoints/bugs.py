@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 
-from backend.database import get_db, UserDB
+from backend.database import get_db, UserDB, ProjectDB
 from backend.models import BugReport
 from backend.services.bug_service import BugService
 from backend.generators import BugReportGenerator
@@ -291,7 +291,9 @@ async def update_bug(
 @router.patch("/bugs/{bug_id}/dev-update")
 async def dev_update_bug(
     bug_id: str,
-    update_data: Dict[str, Any],
+    project_id: str = Query(..., description="Project ID for multi-tenant isolation"),
+    update_data: Dict[str, Any] = None,
+    db: Session = Depends(get_db),
     service: BugService = Depends(get_bug_service_dependency)
 ):
     """
@@ -302,17 +304,31 @@ async def dev_update_bug(
 
     Args:
         bug_id: Bug ID
+        project_id: Project ID for multi-tenant isolation (composite key)
         update_data: Updates (only status, fix_description allowed)
+        db: Database session for project lookup
         service: Injected BugService instance
 
     Returns:
         Updated bug
 
     Raises:
-        HTTPException: If bug not found or invalid fields
+        HTTPException: If bug not found, project not found, or invalid fields
     """
     print(f"🔧 PATCH /bugs/{bug_id}/dev-update")
+    print(f"   Project: {project_id}")
     print(f"   Update data: {update_data}")
+
+    if update_data is None:
+        update_data = {}
+
+    # Validate project exists and get organization_id
+    project = db.query(ProjectDB).filter(ProjectDB.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
 
     # Restrict to allowed fields
     allowed_fields = {"status", "fix_description", "fixed_date"}
@@ -341,7 +357,8 @@ async def dev_update_bug(
             print(f"   Auto-setting fixed_date to now")
 
     try:
-        updated_bug = service.update_bug(bug_id, filtered_updates)
+        # CRITICAL: Pass project_id and organization_id for composite key lookup
+        updated_bug = service.update_bug(bug_id, project_id, project.organization_id, filtered_updates)
 
         print(f"   ✅ Bug updated by dev: {updated_bug['id']}")
 

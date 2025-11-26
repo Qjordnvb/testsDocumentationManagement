@@ -299,10 +299,21 @@ class BugReportDB(Base):
     log_file_path = Column(String, nullable=True)
     attachments = Column(Text, nullable=True)  # JSON array
 
-    # Dates
-    created_date = Column(DateTime, default=datetime.now)
+    # Workflow tracking - QA ↔ DEV process
+    fix_description = Column(Text, nullable=True)  # DEV explains the fix
+    root_cause = Column(Text, nullable=True)  # Root cause analysis
+    workaround = Column(Text, nullable=True)  # Temporary solution
+    notes = Column(Text, nullable=True)  # General notes
+    verified_by = Column(String, nullable=True)  # QA who verified the fix
+
+    # Dates - Bug lifecycle tracking
+    reported_date = Column(DateTime, default=datetime.now)  # RENAMED from created_date
+    assigned_date = Column(DateTime, nullable=True)  # When bug was assigned to DEV
+    fixed_date = Column(DateTime, nullable=True)  # When DEV marked as fixed
+    verified_date = Column(DateTime, nullable=True)  # When QA verified the fix
+    closed_date = Column(DateTime, nullable=True)  # When bug was closed
     updated_date = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    resolved_date = Column(DateTime, nullable=True)
+    resolved_date = Column(DateTime, nullable=True)  # Legacy: kept for backwards compatibility
 
     # Relationships
     # --- FIX: Added overlaps to silence SAWarnings ---

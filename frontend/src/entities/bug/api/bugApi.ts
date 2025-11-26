@@ -93,4 +93,100 @@ export const bugApi = {
     );
     return data.bug_count;
   },
+
+  /**
+   * Mark bug as In Progress (DEV workflow)
+   */
+  markAsInProgress: async (bugId: string, projectId: string): Promise<Bug> => {
+    return bugApi.updateStatus(bugId, projectId, 'In Progress');
+  },
+
+  /**
+   * Mark bug as Fixed with fix documentation (DEV workflow)
+   * Supports optional file uploads for evidence
+   */
+  markAsFixed: async (
+    bugId: string,
+    projectId: string,
+    fixData: {
+      fix_description: string;
+      root_cause?: string;
+      workaround?: string;
+      evidence_files?: File[];
+    }
+  ): Promise<Bug> => {
+    // If there are files, use FormData
+    if (fixData.evidence_files && fixData.evidence_files.length > 0) {
+      const formData = new FormData();
+      formData.append('fix_description', fixData.fix_description);
+
+      if (fixData.root_cause) {
+        formData.append('root_cause', fixData.root_cause);
+      }
+
+      if (fixData.workaround) {
+        formData.append('workaround', fixData.workaround);
+      }
+
+      // Append each file
+      fixData.evidence_files.forEach((file) => {
+        formData.append('evidence_files', file);
+      });
+
+      const { data } = await api.patch<Bug>(
+        `/bugs/${bugId}/mark-fixed`,
+        formData,
+        {
+          params: { project_id: projectId },
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      );
+      return data;
+    } else {
+      // No files - send as JSON
+      const { data } = await api.patch<Bug>(
+        `/bugs/${bugId}/mark-fixed`,
+        {
+          fix_description: fixData.fix_description,
+          root_cause: fixData.root_cause,
+          workaround: fixData.workaround,
+        },
+        { params: { project_id: projectId } }
+      );
+      return data;
+    }
+  },
+
+  /**
+   * Verify bug fix (QA workflow)
+   */
+  verifyFix: async (bugId: string, projectId: string): Promise<Bug> => {
+    const { data } = await api.patch<Bug>(
+      `/bugs/${bugId}/verify-fix`,
+      {},
+      { params: { project_id: projectId } }
+    );
+    return data;
+  },
+
+  /**
+   * Reopen bug (QA workflow)
+   */
+  reopenBug: async (bugId: string, projectId: string, reason: string): Promise<Bug> => {
+    const { data } = await api.patch<Bug>(
+      `/bugs/${bugId}/reopen`,
+      { reason },
+      { params: { project_id: projectId } }
+    );
+    return data;
+  },
+
+  /**
+   * Close bug (MANAGER/ADMIN workflow)
+   */
+  closeBug: async (bugId: string, projectId: string): Promise<Bug> => {
+    return bugApi.updateStatus(bugId, projectId, 'Closed');
+  },
 };

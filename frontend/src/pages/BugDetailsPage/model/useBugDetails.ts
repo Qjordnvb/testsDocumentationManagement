@@ -17,8 +17,11 @@ import type { TestCase } from '@/entities/test-case';
 export const useBugDetails = () => {
   const { projectId, bugId } = useParams<{ projectId: string; bugId: string }>();
   const { currentProject } = useProject();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const isDev = hasRole('dev');
+  const isQA = hasRole('qa');
+  const isAdmin = hasRole('admin');
+  const isManager = hasRole('manager');
   const navigate = useNavigate();
 
   // Data states
@@ -32,6 +35,8 @@ export const useBugDetails = () => {
   const [showTestRunner, setShowTestRunner] = useState(false);
   const [gherkinContent, setGherkinContent] = useState<string>('');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showMarkAsFixedModal, setShowMarkAsFixedModal] = useState(false);
+  const [showReopenModal, setShowReopenModal] = useState(false);
 
   // Validate project
   useEffect(() => {
@@ -222,6 +227,112 @@ export const useBugDetails = () => {
     navigate(`/projects/${projectId}/stories`);
   };
 
+  // Mark as In Progress (DEV only)
+  const handleMarkAsInProgress = async () => {
+    if (!bugId || !isDev) return;
+
+    try {
+      setUpdatingStatus(true);
+      const updated = await bugApi.markAsInProgress(bugId, projectId!);
+      setBug(updated);
+      toast.success('Bug marked as In Progress');
+    } catch (err: any) {
+      console.error('Error marking bug as in progress:', err);
+      toast.error('Error al marcar como In Progress');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // Mark as Fixed (DEV only) - Opens modal
+  const handleOpenMarkAsFixedModal = () => {
+    if (!isDev || !bug) return;
+    setShowMarkAsFixedModal(true);
+  };
+
+  // Confirm Mark as Fixed (DEV only)
+  const handleConfirmMarkAsFixed = async (fixData: {
+    fix_description: string;
+    root_cause?: string;
+    workaround?: string;
+    evidence_files?: File[];
+  }) => {
+    if (!bugId || !isDev) return;
+
+    try {
+      const updated = await bugApi.markAsFixed(bugId, projectId!, fixData);
+      setBug(updated);
+
+      if (fixData.evidence_files && fixData.evidence_files.length > 0) {
+        toast.success(`Bug marked as Fixed with ${fixData.evidence_files.length} evidence file(s)`);
+      } else {
+        toast.success('Bug marked as Fixed with documentation');
+      }
+
+      setShowMarkAsFixedModal(false);
+    } catch (err: any) {
+      console.error('Error marking bug as fixed:', err);
+      toast.error('Error al marcar como Fixed');
+      throw err;
+    }
+  };
+
+  // Verify Fix (QA only)
+  const handleVerifyFix = async () => {
+    if (!bugId || !isQA) return;
+
+    try {
+      setUpdatingStatus(true);
+      const updated = await bugApi.verifyFix(bugId, projectId!);
+      setBug(updated);
+      toast.success('✅ Bug fix verified successfully');
+    } catch (err: any) {
+      console.error('Error verifying fix:', err);
+      toast.error('Error al verificar fix');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // Reopen Bug (QA only) - Opens modal
+  const handleOpenReopenModal = () => {
+    if (!isQA || !bug) return;
+    setShowReopenModal(true);
+  };
+
+  // Confirm Reopen (QA only)
+  const handleConfirmReopen = async (reason: string) => {
+    if (!bugId || !isQA) return;
+
+    try {
+      const updated = await bugApi.reopenBug(bugId, projectId!, reason);
+      setBug(updated);
+      toast.error('Bug reopened - Fix needs more work');
+      setShowReopenModal(false);
+    } catch (err: any) {
+      console.error('Error reopening bug:', err);
+      toast.error('Error al reabrir bug');
+      throw err;
+    }
+  };
+
+  // Close Bug (ADMIN/MANAGER only)
+  const handleCloseBug = async () => {
+    if (!bugId || (!isAdmin && !isManager)) return;
+
+    try {
+      setUpdatingStatus(true);
+      const updated = await bugApi.closeBug(bugId, projectId!);
+      setBug(updated);
+      toast.success('Bug closed successfully');
+    } catch (err: any) {
+      console.error('Error closing bug:', err);
+      toast.error('Error al cerrar bug');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   return {
     // Data
     projectId,
@@ -233,6 +344,10 @@ export const useBugDetails = () => {
     error,
     updatingStatus,
     isDev,
+    isQA,
+    isAdmin,
+    isManager,
+    currentUser: user,
 
     // Test runner
     showTestRunner,
@@ -242,6 +357,12 @@ export const useBugDetails = () => {
     // Edit modal
     showEditModal,
     setShowEditModal,
+
+    // Workflow modals
+    showMarkAsFixedModal,
+    setShowMarkAsFixedModal,
+    showReopenModal,
+    setShowReopenModal,
 
     // Actions
     handleStatusChange,
@@ -255,5 +376,14 @@ export const useBugDetails = () => {
     navigateToStories,
     loadBugDetails,
     setBug,
+
+    // Workflow actions
+    handleMarkAsInProgress,
+    handleOpenMarkAsFixedModal,
+    handleConfirmMarkAsFixed,
+    handleVerifyFix,
+    handleOpenReopenModal,
+    handleConfirmReopen,
+    handleCloseBug,
   };
 };

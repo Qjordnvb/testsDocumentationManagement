@@ -105,12 +105,13 @@ class UserStory(BaseModel):
 
     @validator('id')
     def validate_id_format(cls, v):
-        """Validate user story ID format (e.g., US-001, US-PROJ-001)"""
+        """Validate user story ID format (e.g., US-001, US-PROJ-001, or numeric like 462462)"""
         if v:
-            # Allow flexible formats: US-XXX, US-PROJ-XXX, etc.
-            # Just ensure it starts with letters and contains at least one number
-            if not re.match(r'^[A-Z]+-.*\d', v):
-                raise ValueError("User story ID must follow format like 'US-001' or 'US-PROJ-001'")
+            # Allow flexible formats:
+            # - Alphanumeric: US-XXX, US-PROJ-XXX, etc.
+            # - Pure numeric: 462462 (Azure DevOps format)
+            if not re.match(r'^([A-Z]+-.*\d|\d+)$', v):
+                raise ValueError("User story ID must be alphanumeric (e.g., 'US-001') or numeric (e.g., '462462')")
             return v.strip()
         return v
 

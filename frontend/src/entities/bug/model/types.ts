@@ -71,6 +71,9 @@ export interface Bug {
 
   // Fix Documentation (for DEV)
   fix_description?: string;
+  root_cause?: string;
+  workaround?: string;
+  notes?: string;
 
   // External
   notion_page_id?: string;

@@ -335,16 +335,15 @@ class BugService:
             test_case_id=bug.test_case_id,
             scenario_name=bug.scenario_name,  # Uncommented: Now in DB
             attachments=screenshots_str,  # FIX: Map screenshots to attachments field
-            # logs=bug.logs,
-            # notes=bug.notes,
-            # workaround=bug.workaround,
-            # root_cause=bug.root_cause,
-            # fix_description=bug.fix_description,
+            notes=bug.notes,
+            workaround=bug.workaround,
+            root_cause=bug.root_cause,
+            fix_description=bug.fix_description,
             reported_by=bug.reported_by,
             assigned_to=bug.assigned_to,
-            # verified_by=bug.verified_by,
-            # reported_date=bug.reported_date or datetime.now(),
-            # document_path=doc_path
+            verified_by=bug.verified_by,
+            reported_date=bug.reported_date or datetime.now(),  # Now uses reported_date
+            # document_path=doc_path  # TODO: Add this field to model if needed
         )
 
     def _link_bug_to_execution(self, bug: BugReport, bug_id: str):
@@ -364,11 +363,11 @@ class BugService:
             "title", "description", "steps_to_reproduce", "expected_behavior", "actual_behavior",
             "severity", "priority", "bug_type", "status",
             "environment", "browser", "os",
-            "version", "scenario_name", # Uncommented: Now in DB
+            "version", "scenario_name",
             "screenshots",
-            # "logs", "notes", "workaround", "root_cause", "fix_description",
-            "assigned_to",
-            # "verified_by", "assigned_date", "fixed_date", "verified_date", "closed_date"
+            "notes", "workaround", "root_cause", "fix_description",  # Workflow fields
+            "assigned_to", "verified_by",
+            "assigned_date", "fixed_date", "verified_date", "closed_date"  # Date tracking
         ]
 
         for field, value in updates.items():
@@ -397,6 +396,11 @@ class BugService:
                     except (KeyError, ValueError):
                         continue
 
+                # Handle datetime fields - convert ISO strings to datetime objects
+                if field in ["assigned_date", "fixed_date", "verified_date", "closed_date", "reported_date"]:
+                    if isinstance(value, str):
+                        value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+
                 setattr(bug, field, value)
 
     def _bug_to_dict(self, bug: BugReportDB) -> Dict[str, Any]:
@@ -421,22 +425,22 @@ class BugService:
             "version": bug.version, # Uncommented: Now in DB
             "user_story_id": bug.user_story_id,
             "test_case_id": bug.test_case_id,
-            "scenario_name": bug.scenario_name, # Uncommented: Now in DB
+            "scenario_name": bug.scenario_name,
             "screenshots": screenshots_list,
-            "logs": None,
-            "notes": None,
-            "workaround": None,
-            "root_cause": None,
-            "fix_description": None,
+            "logs": None,  # TODO: Add logs field to model if needed
+            "notes": bug.notes,
+            "workaround": bug.workaround,
+            "root_cause": bug.root_cause,
+            "fix_description": bug.fix_description,
             "reported_by": bug.reported_by,
             "assigned_to": bug.assigned_to,
-            "verified_by": None,
-            "reported_date": bug.created_date.isoformat() if bug.created_date else None,
-            "assigned_date": None,
-            "fixed_date": None,
-            "verified_date": None,
-            "closed_date": None,
-            "document_path": None,
+            "verified_by": bug.verified_by,
+            "reported_date": bug.reported_date.isoformat() if bug.reported_date else None,  # FIXED: Now uses reported_date
+            "assigned_date": bug.assigned_date.isoformat() if bug.assigned_date else None,
+            "fixed_date": bug.fixed_date.isoformat() if bug.fixed_date else None,
+            "verified_date": bug.verified_date.isoformat() if bug.verified_date else None,
+            "closed_date": bug.closed_date.isoformat() if bug.closed_date else None,
+            "document_path": None,  # TODO: Add document_path field to model if needed
         }
 
 
