@@ -1,11 +1,26 @@
 /**
  * LoginPasswordStep Component
  * Password input for registered users
+ *
+ * Uses centralized design system components and tokens
  */
 
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { LogIn, AlertCircle, Eye, EyeOff, Sparkles, Lock } from 'lucide-react';
+import { AuthLayout } from './AuthLayout';
+import { Input } from '@/shared/ui/Input/Input';
+import { Button } from '@/shared/ui/Button/Button';
+import { Badge } from '@/shared/ui/Badge/Badge';
+import { Card } from '@/shared/ui/Card/Card';
+import {
+  colors,
+  padding,
+  gap,
+  borderRadius,
+  getTypographyPreset,
+  margin,
+} from '@/shared/design-system/tokens';
 
 interface LoginPasswordStepProps {
   email: string;
@@ -33,107 +48,102 @@ export const LoginPasswordStep = ({
     onLogin(password);
   };
 
+  const h3Typography = getTypographyPreset('h3');
+  const bodySmallTypography = getTypographyPreset('bodySmall');
+
   return (
-    <div className="bg-white rounded-lg shadow-xl p-8">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start">
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-            <div className="text-sm text-red-700">{error}</div>
+    <AuthLayout>
+      <Card variant="default" padding="lg">
+        {/* Card Header */}
+        <div className={`flex items-center justify-between ${margin.bMd}`}>
+          <div className={`flex items-center ${gap.sm}`}>
+            <div className={`h-8 w-8 ${borderRadius.lg} ${colors.brand.secondary[100]} flex items-center justify-center`}>
+              <Sparkles className={`h-5 w-5 ${colors.brand.secondary.text600}`} />
+            </div>
+            <span className={`${colors.gray.text700} font-medium text-sm`}>Ingreso al Sistema QA</span>
           </div>
-        )}
-
-        {/* Welcome Message */}
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            ¡Bienvenido de vuelta, {fullName}!
-          </h3>
-          <p className="text-sm text-gray-600">
-            Ingresa tu contraseña para continuar
-          </p>
-          <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-md p-3">
-            <span className="font-medium">Email:</span>
-            <span className="font-mono">{email}</span>
-          </div>
+          <Badge variant="default" size="sm">
+            Entorno: Producción
+          </Badge>
         </div>
 
-        {/* Password Input */}
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-            Contraseña
-          </label>
-          <div className="relative">
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              autoFocus
-              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-10"
-              placeholder="••••••••"
-              disabled={isLoading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className={`${colors.status.error[50]} border ${colors.status.error.border200} ${borderRadius.lg} ${padding.sm} flex items-start`}>
+              <AlertCircle className={`h-5 w-5 ${colors.status.error.text600} mt-0.5 mr-3 flex-shrink-0`} />
+              <div className={`text-sm ${colors.status.error.text700}`}>{error}</div>
+            </div>
+          )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-4">
-          <button
-            type="button"
-            onClick={onBack}
+          {/* Welcome Message */}
+          <div>
+            <h3 className={`${h3Typography.className} ${colors.gray.text900} ${margin.bSm}`}>
+              ¡Bienvenido de vuelta, {fullName}!
+            </h3>
+            <p className={`${bodySmallTypography.className} ${colors.gray.text600} mb-1`}>
+              Ingresa tu contraseña para continuar
+            </p>
+            <p className={`text-sm ${colors.gray.text500} flex items-center ${gap.xs}`}>
+              <span className={`inline-block w-1 h-1 ${colors.gray[400]} ${borderRadius.full}`}></span>
+              Paso 2 de 2: autenticación final.
+            </p>
+            <div className={`mt-3 flex items-center ${gap.sm} text-sm ${colors.gray.text600} ${colors.gray[50]} ${borderRadius.md} ${padding.xSm}`}>
+              <span className="font-medium">Email:</span>
+              <span className="font-mono">{email}</span>
+            </div>
+          </div>
+
+          {/* Password Input */}
+          <Input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            label="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            autoFocus
+            leftIcon={<Lock className="h-5 w-5" />}
+            placeholder="••••••••"
             disabled={isLoading}
-            className="flex-1 py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            Volver
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading || !password.trim()}
-            className="flex-1 flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {isLoading ? (
-              <>
-                <svg
-                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Iniciando sesión...
-              </>
-            ) : (
-              <>
-                <LogIn className="w-5 h-5 mr-2" />
-                Iniciar Sesión
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-    </div>
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className={`${colors.gray.text400} hover:${colors.gray.text600}`}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            }
+          />
+
+          {/* Action Buttons */}
+          <div className={`flex ${gap.md} pt-4`}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={onBack}
+              disabled={isLoading}
+              className="flex-1"
+            >
+              Volver
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={isLoading || !password.trim()}
+              isLoading={isLoading}
+              leftIcon={!isLoading ? <LogIn className="w-5 h-5" /> : undefined}
+              className="flex-1"
+            >
+              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </AuthLayout>
   );
 };
