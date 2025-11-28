@@ -227,7 +227,14 @@ export const useBugDetails = () => {
     navigate(`/projects/${projectId}/stories`);
   };
 
-  // Mark as In Progress (DEV only)
+  /**
+   * LEGACY WORKFLOW HANDLERS
+   * These handlers are kept for backward compatibility but are no longer used in UI.
+   * The new workflow uses status dropdown + comment system for communication.
+   * Can be removed in future cleanup if modals are also removed.
+   */
+
+  // Mark as In Progress (DEV only) - LEGACY
   const handleMarkAsInProgress = async () => {
     if (!bugId || !isDev) return;
 
@@ -244,13 +251,13 @@ export const useBugDetails = () => {
     }
   };
 
-  // Mark as Fixed (DEV only) - Opens modal
+  // Mark as Fixed (DEV only) - Opens modal - LEGACY
   const handleOpenMarkAsFixedModal = () => {
     if (!isDev || !bug) return;
     setShowMarkAsFixedModal(true);
   };
 
-  // Confirm Mark as Fixed (DEV only)
+  // Confirm Mark as Fixed (DEV only) - LEGACY
   const handleConfirmMarkAsFixed = async (fixData: {
     fix_description: string;
     root_cause?: string;
@@ -277,7 +284,7 @@ export const useBugDetails = () => {
     }
   };
 
-  // Verify Fix (QA only)
+  // Verify Fix (QA only) - LEGACY
   const handleVerifyFix = async () => {
     if (!bugId || !isQA) return;
 
@@ -294,13 +301,13 @@ export const useBugDetails = () => {
     }
   };
 
-  // Reopen Bug (QA only) - Opens modal
+  // Reopen Bug (QA only) - Opens modal - LEGACY
   const handleOpenReopenModal = () => {
     if (!isQA || !bug) return;
     setShowReopenModal(true);
   };
 
-  // Confirm Reopen (QA only)
+  // Confirm Reopen (QA only) - LEGACY
   const handleConfirmReopen = async (reason: string) => {
     if (!bugId || !isQA) return;
 
@@ -316,7 +323,7 @@ export const useBugDetails = () => {
     }
   };
 
-  // Close Bug (ADMIN/MANAGER only)
+  // Close Bug (ADMIN/MANAGER only) - LEGACY
   const handleCloseBug = async () => {
     if (!bugId || (!isAdmin && !isManager)) return;
 

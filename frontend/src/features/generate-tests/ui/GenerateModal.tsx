@@ -107,7 +107,7 @@ export const GenerateModal = ({
 
       // Show success toast
       toast.success(
-        `✅ Generación encolada! Generando ${numTestCases} test cases. Mira el badge para ver el progreso.`,
+        `Generación encolada! Generando ${numTestCases} test cases. Mira el badge para ver el progreso.`,
         { id: `queue-${story.id}`, duration: 4000 }
       );
 

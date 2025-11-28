@@ -397,8 +397,15 @@ class ExecutionService:
         if ".." in file_path or file_path.startswith("/"):
             raise ValueError("Invalid file path")
 
-        # Construct full path
+        # Construct full path - prepend 'evidence' base directory
+        # This allows serving files from:
+        # - uploads/PROJ-XXX/... (original bug attachments)
+        # - execution/PROJ-XXX/... (test execution screenshots)
+        # - comments/PROJ-XXX/BUG-XXX/... (comment attachments)
         full_path = Path(file_path)
+
+        print(f"[DEBUG] Full path resolved to: {full_path}")
+        print(f"[DEBUG] File exists: {full_path.exists()}")
 
         if not full_path.exists():
             print(f"[ERROR] Evidence file not found: {full_path}")
@@ -419,10 +426,22 @@ class ExecutionService:
         media_type = "application/octet-stream"
         extension = file_path.suffix.lower()
 
+        # Image formats
         if extension in [".png", ".jpg", ".jpeg", ".gif"]:
             media_type = f"image/{extension[1:]}"
+        elif extension == ".webp":
+            media_type = "image/webp"
+        elif extension == ".svg":
+            media_type = "image/svg+xml"
+        elif extension == ".bmp":
+            media_type = "image/bmp"
+        # Video formats
         elif extension == ".mp4":
             media_type = "video/mp4"
+        # Document formats
+        elif extension == ".pdf":
+            media_type = "application/pdf"
+        # Text formats
         elif extension in [".txt", ".log"]:
             media_type = "text/plain"
         elif extension == ".json":

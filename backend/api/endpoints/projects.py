@@ -208,3 +208,44 @@ async def get_project_stats(
         )
 
     return stats
+
+
+@router.get("/projects/{project_id}/coverage")
+async def get_project_coverage(
+    project_id: str,
+    service: ProjectService = Depends(get_project_service_dependency),
+    current_user: UserDB = Depends(get_current_user)
+):
+    """
+    Get detailed test coverage metrics for a project
+
+    Returns:
+        - Test coverage percentage (stories with tests / total stories)
+        - List of stories without tests
+        - Test execution rate
+        - Test pass rate
+
+    Args:
+        project_id: Project ID
+        service: Injected ProjectService instance
+        current_user: Current authenticated user
+
+    Returns:
+        Coverage metrics dictionary
+
+    Raises:
+        HTTPException: 404 if project not found
+    """
+    print(f"📊 GET /projects/{project_id}/coverage - User: {current_user.email} (Org: {current_user.organization_id})")
+
+    try:
+        coverage = service.get_project_coverage(project_id, current_user.organization_id)
+        print(f"   ✅ Coverage calculated: {coverage['test_coverage_percent']}%")
+        return coverage
+
+    except ValueError as e:
+        print(f"   ❌ Error: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )

@@ -22,6 +22,7 @@ import { TestCasesPage } from '@/pages/TestCasesPage';
 import { BugsPage } from '@/pages/BugsPage';
 import { BugDetailsPage } from '@/pages/BugDetailsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { CoveragePage } from '@/pages/CoveragePage';
 import { useTestGenerationPolling } from '@/shared/lib/useTestGenerationPolling';
 
 // Placeholder pages (to be created)
@@ -141,6 +142,11 @@ function App() {
                         <Route path="reports" element={
                           <ProtectedRoute excludeRoles={['dev', 'manager']}>
                             <ReportsPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="coverage" element={
+                          <ProtectedRoute excludeRoles={['dev', 'manager']}>
+                            <CoveragePage />
                           </ProtectedRoute>
                         } />
                         <Route path="settings" element={<SettingsPage />} />

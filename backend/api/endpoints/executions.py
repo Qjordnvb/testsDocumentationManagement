@@ -238,12 +238,15 @@ async def download_evidence(
     """
     Download or view evidence file (screenshot, log, etc.)
 
+    Files that support inline preview (images, PDFs) are displayed in browser.
+    Other files are downloaded.
+
     Args:
         file_path: Relative path to evidence file
         service: Injected ExecutionService instance
 
     Returns:
-        File response
+        File response with appropriate Content-Disposition header
 
     Raises:
         HTTPException: If file path invalid or file not found
@@ -254,13 +257,25 @@ async def download_evidence(
         full_path = service.validate_evidence_path(file_path)
         media_type = service.get_media_type_for_file(full_path)
 
-        print(f"[DEBUG] Serving evidence file: {full_path.name}, type: {media_type}")
+        # Determine if file should be previewed inline or downloaded
+        previewable_types = ["image/", "application/pdf"]
+        is_previewable = any(media_type.startswith(t) for t in previewable_types)
 
-        return FileResponse(
-            path=str(full_path),
-            media_type=media_type,
-            filename=full_path.name
-        )
+        print(f"[DEBUG] Serving evidence file: {full_path.name}, type: {media_type}, previewable: {is_previewable}")
+
+        if is_previewable:
+            # Inline preview (no filename = no Content-Disposition: attachment header)
+            return FileResponse(
+                path=str(full_path),
+                media_type=media_type
+            )
+        else:
+            # Force download for other files
+            return FileResponse(
+                path=str(full_path),
+                media_type=media_type,
+                filename=full_path.name
+            )
 
     except ValueError as e:
         error_msg = str(e)

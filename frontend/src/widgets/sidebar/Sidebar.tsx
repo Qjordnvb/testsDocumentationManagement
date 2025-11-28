@@ -75,6 +75,7 @@ export const Sidebar = () => {
         { path: `/projects/${projectId}/tests`, label: 'Test Cases', icon: '✅' },
         { path: `/projects/${projectId}/bugs`, label: 'Bug Reports', icon: '🐛' },
         { path: `/projects/${projectId}/reports`, label: 'Reports', icon: '📄' },
+        { path: `/projects/${projectId}/coverage`, label: 'Coverage', icon: '🎯' },
       ];
     }
 

@@ -14,6 +14,7 @@ from backend.api.endpoints import (
     stories,
     test_cases,
     bugs,
+    bug_comments,
     reports,
     stats,
     executions
@@ -46,6 +47,7 @@ router.include_router(projects.router, tags=["Projects"])
 router.include_router(stories.router, tags=["User Stories"])
 router.include_router(test_cases.router, tags=["Test Cases"])
 router.include_router(bugs.router, tags=["Bug Reports"])
+router.include_router(bug_comments.router, tags=["Bug Comments"])
 router.include_router(reports.router, tags=["Reports & Downloads"])
 router.include_router(stats.router, tags=["Statistics"])
 router.include_router(executions.router, tags=["Test Execution"]) # Sprint 1

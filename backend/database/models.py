@@ -321,6 +321,59 @@ class BugReportDB(Base):
     user_story = relationship("UserStoryDB", back_populates="bug_reports", overlaps="bug_reports,project")
 
 
+class BugCommentDB(Base):
+    """
+    Bug Comment database model for QA-DEV communication
+    PK: (id, project_id, organization_id)
+    FK: (bug_id, project_id, organization_id) → bug_reports
+
+    Enables threaded discussions on bugs with author tracking and soft delete
+    """
+    __tablename__ = "bug_comments"
+    __table_args__ = (
+        PrimaryKeyConstraint('id', 'project_id', 'organization_id'),
+        ForeignKeyConstraint(
+            ['project_id', 'organization_id'],
+            ['projects.id', 'projects.organization_id'],
+            ondelete='CASCADE'
+        ),
+        ForeignKeyConstraint(
+            ['bug_id', 'project_id', 'organization_id'],
+            ['bug_reports.id', 'bug_reports.project_id', 'bug_reports.organization_id'],
+            ondelete='CASCADE'  # Delete comments when bug is deleted
+        ),
+        {},
+    )
+
+    id = Column(String, nullable=False, index=True)  # CMT-{timestamp}-{random}
+    project_id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, nullable=False, index=True)
+
+    # Foreign Key to bug_reports (part of composite FK)
+    bug_id = Column(String, nullable=False, index=True)
+
+    # Author information
+    author_email = Column(String, nullable=False)
+    author_name = Column(String, nullable=False)
+    author_role = Column(String, nullable=False)  # "qa", "dev", "manager", "admin"
+
+    # Content
+    text = Column(Text, nullable=False)
+
+    # Mentions (JSON array of emails)
+    mentions = Column(Text, nullable=True)  # JSON: ["dev@company.com", "qa@company.com"]
+
+    # Attachment (single file, similar to bug_reports)
+    attachment_path = Column(String, nullable=True)
+
+    # Dates - Standard lifecycle tracking
+    created_date = Column(DateTime, default=datetime.now)
+    updated_date = Column(DateTime, nullable=True)
+
+    # Soft delete
+    is_deleted = Column(Boolean, default=False)
+
+
 class TestExecutionDB(Base):
     """
     Test Execution database model

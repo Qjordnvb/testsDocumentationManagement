@@ -204,6 +204,109 @@ class ProjectService:
             **metrics
         }
 
+    def get_project_coverage(self, project_id: str, organization_id: str) -> Dict[str, Any]:
+        """
+        Calculate detailed test coverage metrics for a project
+
+        Args:
+            project_id: Project ID
+            organization_id: Organization ID (for multi-tenant isolation)
+
+        Returns:
+            Dictionary with coverage metrics and stories without tests
+
+        Raises:
+            ValueError: If project not found
+        """
+        # Validate project exists
+        project = self.db.query(ProjectDB).filter(
+            ProjectDB.id == project_id,
+            ProjectDB.organization_id == organization_id
+        ).first()
+
+        if not project:
+            raise ValueError(f"Project {project_id} not found in organization {organization_id}")
+
+        # Total stories
+        total_stories = self.db.query(UserStoryDB).filter(
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == organization_id
+        ).count()
+
+        # Get story IDs that have at least one test case
+        story_ids_with_tests = self.db.query(TestCaseDB.user_story_id).filter(
+            TestCaseDB.project_id == project_id,
+            TestCaseDB.organization_id == organization_id
+        ).distinct().all()
+
+        story_ids_with_tests_set = {sid[0] for sid in story_ids_with_tests}
+        stories_with_tests_count = len(story_ids_with_tests_set)
+
+        # Stories WITHOUT tests
+        stories_without_tests = self.db.query(UserStoryDB).filter(
+            UserStoryDB.project_id == project_id,
+            UserStoryDB.organization_id == organization_id,
+            ~UserStoryDB.id.in_(story_ids_with_tests_set) if story_ids_with_tests_set else True
+        ).all()
+
+        # Test execution stats
+        total_tests = self.db.query(TestCaseDB).filter(
+            TestCaseDB.project_id == project_id,
+            TestCaseDB.organization_id == organization_id
+        ).count()
+
+        executed_tests = self.db.query(TestCaseDB).filter(
+            TestCaseDB.project_id == project_id,
+            TestCaseDB.organization_id == organization_id,
+            TestCaseDB.last_executed.isnot(None)
+        ).count()
+
+        from backend.models import TestStatus
+        passed_tests = self.db.query(TestCaseDB).filter(
+            TestCaseDB.project_id == project_id,
+            TestCaseDB.organization_id == organization_id,
+            TestCaseDB.status == TestStatus.PASSED
+        ).count()
+
+        # Calculate percentages
+        test_coverage_percent = round(
+            (stories_with_tests_count / total_stories * 100) if total_stories > 0 else 0,
+            1
+        )
+
+        execution_rate_percent = round(
+            (executed_tests / total_tests * 100) if total_tests > 0 else 0,
+            1
+        )
+
+        pass_rate_percent = round(
+            (passed_tests / executed_tests * 100) if executed_tests > 0 else 0,
+            1
+        )
+
+        return {
+            "project_id": project_id,
+            "project_name": project.name,
+            "total_stories": total_stories,
+            "stories_with_tests": stories_with_tests_count,
+            "test_coverage_percent": test_coverage_percent,
+            "stories_without_tests": [
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "priority": s.priority.value if s.priority else None,
+                    "sprint": s.sprint,
+                    "status": s.status.value if s.status else None
+                }
+                for s in stories_without_tests
+            ],
+            "total_tests": total_tests,
+            "executed_tests": executed_tests,
+            "execution_rate_percent": execution_rate_percent,
+            "passed_tests": passed_tests,
+            "pass_rate_percent": pass_rate_percent
+        }
+
     # ========== Private Helper Methods ==========
 
     def _get_projects_by_assigned_user(self, user_email: str, organization_id: str) -> List[ProjectDB]:

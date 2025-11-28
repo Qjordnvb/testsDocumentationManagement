@@ -6,6 +6,7 @@
 import type { BugStatus } from '@/entities/bug';
 import { TestRunnerModal } from '@/features/test-execution/ui';
 import { EditBugModal, MarkAsFixedModal, ReopenBugModal } from '@/features/bug-management/ui';
+import { BugCommentSection } from '@/features/bug-comments/ui';
 import { Button, SkeletonCard } from '@/shared/ui';
 import { colors, borderRadius, getTypographyPreset } from '@/shared/design-system/tokens';
 import {
@@ -24,8 +25,6 @@ import {
   Image as ImageIcon,
   Paperclip,
   Wrench,
-  RotateCcw,
-  LockIcon,
 } from 'lucide-react';
 import { useBugDetails } from '../model';
 import {
@@ -78,9 +77,6 @@ export const BugDetailsPage = () => {
     error,
     updatingStatus,
     isDev,
-    isQA,
-    isAdmin,
-    isManager,
     showTestRunner,
     setShowTestRunner,
     gherkinContent,
@@ -97,13 +93,8 @@ export const BugDetailsPage = () => {
     navigateBack,
     navigateToTests,
     navigateToStories,
-    handleMarkAsInProgress,
-    handleOpenMarkAsFixedModal,
     handleConfirmMarkAsFixed,
-    handleVerifyFix,
-    handleOpenReopenModal,
     handleConfirmReopen,
-    handleCloseBug,
   } = useBugDetails();
 
   const bodySmall = getTypographyPreset('bodySmall');
@@ -421,98 +412,6 @@ export const BugDetailsPage = () => {
         </div>
       </div>
 
-      {/* Workflow Action Buttons */}
-      <div className="card bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 w-full max-w-full min-w-0 overflow-hidden">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 break-words max-w-full">
-          <Wrench size={18} className="text-blue-600 flex-shrink-0" />
-          Workflow Actions
-        </h2>
-
-        <div className="flex flex-wrap gap-3 w-full min-w-0 max-w-full overflow-hidden">
-          {/* DEV: Mark as In Progress */}
-          {isDev && bug.status === 'Assigned' && (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleMarkAsInProgress}
-              disabled={updatingStatus}
-              leftIcon={<Clock size={18} />}
-            >
-              Mark as In Progress
-            </Button>
-          )}
-
-          {/* DEV: Mark as Fixed */}
-          {isDev && bug.status === 'In Progress' && (
-            <Button
-              variant="success"
-              size="md"
-              onClick={handleOpenMarkAsFixedModal}
-              disabled={updatingStatus}
-              leftIcon={<CheckCircle2 size={18} />}
-            >
-              Mark as Fixed
-            </Button>
-          )}
-
-          {/* QA: Verify Fix */}
-          {isQA && bug.status === 'Fixed' && (
-            <>
-              <Button
-                variant="success"
-                size="md"
-                onClick={handleVerifyFix}
-                disabled={updatingStatus}
-                leftIcon={<CheckCircle2 size={18} />}
-              >
-                ✅ Verify Fix
-              </Button>
-              <Button
-                variant="danger"
-                size="md"
-                onClick={handleOpenReopenModal}
-                disabled={updatingStatus}
-                leftIcon={<RotateCcw size={18} />}
-              >
-                ❌ Reopen Bug
-              </Button>
-            </>
-          )}
-
-          {/* ADMIN/MANAGER: Close Bug */}
-          {(isAdmin || isManager) && bug.status === 'Verified' && (
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={handleCloseBug}
-              disabled={updatingStatus}
-              leftIcon={<LockIcon size={18} />}
-            >
-              Close Bug
-            </Button>
-          )}
-
-          {/* Show info if no actions available */}
-          {!isDev && !isQA && !isAdmin && !isManager && (
-            <p className="text-sm text-gray-600 italic">
-              No workflow actions available for your role
-            </p>
-          )}
-
-          {isDev && bug.status !== 'Assigned' && bug.status !== 'In Progress' && (
-            <p className="text-sm text-gray-600 italic">
-              No DEV actions available for status: {bug.status}
-            </p>
-          )}
-
-          {isQA && bug.status !== 'Fixed' && (
-            <p className="text-sm text-gray-600 italic">
-              QA actions available when status is "Fixed"
-            </p>
-          )}
-        </div>
-      </div>
-
       {/* Fix Documentation (DEV wrote this) */}
       {bug.fix_description && (
         <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500 w-full max-w-full overflow-hidden">
@@ -653,6 +552,11 @@ export const BugDetailsPage = () => {
             })}
           </div>
         </div>
+      )}
+
+      {/* Bug Comments Section */}
+      {bugId && projectId && (
+        <BugCommentSection bugId={bugId} projectId={projectId} />
       )}
 
       {/* Test Runner Modal */}
